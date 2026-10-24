@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, MessageSquare, Trophy, XCircle, Clock, CalendarDays, AlertTriangle, ArrowUpRight, RotateCcw, CalendarPlus } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
-import { Avatar, Button, SourceBadge, Select, Spinner, Modal, Field, Input, Textarea, Confirm, useToast, cx } from './ui.jsx';
+import { Avatar, Button, SourceBadge, Select, Spinner, Modal, Field, Input, Textarea, Confirm, Tabs, useToast, cx } from './ui.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
 import MeetingModal from './MeetingModal.jsx';
 import LeadMeetings from './LeadMeetings.jsx';
+import DealProducts from './DealProducts.jsx';
 import { STAGES, LOST_REASONS, leadName, sek, formatDate, dueLabel, daysSince, timeAgo } from '../lib/meta.jsx';
 
 export function LostReasonModal({ deal, onClose, onConfirm }) {
@@ -65,6 +66,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
   const [lost, setLost] = useState(false);
   const [del, setDel] = useState(false);
   const [book, setBook] = useState(false);
+  const [tab, setTab] = useState('timeline');
 
   const load = () => api.get(`/deals/${id}`).then(setDeal).catch((e) => { toast(e.message, 'error'); onClose(); });
   useEffect(() => { setDeal(null); load(); }, [id]);
@@ -106,7 +108,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
   return (
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 w-full max-w-3xl bg-white shadow-2xl animate-slide-in flex flex-col">
+      <div className="absolute inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl animate-slide-in flex flex-col">
         {!deal ? <div className="flex-1 grid place-items-center"><Spinner /></div> : (
           <>
             <div className="px-6 pt-5 pb-5 border-b border-slate-100 space-y-4">
@@ -115,7 +117,10 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium uppercase tracking-wide text-violet-600">Affär</p>
                   <InlineEdit value={deal.title} disabled={!editable} onSave={(v) => v.trim() && patch({ title: v.trim() })} className="block w-full text-lg font-semibold text-slate-900 truncate" />
-                  {lead && <Link to={`/leads/${lead.id}`} className="mt-0.5 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600">{leadName(lead)}{lead.company && ` · ${lead.company}`}<ArrowUpRight className="size-3.5" /></Link>}
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-slate-500">
+                    {deal.company && <Link to={`/companies/${deal.company.id}`} className="inline-flex items-center gap-1 font-medium text-slate-600 hover:text-brand-600"><Building2 className="size-3.5" />{deal.company.name}</Link>}
+                    {lead && <Link to={`/leads/${lead.id}`} className="inline-flex items-center gap-1 hover:text-brand-600">{leadName(lead)}<ArrowUpRight className="size-3.5" /></Link>}
+                  </p>
                 </div>
                 <button onClick={onClose} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"><X className="size-5" /></button>
               </div>
@@ -158,6 +163,8 @@ export default function DealDrawer({ id, onClose, onChanged }) {
 
             <div className="flex-1 overflow-y-auto scroll-thin grid md:grid-cols-[1fr_250px]">
               <div className="px-6 py-5 md:border-r border-slate-100 min-w-0 space-y-6">
+                <Tabs value={tab} onChange={setTab} tabs={[{ value: 'timeline', label: 'Tidslinje' }, { value: 'products', label: 'Produkter & offert' }]} />
+                {tab === 'products' ? <DealProducts deal={deal} editable={editable} onChanged={() => { load(); onChanged?.(); }} /> : <>
                 {isOpen && (nextTask ? (
                   <div className={cx('flex items-center gap-3 rounded-xl border px-4 py-3', dueLabel(nextTask.due_at).cls === 'text-rose-600' ? 'border-rose-200 bg-rose-50' : 'border-brand-100 bg-brand-50/60')}>
                     <Clock className="size-4 text-brand-600 shrink-0" />
@@ -174,6 +181,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Tidslinje</h3>
                   <Timeline activities={deal.activities} onToggleTask={toggleTask} currentDealId={deal.id} />
                 </div>
+                </>}
               </div>
 
               <aside className="px-5 py-5 space-y-6 bg-slate-50/50">

@@ -1,6 +1,7 @@
 import { all, get, run, tx, parseJSON, audit } from '../db.js';
 import { broadcast } from '../events.js';
 import { can } from '../security.js';
+import { linkLeadToCompany } from './companies.js';
 
 export const SOURCES = ['email', 'facebook', 'instagram', 'webform', 'prospecting', 'manual', 'import'];
 export const STATUSES = ['new', 'contacted', 'qualified', 'unqualified', 'converted'];
@@ -234,6 +235,7 @@ export function ingestLead({ source, sourceDetail = null, externalId = null, raw
       const sets = Object.keys(patch).map((k) => `${k} = ?`);
       run(`UPDATE leads SET ${[...sets, 'score = min(100, score + 10)', "last_activity_at = datetime('now')", "updated_at = datetime('now')"].join(', ')} WHERE id = ?`,
         ...Object.values(patch), l.id);
+      if (!l.company_id) linkLeadToCompany(l.id);
       run('INSERT INTO activities (lead_id, type, content) VALUES (?, ?, ?)', l.id, 'system',
         `Ny förfrågan via ${summarySrc}${sourceDetail ? ` (${sourceDetail})` : ''}${data.message || note ? `:\n${data.message || note}` : ''}`);
       return { result: 'merged', lead: l, summary: `Sammanslagen med befintlig kontakt ${leadName(l)}` };
@@ -250,6 +252,7 @@ export function ingestLead({ source, sourceDetail = null, externalId = null, raw
       lead.title ?? null, lead.city ?? null, source, sourceDetail, externalId, lead.status, lead.score, lead.owner_id,
       JSON.stringify(lead.tags), lead.message ?? note ?? null, JSON.stringify(lead.fields));
     const id = Number(r.lastInsertRowid);
+    linkLeadToCompany(id);
     run('INSERT INTO activities (lead_id, type, content) VALUES (?, ?, ?)', id, 'system',
       `Lead skapad automatiskt via ${summarySrc}${sourceDetail ? ` (${sourceDetail})` : ''}${applied.length ? `. Regler: ${applied.join(', ')}` : ''}`);
     for (const t of tasks) {

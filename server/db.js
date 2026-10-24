@@ -202,6 +202,85 @@ CREATE TABLE IF NOT EXISTS google_accounts (
 );
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS companies (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  org_nr TEXT,
+  website TEXT,
+  domain TEXT,
+  phone TEXT,
+  email TEXT,
+  address TEXT,
+  city TEXT,
+  industry TEXT,
+  owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS companies_org ON companies(org_nr) WHERE org_nr IS NOT NULL;
+CREATE INDEX IF NOT EXISTS companies_domain ON companies(domain);
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  sku TEXT,
+  description TEXT,
+  unit TEXT NOT NULL DEFAULT 'st',
+  price REAL NOT NULL DEFAULT 0,
+  vat_rate REAL NOT NULL DEFAULT 25,
+  recurring TEXT NOT NULL DEFAULT 'none',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS deal_items (
+  id INTEGER PRIMARY KEY,
+  deal_id INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  quantity REAL NOT NULL DEFAULT 1,
+  unit TEXT NOT NULL DEFAULT 'st',
+  unit_price REAL NOT NULL DEFAULT 0,
+  discount REAL NOT NULL DEFAULT 0,
+  vat_rate REAL NOT NULL DEFAULT 25,
+  recurring TEXT NOT NULL DEFAULT 'none',
+  position INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS deal_items_deal ON deal_items(deal_id);
+CREATE TABLE IF NOT EXISTS quotes (
+  id INTEGER PRIMARY KEY,
+  deal_id INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  number TEXT NOT NULL UNIQUE,
+  token TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'draft',
+  title TEXT NOT NULL,
+  intro TEXT,
+  terms TEXT,
+  valid_until TEXT,
+  recipient_name TEXT,
+  recipient_email TEXT,
+  content TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  total REAL NOT NULL DEFAULT 0,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  sent_at TEXT,
+  viewed_at TEXT,
+  view_count INTEGER NOT NULL DEFAULT 0,
+  signed_at TEXT,
+  signer_name TEXT,
+  signer_email TEXT,
+  signer_title TEXT,
+  signer_ip TEXT,
+  signer_agent TEXT,
+  signature TEXT,
+  declined_at TEXT,
+  decline_reason TEXT
+);
+CREATE INDEX IF NOT EXISTS quotes_deal ON quotes(deal_id);
+`);
+
 // Enkla migreringar för databaser som skapades innan kolumnerna fanns.
 function addColumn(table, column, def) {
   if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
@@ -209,6 +288,10 @@ function addColumn(table, column, def) {
 addColumn('deals', 'lost_reason', 'TEXT');
 addColumn('deals', 'stage_changed_at', 'TEXT');
 addColumn('users', 'ical_token', 'TEXT');
+addColumn('leads', 'company_id', 'INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+addColumn('deals', 'company_id', 'INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+addColumn('activities', 'company_id', 'INTEGER REFERENCES companies(id) ON DELETE CASCADE');
+db.exec('CREATE INDEX IF NOT EXISTS leads_company ON leads(company_id); CREATE INDEX IF NOT EXISTS deals_company ON deals(company_id)');
 db.exec("UPDATE deals SET stage_changed_at = coalesce(closed_at, updated_at, created_at) WHERE stage_changed_at IS NULL");
 db.exec('CREATE INDEX IF NOT EXISTS activities_deal ON activities(deal_id)');
 

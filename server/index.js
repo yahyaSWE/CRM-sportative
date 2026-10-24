@@ -10,6 +10,9 @@ import leadRoutes from './routes/leads.js';
 import adminRoutes from './routes/admin.js';
 import { manage as integrationRoutes, webhooks } from './routes/integrations.js';
 import prospectingRoutes from './routes/prospecting.js';
+import companyRoutes from './routes/companies.js';
+import salesRoutes, { publicQuotes } from './routes/sales.js';
+import { migrateCompanies } from './services/companies.js';
 import calendarRoutes from './routes/calendar.js';
 import { tick as calendarTick } from './calendar/service.js';
 import { startScheduler } from './integrations/scheduler.js';
@@ -29,11 +32,13 @@ app.use('/api/webhooks', webhooks);
 app.use('/api/auth', authRoutes);
 // Kalendern har två publika vägar (iCal-flöde och Googles OAuth-svar); resten kräver inloggning i routern.
 app.use('/api', calendarRoutes);
+// Kundens offertsida (öppnas via hemlig länk, utan inloggning).
+app.use('/api/public', publicQuotes);
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api', authenticate);
 app.get('/api/events', sseHandler);
-app.use('/api', leadRoutes, adminRoutes, integrationRoutes, prospectingRoutes);
+app.use('/api', leadRoutes, companyRoutes, salesRoutes, adminRoutes, integrationRoutes, prospectingRoutes);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Okänd endpoint' }));
 
 const dist = path.join(__dirname, '..', 'dist');
@@ -48,6 +53,7 @@ app.use((err, _req, res, _next) => {
 });
 
 if (!get('SELECT 1 FROM users LIMIT 1')) seed();
+migrateCompanies();
 
 // API_PORT används i utveckling (Vite tar PORT); i produktion räcker PORT.
 const PORT = Number(process.env.API_PORT || (process.argv.includes('--serve') && process.env.PORT) || 4000);

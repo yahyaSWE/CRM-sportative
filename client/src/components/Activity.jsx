@@ -49,7 +49,7 @@ export function ActivityComposer({ onSubmit, hint }) {
 }
 
 // Gemensam tidslinje för lead och affär. Aktiviteter från en affär märks med affärens namn.
-export function Timeline({ activities, onToggleTask, currentDealId }) {
+export function Timeline({ activities, onToggleTask, currentDealId, showContact }) {
   if (!activities.length) return <p className="text-sm text-slate-400">Ingen historik än.</p>;
   return (
     <ol className="relative space-y-5 before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-px before:bg-slate-200">
@@ -70,6 +70,9 @@ export function Timeline({ activities, onToggleTask, currentDealId }) {
                   </Link>
                 )}
                 {currentDealId && !a.deal_id && <span className="rounded bg-slate-100 px-1.5 py-px text-[11px] text-slate-500">Från leadet</span>}
+                {showContact && a.lead_id && (a.contact_first_name || a.contact_last_name) && (
+                  <Link to={`/leads/${a.lead_id}`} className="rounded bg-slate-100 px-1.5 py-px text-[11px] text-slate-600 hover:bg-slate-200">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(' ')}</Link>
+                )}
               </div>
               {a.type === 'task' ? (
                 <button onClick={() => onToggleTask?.(a)} className="mt-1 flex items-start gap-2 text-left">

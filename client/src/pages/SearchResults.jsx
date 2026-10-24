@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Star, Briefcase, Users } from 'lucide-react';
+import { Search, Star, Briefcase, Users, Building2 } from 'lucide-react';
 import { api } from '../api.js';
 import { Card, PageHeader, SourceBadge, StatusBadge, Avatar, Empty, Spinner } from '../components/ui.jsx';
 import { useRecordDrawers } from '../components/Records.jsx';
@@ -23,7 +23,7 @@ export default function SearchResults() {
   const [input, setInput] = useState(q);
   const [res, setRes] = useState(null);
   const load = () => (q.length >= 2 ? api.get(`/search?all=1&q=${encodeURIComponent(q)}`).then(setRes) : setRes(null));
-  const { openLead, openDeal, drawers } = useRecordDrawers(load);
+  const { openLead, openDeal, openCompany, drawers } = useRecordDrawers(load);
   useEffect(() => { setInput(q); setRes(null); load(); }, [q]);
 
   const LeadRow = ({ l }) => (
@@ -38,7 +38,7 @@ export default function SearchResults() {
     </button>
   );
 
-  const total = res ? res.counts.customers + res.counts.leads + res.counts.deals : 0;
+  const total = res ? res.counts.companies + res.counts.leads + res.counts.deals : 0;
   return (
     <div className="max-w-4xl space-y-5">
       <PageHeader title="Sök" subtitle={SEARCH_HINT} />
@@ -50,8 +50,17 @@ export default function SearchResults() {
       {res && !total && <Card><Empty icon={Search} title={`Inga träffar på "${q}"`} text="Prova en del av namnet, ett telefonnummer eller företagets ort." /></Card>}
       {res && (
         <>
-          <Section icon={Star} title="Kunder" count={res.counts.customers}>{res.customers.map((l) => <LeadRow key={l.id} l={l} />)}</Section>
-          <Section icon={Users} title="Leads" count={res.counts.leads}>{res.leads.map((l) => <LeadRow key={l.id} l={l} />)}</Section>
+          <Section icon={Building2} title="Företag" count={res.counts.companies}>
+            {res.companies.map((c) => (
+              <button key={c.id} onClick={() => openCompany(c.id)} className="flex w-full items-center gap-4 px-5 py-3 text-left hover:bg-slate-50">
+                <span className={`grid place-items-center size-7 rounded-md ${c.is_customer ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>{c.is_customer ? <Star className="size-4" /> : <Building2 className="size-4" />}</span>
+                <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-slate-800 truncate">{c.name}</span>
+                  <span className="block text-xs text-slate-500 truncate">{[c.org_nr, c.city, `${c.contact_count} kontakter`].filter(Boolean).join(" · ")}</span></span>
+                {c.is_customer ? <span className="text-xs font-medium text-emerald-600">Kund</span> : null}
+              </button>
+            ))}
+          </Section>
+          <Section icon={Users} title="Kontakter" count={res.counts.leads}>{res.leads.map((l) => <LeadRow key={l.id} l={l} />)}</Section>
           <Section icon={Briefcase} title="Affärer" count={res.counts.deals}>
             {res.deals.map((d) => {
               const st = STAGES.find((s) => s.key === d.stage);

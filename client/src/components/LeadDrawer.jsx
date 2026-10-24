@@ -28,6 +28,42 @@ export function EditableField({ icon: Icon, value, placeholder, onSave, disabled
   );
 }
 
+// Företaget kontakten tillhör: länk till företaget, eller sök/skapa ett nytt.
+function CompanyField({ lead, disabled, onPatch }) {
+  const [edit, setEdit] = useState(false);
+  const [q, setQ] = useState('');
+  const [hits, setHits] = useState([]);
+  useEffect(() => {
+    if (!edit || q.trim().length < 2) return setHits([]);
+    const t = setTimeout(() => api.get(`/companies-lookup?q=${encodeURIComponent(q.trim())}`).then(setHits), 150);
+    return () => clearTimeout(t);
+  }, [q, edit]);
+  const pick = (body) => { setEdit(false); setQ(''); onPatch(body); };
+  if (edit) {
+    return (
+      <div className="py-1.5">
+        <input autoFocus className="input !py-1" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sök eller skriv nytt företag…"
+          onKeyDown={(e) => { if (e.key === 'Escape') setEdit(false); if (e.key === 'Enter' && q.trim()) pick(hits[0] && hits[0].name.toLowerCase() === q.trim().toLowerCase() ? { company_id: hits[0].id } : { company: q.trim() }); }} />
+        <div className="mt-1 card py-1 shadow-lg">
+          {hits.map((h) => <button key={h.id} onClick={() => pick({ company_id: h.id })} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">{h.name}<span className="text-xs text-slate-400"> {h.city}</span></button>)}
+          {q.trim().length > 1 && !hits.some((h) => h.name.toLowerCase() === q.trim().toLowerCase()) && <button onClick={() => pick({ company: q.trim() })} className="block w-full px-3 py-1.5 text-left text-sm text-brand-600 hover:bg-slate-50">+ Nytt företag "{q.trim()}"</button>}
+          {lead.company_id && <button onClick={() => pick({ company_id: null })} className="block w-full px-3 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-50">Ta bort koppling till företag</button>}
+          <button onClick={() => setEdit(false)} className="block w-full px-3 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-50">Avbryt</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="group flex items-center gap-3 py-1.5 min-h-9">
+      <Building2 className="size-4 text-slate-400 shrink-0" />
+      {lead.company_id
+        ? <Link to={`/companies/${lead.company_id}`} className="flex-1 truncate text-sm font-medium text-brand-600 hover:underline">{lead.company}</Link>
+        : <span className="flex-1 text-sm text-slate-400">{lead.company || 'Inget företag'}</span>}
+      {!disabled && <button onClick={() => setEdit(true)} className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 hover:text-slate-600">Ändra</button>}
+    </div>
+  );
+}
+
 // Standardförslag för första uppgiften: imorgon kl 10.
 const tomorrowAt10 = () => {
   const d = new Date(Date.now() + 864e5); d.setHours(10, 0, 0, 0);
@@ -173,7 +209,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                   <p className="label">Kontaktuppgifter</p>
                   <EditableField icon={Mail} value={lead.email} placeholder="Lägg till e-post" href={lead.email && `mailto:${lead.email}`} disabled={!editable} onSave={(v) => patch({ email: v })} />
                   <EditableField icon={Phone} value={lead.phone} placeholder="Lägg till telefon" href={lead.phone && `tel:${lead.phone}`} disabled={!editable} onSave={(v) => patch({ phone: v })} />
-                  <EditableField icon={Building2} value={lead.company} placeholder="Företag" disabled={!editable} onSave={(v) => patch({ company: v })} />
+                  <CompanyField lead={lead} disabled={!editable} onPatch={patch} />
                   <EditableField icon={Briefcase} value={lead.title} placeholder="Titel" disabled={!editable} onSave={(v) => patch({ title: v })} />
                   <EditableField icon={MapPin} value={lead.city} placeholder="Ort" disabled={!editable} onSave={(v) => patch({ city: v })} />
                 </div>

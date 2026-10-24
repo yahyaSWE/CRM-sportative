@@ -46,6 +46,22 @@ Gemensamt mönster som LeadFlow följer: **alla kanaler matas in i en och samma 
 - **Leads**: snabbflikarna *Nya att ringa*, *Behöver uppföljning* (kontaktade utan uppgift eller bokat möte) och *Kunder*, samt kolumnen *Nästa steg* med senaste kontakt.
 - **Pipeline**: sökruta och listvy (sorterbar, med äldre avslutade affärer). Tavlan visar avslutade affärer från de senaste 30 dagarna.
 
+## Företag och kontaktpersoner
+
+- **Företag** samlar alla kontaktpersoner (VD, inköpare, ekonomi …), affärer och en gemensam tidslinje för organisationen. Flikar: Alla, Kunder, Med öppna affärer, Prospekt.
+- Leads kopplas automatiskt till rätt företag via org.nr, företagets e-postdomän (inte Gmail/Hotmail m.fl.) eller namnet ("Nordlys AB" = "nordlys aktiebolag"). Kopplingen kan ändras i leadet.
+- Dubbletter slås ihop från företagspanelen. Med Bolagsverket-nycklar kan adress och bransch hämtas via org.nr.
+
+## Produkter, offerter och e-signering
+
+1. Administratören lägger in produkter (pris, enhet, moms, engång/per månad/per år) och era företagsuppgifter och standardvillkor under **Produkter & offerter**.
+2. På en affär, fliken **Produkter & offert**: lägg till produkter eller fria rader, ändra antal, pris och rabatt. Affärens värde följer summan exkl. moms.
+3. **Skapa offert** → välj mottagare och giltighetstid → **Mejla kunden** eller kopiera länken. Affären flyttas till *Offert skickad*.
+4. Kunden öppnar länken (säljaren får en notis), läser offerten och signerar genom att rita sin signatur och godkänna villkoren – eller tackar nej med en kommentar.
+5. Vid signering markeras affären som vunnen och kontakten som kund. *Signaturbevis* visar namn, e-post, tid, IP-adress och en kontrollsumma av offerten.
+
+Signaturen är en enkel elektronisk underskrift. För avancerad underskrift med BankID behöver en tjänst som Scrive, Oneflow eller Signicat kopplas in. Kunden kan skriva ut eller spara offerten som PDF via webbläsaren.
+
 ## Från lead till affär
 
 1. **Lead** (personen/förfrågan) kommer in automatiskt och kvalificeras: Ny → Kontaktad → Kvalificerad.

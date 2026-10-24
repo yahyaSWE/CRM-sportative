@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Briefcase, Star, ArrowRight } from 'lucide-react';
+import { Search, Briefcase, Star, ArrowRight, Building2 } from 'lucide-react';
 import { api } from '../api.js';
 import { SourceBadge, cx } from './ui.jsx';
 import { leadName, sek, STAGES } from '../lib/meta.jsx';
@@ -29,11 +29,11 @@ export default function GlobalSearch() {
   }, [q]);
 
   const items = useMemo(() => !res ? [] : [
-    ...res.customers.map((x) => ({ group: 'Kunder', path: `/leads/${x.id}`, x, kind: 'lead' })),
-    ...res.leads.map((x) => ({ group: 'Leads', path: `/leads/${x.id}`, x, kind: 'lead' })),
+    ...res.companies.map((x) => ({ group: 'Företag', path: `/companies/${x.id}`, x, kind: 'company' })),
+    ...res.leads.map((x) => ({ group: 'Kontakter', path: `/leads/${x.id}`, x, kind: 'lead' })),
     ...res.deals.map((x) => ({ group: 'Affärer', path: `/pipeline/${x.id}`, x, kind: 'deal' })),
   ], [res]);
-  const total = res ? res.counts.customers + res.counts.leads + res.counts.deals : 0;
+  const total = res ? res.counts.companies + res.counts.leads + res.counts.deals : 0;
   const showAll = () => { setOpen(false); nav(`/search?q=${encodeURIComponent(q.trim())}`); ref.current?.blur(); };
   const go = (path) => { setOpen(false); setQ(''); nav(path); ref.current?.blur(); };
 
@@ -61,7 +61,7 @@ export default function GlobalSearch() {
           {items.map((it, i) => {
             const header = it.group !== lastGroup;
             lastGroup = it.group;
-            const n = { Kunder: res.counts.customers, Leads: res.counts.leads, Affärer: res.counts.deals }[it.group];
+            const n = { Företag: res.counts.companies, Kontakter: res.counts.leads, Affärer: res.counts.deals }[it.group];
             const x = it.x;
             const stage = it.kind === 'deal' && STAGES.find((s) => s.key === x.stage);
             return (
@@ -71,13 +71,14 @@ export default function GlobalSearch() {
                   className={cx('flex w-full items-center gap-3 px-4 py-2 text-left', active === i ? 'bg-brand-50' : 'hover:bg-slate-50')}>
                   {it.kind === 'deal'
                     ? <span className="grid place-items-center size-6 rounded-md bg-violet-50 text-violet-600"><Briefcase className="size-3.5" /></span>
-                    : it.group === 'Kunder' ? <span className="grid place-items-center size-6 rounded-md bg-emerald-50 text-emerald-600"><Star className="size-3.5" /></span>
+                    : it.kind === 'company' ? <span className={cx('grid place-items-center size-6 rounded-md', x.is_customer ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500')}>{x.is_customer ? <Star className="size-3.5" /> : <Building2 className="size-3.5" />}</span>
                       : <SourceBadge source={x.source} compact />}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-slate-800 truncate">{it.kind === 'deal' ? x.title : leadName(x)}</span>
+                    <span className="block text-sm font-medium text-slate-800 truncate">{it.kind === 'deal' ? x.title : it.kind === 'company' ? x.name : leadName(x)}</span>
                     <span className="block text-xs text-slate-500 truncate">
-                      {it.kind === 'deal'
-                        ? [[x.first_name, x.last_name].filter(Boolean).join(' '), x.owner_name].filter(Boolean).join(' · ')
+                      {it.kind === 'company' ? [x.org_nr, x.city, `${x.contact_count} kontakter`, x.is_customer ? 'Kund' : null].filter(Boolean).join(' · ')
+                        : it.kind === 'deal'
+                        ? [[x.company, x.first_name && [x.first_name, x.last_name].filter(Boolean).join(' ')].filter(Boolean).join(', '), x.owner_name].filter(Boolean).join(' · ')
                         : [x.company !== leadName(x) && x.company, x.phone, x.city].filter(Boolean).join(' · ')}
                     </span>
                   </span>

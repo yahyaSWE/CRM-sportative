@@ -1,11 +1,13 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useApp } from './lib/app.jsx';
 import { Spinner } from './components/ui.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import MyDay from './pages/MyDay.jsx';
-import Customers from './pages/Customers.jsx';
+import Companies from './pages/Companies.jsx';
+import PublicQuote from './pages/PublicQuote.jsx';
+import Products from './pages/Products.jsx';
 import SearchResults from './pages/SearchResults.jsx';
 import Leads from './pages/Leads.jsx';
 import Pipeline from './pages/Pipeline.jsx';
@@ -26,6 +28,9 @@ function Guard({ perm, children }) {
 
 export default function App() {
   const { loading, user } = useApp();
+  const location = useLocation();
+  // Kundens offertsida är publik och visas utan inloggning och utan appens meny.
+  if (location.pathname.startsWith('/q/')) return <Routes><Route path="/q/:token" element={<PublicQuote />} /></Routes>;
   if (loading) return <div className="h-full grid place-items-center"><Spinner className="size-8" /></div>;
   if (!user) return <Login />;
   return (
@@ -33,7 +38,9 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<MyDay />} />
         <Route path="overview" element={<Dashboard />} />
-        <Route path="customers" element={<Customers />} />
+        <Route path="companies" element={<Companies />} />
+        <Route path="companies/:id" element={<Companies />} />
+        <Route path="customers" element={<Navigate to="/companies?view=customers" replace />} />
         <Route path="search" element={<SearchResults />} />
         <Route path="leads" element={<Leads />} />
         <Route path="leads/:id" element={<Leads />} />
@@ -45,6 +52,7 @@ export default function App() {
         <Route path="integrations" element={<Guard perm="integrations.manage"><Integrations /></Guard>} />
         <Route path="prospecting" element={<Guard perm="prospecting.use"><Prospecting /></Guard>} />
         <Route path="automations" element={<Automations />} />
+        <Route path="products" element={<Products />} />
         <Route path="team" element={<Team />} />
         <Route path="audit" element={<Guard perm="audit.view"><Audit /></Guard>} />
         <Route path="settings" element={<Settings />} />

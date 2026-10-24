@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CalendarClock, CheckSquare, AlertTriangle } from 'lucide-react';
 import LeadDrawer from './LeadDrawer.jsx';
 import DealDrawer from './DealDrawer.jsx';
+import CompanyDrawer from './CompanyDrawer.jsx';
 import { cx } from './ui.jsx';
 import { dueLabel, timeAgo } from '../lib/meta.jsx';
 
@@ -9,11 +10,14 @@ import { dueLabel, timeAgo } from '../lib/meta.jsx';
 export function useRecordDrawers(onChanged) {
   const [lead, setLead] = useState(null);
   const [deal, setDeal] = useState(null);
+  const [company, setCompany] = useState(null);
   return {
     openLead: setLead,
     openDeal: setDeal,
+    openCompany: setCompany,
     drawers: (
       <>
+        {company && <CompanyDrawer id={company} onClose={() => setCompany(null)} onChanged={onChanged} />}
         {lead && <LeadDrawer id={lead} onClose={() => setLead(null)} onChanged={onChanged} />}
         {deal && <DealDrawer id={deal} onClose={() => setDeal(null)} onChanged={onChanged} />}
       </>

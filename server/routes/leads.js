@@ -3,6 +3,7 @@ import { all, get, run, tx, audit } from '../db.js';
 import { can } from '../security.js';
 import { requirePerm } from '../middleware.js';
 import { broadcast } from '../events.js';
+import { linkLeadToCompany, companyVisibilitySql } from '../services/companies.js';
 import {
   getLead, hydrateLead, canSeeLead, canEditLead, leadVisibilitySql, normalizeLeadData, notify, leadName,
   STATUSES, SOURCES, runAutomations, leadSearchSql, CUSTOMER_SQL, NEEDS_FOLLOWUP_SQL, LEAD_NEXT_COLUMNS, pickNextStep,
@@ -85,6 +86,10 @@ r.post('/leads', requirePerm('leads.edit_own'), (req, res) => {
       lead.first_name ?? null, lead.last_name ?? null, lead.email ?? null, lead.phone ?? null, lead.company ?? null, lead.title ?? null,
       lead.city ?? null, lead.source, b.source_detail || null, lead.status, lead.score, lead.owner_id ?? null, JSON.stringify(lead.tags), lead.message ?? null, '{}');
     const newId = Number(ins.lastInsertRowid);
+    // Kontakt som läggs till direkt på ett företag kopplas dit, annars hittas företaget automatiskt.
+    const co = b.company_id && get('SELECT id, name FROM companies WHERE id = ?', Number(b.company_id));
+    if (co) run('UPDATE leads SET company_id = ?, company = ? WHERE id = ?', co.id, co.name, newId);
+    else linkLeadToCompany(newId);
     run("INSERT INTO activities (lead_id, user_id, type, content) VALUES (?, ?, 'system', ?)", newId, req.user.id, `Lead skapad av ${req.user.name}`);
     for (const t of tasks) run(`INSERT INTO activities (lead_id, user_id, type, content, due_at) VALUES (?, ?, 'task', ?, datetime('now', ?))`, newId, lead.owner_id, t.text, `+${t.hours} hours`);
     return newId;
@@ -104,9 +109,10 @@ r.post('/leads/import', requirePerm('leads.edit_own'), (req, res) => {
       const d = normalizeLeadData(row);
       if (!d.first_name && !d.email && !d.phone) { skipped++; continue; }
       if (d.email && get('SELECT 1 FROM leads WHERE email = ?', d.email)) { skipped++; continue; }
-      run(`INSERT INTO leads (first_name, last_name, email, phone, company, title, city, source, status, score, owner_id, message, fields)
+      const ins = run(`INSERT INTO leads (first_name, last_name, email, phone, company, title, city, source, status, score, owner_id, message, fields)
         VALUES (?,?,?,?,?,?,?,'import','new',?,?,?,?)`, d.first_name ?? null, d.last_name ?? null, d.email ?? null, d.phone ?? null,
         d.company ?? null, d.title ?? null, d.city ?? null, 10, can(req.user, 'leads.assign') ? null : req.user.id, d.message ?? null, JSON.stringify(d.fields));
+      linkLeadToCompany(Number(ins.lastInsertRowid));
       created++;
     }
   });
@@ -162,8 +168,17 @@ r.patch('/leads/:id', (req, res) => {
   }
   if ('owner_id' in b && b.owner_id !== lead.owner_id) { sets.push('owner_id = ?'); params.push(b.owner_id || null); changes.push('owner_id'); }
   if (Array.isArray(b.tags)) { sets.push('tags = ?'); params.push(JSON.stringify(b.tags)); changes.push('tags'); }
+  // Byte av företag: antingen ett valt företag (company_id) eller ett nytt namn som kopplas automatiskt.
+  if ('company_id' in b && b.company_id !== lead.company_id) {
+    const co = b.company_id ? get('SELECT id, name FROM companies WHERE id = ?', Number(b.company_id)) : null;
+    sets.push('company_id = ?', 'company = ?'); params.push(co?.id ?? null, co?.name ?? null); changes.push('company_id');
+  } else if (changes.includes('company')) { sets.push('company_id = NULL'); }
   if (!sets.length) return res.json(lead);
   run(`UPDATE leads SET ${sets.join(', ')}, updated_at = datetime('now') WHERE id = ?`, ...params, lead.id);
+  if (changes.includes('company') && !changes.includes('company_id')) linkLeadToCompany(lead.id);
+  if (changes.includes('company_id') || changes.includes('company')) {
+    run("UPDATE deals SET company_id = (SELECT company_id FROM leads WHERE id = ?) WHERE lead_id = ? AND stage NOT IN ('won','lost')", lead.id, lead.id);
+  }
   const STATUS_SV = { new: 'Ny', contacted: 'Kontaktad', qualified: 'Kvalificerad', unqualified: 'Ej aktuell', converted: 'Konverterad' };
   if (changes.includes('status')) run("INSERT INTO activities (lead_id, user_id, type, content) VALUES (?, ?, 'system', ?)", lead.id, req.user.id, `Status ändrad till ${STATUS_SV[b.status]}`);
   if (changes.includes('owner_id')) {
@@ -204,8 +219,8 @@ r.post('/leads/:id/convert', (req, res) => {
   const { title, value = 0, expected_close, task } = req.body || {};
   const owner = lead.owner_id || req.user.id;
   const id = tx(() => {
-    const ins = run("INSERT INTO deals (title, value, stage, lead_id, owner_id, expected_close, stage_changed_at) VALUES (?,?,?,?,?,?,datetime('now'))",
-      title || `${lead.company || leadName(lead)} – affär`, Number(value) || 0, 'qualified', lead.id, owner, expected_close || null);
+    const ins = run("INSERT INTO deals (title, value, stage, lead_id, company_id, owner_id, expected_close, stage_changed_at) VALUES (?,?,?,?,?,?,?,datetime('now'))",
+      title || `${lead.company || leadName(lead)} – affär`, Number(value) || 0, 'qualified', lead.id, lead.company_id ?? null, owner, expected_close || null);
     const dealId = Number(ins.lastInsertRowid);
     run("UPDATE leads SET status = 'converted', owner_id = coalesce(owner_id, ?), updated_at = datetime('now') WHERE id = ?", req.user.id, lead.id);
     addActivity({ leadId: lead.id, dealId, userId: req.user.id, type: 'system', content: `Konverterad till affär (${(Number(value) || 0).toLocaleString('sv-SE')} kr)` });
@@ -263,11 +278,11 @@ const canEditDeal = (user, d) => can(user, 'leads.edit_all') || (d.owner_id === 
 
 function dealRows(where, params) {
   return all(`SELECT d.*, u.name AS owner_name, u.color AS owner_color,
-      l.first_name, l.last_name, l.company, l.source, l.email, l.phone,
+      l.first_name, l.last_name, coalesce(co.name, l.company) AS company, l.source, l.email, l.phone,
       (SELECT json_object('id', a.id, 'content', a.content, 'due_at', a.due_at) FROM activities a
         WHERE a.type = 'task' AND a.done = 0 AND ${DEAL_ACTIVITY_SCOPE} ORDER BY coalesce(a.due_at, '9999') LIMIT 1) AS next_task,
       (SELECT max(a.created_at) FROM activities a WHERE a.type NOT IN ('system', 'task') AND ${DEAL_ACTIVITY_SCOPE}) AS last_contact_at
-    FROM deals d LEFT JOIN users u ON u.id = d.owner_id LEFT JOIN leads l ON l.id = d.lead_id
+    FROM deals d LEFT JOIN users u ON u.id = d.owner_id LEFT JOIN leads l ON l.id = d.lead_id LEFT JOIN companies co ON co.id = d.company_id
     WHERE ${where} ORDER BY d.position, d.updated_at DESC`, ...params)
     .map((d) => ({ ...d, next_task: d.next_task ? JSON.parse(d.next_task) : null }));
 }
@@ -292,7 +307,9 @@ r.get('/deals/:id', (req, res) => {
     JOIN activities a ON ${DEAL_ACTIVITY_SCOPE} LEFT JOIN users u ON u.id = a.user_id LEFT JOIN deals dl ON dl.id = a.deal_id
     WHERE d.id = ? ORDER BY a.created_at DESC, a.id DESC`, deal.id);
   const otherDeals = deal.lead_id ? all('SELECT id, title, value, stage FROM deals WHERE lead_id = ? AND id != ? ORDER BY id DESC', deal.lead_id, deal.id) : [];
-  res.json({ ...deal, lead, activities, otherDeals, canEdit: canEditDeal(req.user, deal), lostReasons: LOST_REASONS });
+  const company = deal.company_id ? get('SELECT id, name, org_nr, city, website, phone, address FROM companies WHERE id = ?', deal.company_id) : null;
+  const contacts = company ? all('SELECT id, first_name, last_name, email, phone, title FROM leads WHERE company_id = ? ORDER BY last_activity_at DESC', company.id) : [];
+  res.json({ ...deal, lead, company, contacts, activities, otherDeals, canEdit: canEditDeal(req.user, deal), lostReasons: LOST_REASONS });
 });
 
 r.post('/deals/:id/activities', (req, res) => {
@@ -307,11 +324,13 @@ r.post('/deals/:id/activities', (req, res) => {
 });
 
 r.post('/deals', requirePerm('leads.edit_own'), (req, res) => {
-  const { title, value = 0, stage = 'qualified', lead_id, expected_close, owner_id } = req.body || {};
+  const { title, value = 0, stage = 'qualified', lead_id, company_id, expected_close, owner_id } = req.body || {};
+  // En affär hör till företaget; skapas den från en kontakt ärvs kontaktens företag.
+  const companyId = company_id || (lead_id ? get('SELECT company_id FROM leads WHERE id = ?', lead_id)?.company_id : null) || null;
   if (!title?.trim()) return res.status(400).json({ error: 'Titel krävs' });
   const owner = can(req.user, 'leads.assign') && owner_id ? owner_id : req.user.id;
-  const ins = run("INSERT INTO deals (title, value, stage, lead_id, owner_id, expected_close, stage_changed_at) VALUES (?,?,?,?,?,?,datetime('now'))",
-    title.trim(), Number(value) || 0, STAGES.includes(stage) ? stage : 'qualified', lead_id || null, owner, expected_close || null);
+  const ins = run("INSERT INTO deals (title, value, stage, lead_id, company_id, owner_id, expected_close, stage_changed_at) VALUES (?,?,?,?,?,?,?,datetime('now'))",
+    title.trim(), Number(value) || 0, STAGES.includes(stage) ? stage : 'qualified', lead_id || null, companyId, owner, expected_close || null);
   audit(req.user.id, 'deal.create', 'deal', Number(ins.lastInsertRowid));
   broadcast('refresh', { entity: 'deals' });
   res.status(201).json(get('SELECT * FROM deals WHERE id = ?', ins.lastInsertRowid));
@@ -420,7 +439,7 @@ r.get('/dashboard', (req, res) => {
 r.get('/search', (req, res) => {
   const q = String(req.query.q || '').trim();
   const limit = req.query.all ? 100 : 6;
-  if (q.length < 2) return res.json({ customers: [], leads: [], deals: [], counts: { customers: 0, leads: 0, deals: 0 } });
+  if (q.length < 2) return res.json({ companies: [], leads: [], deals: [], counts: { companies: 0, leads: 0, deals: 0 } });
   const vis = leadVisibilitySql(req.user);
   const s = leadSearchSql(q);
   const leadCols = `l.id, l.first_name, l.last_name, l.email, l.phone, l.company, l.city, l.source, l.status, l.tags, u.name AS owner_name, u.color AS owner_color`;
@@ -429,8 +448,18 @@ r.get('/search', (req, res) => {
     rows: all(`SELECT ${leadCols} ${leadFrom} AND ${extra} ORDER BY l.last_activity_at DESC LIMIT ?`, ...vis.params, ...s.params, limit).map(hydrateLead),
     n: get(`SELECT count(*) AS n ${leadFrom} AND ${extra}`, ...vis.params, ...s.params).n,
   });
-  const customers = find(CUSTOMER_SQL());
-  const leads = find(`NOT ${CUSTOMER_SQL()}`);
+  const leads = find('1=1');
+  // Företag: namn, org.nr, ort, bransch, domän eller växelnummer.
+  const cv = companyVisibilitySql(req.user);
+  const t = `%${q.toLowerCase()}%`;
+  const digits = q.replace(/D/g, '');
+  const coWhere = `${cv.sql} AND (sv_lower(c.name) LIKE ? OR sv_lower(c.city) LIKE ? OR sv_lower(c.industry) LIKE ? OR sv_lower(c.domain) LIKE ?${digits.length >= 4 ? " OR replace(c.org_nr, '-', '') LIKE ? OR replace(replace(c.phone, ' ', ''), '-', '') LIKE ?" : ''})`;
+  const coParams = [...cv.params, t, t, t, t, ...(digits.length >= 4 ? [`%${digits}%`, `%${digits}%`] : [])];
+  const companies = {
+    rows: all(`SELECT c.id, c.name, c.org_nr, c.city, (SELECT count(*) FROM leads WHERE company_id = c.id) AS contact_count,
+        EXISTS (SELECT 1 FROM deals WHERE company_id = c.id AND stage = 'won') AS is_customer FROM companies c WHERE ${coWhere} ORDER BY is_customer DESC, sv_lower(c.name) LIMIT ?`, ...coParams, limit),
+    n: get(`SELECT count(*) AS n FROM companies c WHERE ${coWhere}`, ...coParams).n,
+  };
   const dv = dealVisibility(req.user);
   const ds = leadSearchSql(q, 'l');
   const dealWhere = `${dv.sql} AND (sv_lower(d.title) LIKE ? OR sv_lower(u.name) LIKE ? OR (d.lead_id IS NOT NULL AND ${ds.sql}))`;
@@ -439,31 +468,9 @@ r.get('/search', (req, res) => {
   const deals = all(`SELECT d.id, d.title, d.value, d.stage, d.lead_id, l.first_name, l.last_name, l.company, u.name AS owner_name ${dealFrom}
     ORDER BY (d.stage IN ('won','lost')), d.updated_at DESC LIMIT ?`, ...dParams, limit);
   res.json({
-    customers: customers.rows, leads: leads.rows, deals,
-    counts: { customers: customers.n, leads: leads.n, deals: get(`SELECT count(*) AS n ${dealFrom}`, ...dParams).n },
+    companies: companies.rows, leads: leads.rows, deals,
+    counts: { companies: companies.n, leads: leads.n, deals: get(`SELECT count(*) AS n ${dealFrom}`, ...dParams).n },
   });
-});
-
-// Kundregister: kontakter med vunna affärer, med totalt värde och läget just nu.
-r.get('/customers', (req, res) => {
-  const { q, owner, sort = 'won_value', dir = 'desc' } = req.query;
-  const vis = leadVisibilitySql(req.user);
-  const where = [vis.sql, CUSTOMER_SQL()];
-  const params = [...vis.params];
-  if (q) { const s = leadSearchSql(q); where.push(s.sql); params.push(...s.params); }
-  if (owner === 'me') { where.push('l.owner_id = ?'); params.push(req.user.id); }
-  else if (owner && can(req.user, 'leads.view_all')) { where.push('l.owner_id = ?'); params.push(Number(owner)); }
-  const sortCol = { won_value: 'won_value', name: 'sv_lower(coalesce(l.company, l.first_name))', last_contact_at: 'coalesce(last_contact_at, l.created_at)', customer_since: 'customer_since', open_value: 'open_value' }[sort] || 'won_value';
-  const rows = all(`SELECT l.*, u.name AS owner_name, u.color AS owner_color, ${LEAD_NEXT_COLUMNS()},
-      (SELECT coalesce(sum(value),0) FROM deals WHERE lead_id = l.id AND stage = 'won') AS won_value,
-      (SELECT count(*) FROM deals WHERE lead_id = l.id AND stage = 'won') AS won_count,
-      (SELECT min(closed_at) FROM deals WHERE lead_id = l.id AND stage = 'won') AS customer_since,
-      (SELECT coalesce(sum(value),0) FROM deals WHERE lead_id = l.id AND stage NOT IN ('won','lost')) AS open_value,
-      (SELECT count(*) FROM deals WHERE lead_id = l.id AND stage NOT IN ('won','lost')) AS open_count
-    FROM leads l LEFT JOIN users u ON u.id = l.owner_id WHERE ${where.join(' AND ')}
-    ORDER BY ${sortCol} ${dir === 'asc' ? 'ASC' : 'DESC'}, l.id DESC LIMIT 500`, ...params);
-  const list = rows.map((x) => hydrateLead(pickNextStep(x)));
-  res.json({ rows: list, total: list.length, totalValue: list.reduce((s, c) => s + c.won_value, 0) });
 });
 
 // Min dag: allt säljaren behöver agera på idag, samlat. `from`/`to` = dagens gränser i användarens tidszon (UTC).

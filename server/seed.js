@@ -2,13 +2,14 @@
 import { pathToFileURL } from 'node:url';
 import { db, run, get, tx } from './db.js';
 import { hashPassword, PERMISSION_KEYS, encrypt, randomToken } from './security.js';
+import { migrateCompanies } from './services/companies.js';
 
 export const DEMO_PASSWORD = 'Demo1234!';
 
 const ROLES = [
   ['Administratör', 'Full åtkomst till allt, inklusive användare, roller och integrationer.', PERMISSION_KEYS],
   ['Säljchef', 'Ser och fördelar teamets leads, ser rapporter och styr automatiseringar.',
-    ['leads.view_all', 'leads.edit_own', 'leads.edit_all', 'leads.assign', 'leads.export', 'prospecting.use', 'reports.view', 'automation.manage', 'audit.view']],
+    ['leads.view_all', 'leads.edit_own', 'leads.edit_all', 'leads.assign', 'leads.export', 'prospecting.use', 'products.manage', 'reports.view', 'automation.manage', 'audit.view']],
   ['Säljare', 'Arbetar med egna och otilldelade leads.', ['leads.edit_own']],
   ['Läsbehörighet', 'Kan se leads, affärer och rapporter men inte ändra något.', ['leads.view_all', 'reports.view']],
 ];
@@ -48,7 +49,7 @@ const dueAt = (daysAhead) => { const d = new Date(Date.now() + daysAhead * 864e5
 
 export function seed({ reset = false } = {}) {
   tx(() => {
-    if (reset) for (const t of ['notifications', 'ingest_log', 'meetings', 'google_accounts', 'prospects', 'prospect_searches', 'activities', 'deals', 'leads', 'automation_rules', 'integrations', 'audit_log', 'settings', 'users', 'roles']) db.exec(`DELETE FROM ${t}`);
+    if (reset) for (const t of ['notifications', 'ingest_log', 'quotes', 'deal_items', 'products', 'meetings', 'google_accounts', 'prospects', 'prospect_searches', 'activities', 'deals', 'leads', 'companies', 'automation_rules', 'integrations', 'audit_log', 'settings', 'users', 'roles']) db.exec(`DELETE FROM ${t}`);
     const roleIds = ROLES.map(([name, desc, perms], i) =>
       Number(run('INSERT INTO roles (name, description, permissions, is_system) VALUES (?,?,?,?)', name, desc, JSON.stringify(perms), i < 4 ? 1 : 0).lastInsertRowid));
     const pw = hashPassword(DEMO_PASSWORD);
@@ -127,6 +128,31 @@ export function seed({ reset = false } = {}) {
       }
     }
     run(`UPDATE integrations SET leads_count = (SELECT count(*) FROM ingest_log g WHERE g.integration_id = integrations.id AND g.result = 'created')`);
+    // Företag: leads med samma företagsnamn blir kontaktpersoner på samma företag.
+    migrateCompanies();
+    const orgNrs = ['556677-8899', '559012-3457', '556123-4567', '556987-6543', '559201-4428'];
+    db.prepare('SELECT id FROM companies ORDER BY id LIMIT 5').all().forEach((c, i) => run('UPDATE companies SET org_nr = ? WHERE id = ?', orgNrs[i], c.id));
+
+    // Produktkatalog och produktrader på affärerna (affärens värde = summan av raderna).
+    const PRODUCTS = [
+      ['Startpaket', 'LF-START', 'Uppsättning, utbildning och 3 månaders support', 'st', 15000, 'none'],
+      ['Licens Pro', 'LF-PRO', 'Per användare och månad', 'användare/mån', 450, 'monthly'],
+      ['Licens Premium', 'LF-PREM', 'Per användare och månad, inkl. integrationer', 'användare/mån', 790, 'monthly'],
+      ['Konsulttimme', 'LF-KONS', 'Anpassning och projektledning', 'tim', 1250, 'none'],
+      ['Årsavtal support', 'LF-SUP', 'Prioriterad support, 12 månader', 'st', 24000, 'yearly'],
+    ];
+    const productIds = PRODUCTS.map(([name, sku, desc, unit, price, rec]) =>
+      Number(run('INSERT INTO products (name, sku, description, unit, price, recurring) VALUES (?,?,?,?,?,?)', name, sku, desc, unit, price, rec).lastInsertRowid));
+    for (const d of db.prepare("SELECT id FROM deals WHERE stage NOT IN ('lost')").all()) {
+      const lines = [[0, 1, 0], [1 + Math.floor(rand() * 2), 5 + Math.floor(rand() * 20), rand() < 0.3 ? 10 : 0], ...(rand() < 0.5 ? [[3, 4 + Math.floor(rand() * 16), 0]] : [])];
+      lines.forEach(([pi, qty, disc], pos) => {
+        const [name, , desc, unit, price, rec] = PRODUCTS[pi];
+        run('INSERT INTO deal_items (deal_id, product_id, name, description, quantity, unit, unit_price, discount, recurring, position) VALUES (?,?,?,?,?,?,?,?,?,?)',
+          d.id, productIds[pi], name, desc, qty, unit, price, disc, rec, pos);
+      });
+      run('UPDATE deals SET value = (SELECT round(sum(quantity * unit_price * (1 - discount / 100.0))) FROM deal_items WHERE deal_id = ?) WHERE id = ?', d.id, d.id);
+    }
+
     // Demomöten: öppna affärer får möten den här och nästa vecka (och några passerade som väntar på utfall).
     const MEETING_TYPES = ['Demo', 'Behovsanalys', 'Offertgenomgång', 'Uppstartsmöte', 'Avtalsgenomgång'];
     const openDeals = db.prepare("SELECT d.*, l.email, l.first_name, l.last_name FROM deals d JOIN leads l ON l.id = d.lead_id WHERE d.stage IN ('contact','proposal','negotiation')").all();

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, KanbanSquare, CheckSquare, Plug, Zap, Shield, ScrollText, Settings, Bell, LogOut,
-  Menu, X, Radio, Plus, ChevronDown, Crosshair, CalendarDays, Sun, Star,
+  Menu, X, Radio, Plus, ChevronDown, Crosshair, CalendarDays, Sun, Building2, Package,
 } from 'lucide-react';
 import { useApp, useLive } from '../lib/app.jsx';
 import { api } from '../api.js';
@@ -15,7 +15,7 @@ const NAV = [
   { group: 'Försäljning', items: [
     { to: '/', label: 'Min dag', icon: Sun, end: true },
     { to: '/leads', label: 'Leads', icon: Users },
-    { to: '/customers', label: 'Kunder', icon: Star },
+    { to: '/companies', label: 'Företag', icon: Building2 },
     { to: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
     { to: '/calendar', label: 'Kalender', icon: CalendarDays },
     { to: '/tasks', label: 'Uppgifter', icon: CheckSquare },
@@ -28,6 +28,7 @@ const NAV = [
     { to: '/automations', label: 'Automatisering', icon: Zap },
   ] },
   { group: 'Administration', items: [
+    { to: '/products', label: 'Produkter & offerter', icon: Package },
     { to: '/team', label: 'Team & behörigheter', icon: Shield },
     { to: '/audit', label: 'Aktivitetslogg', icon: ScrollText, perm: 'audit.view' },
     { to: '/settings', label: 'Inställningar', icon: Settings },

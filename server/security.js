@@ -71,6 +71,7 @@ export const PERMISSIONS = [
   { key: 'leads.delete', group: 'Leads & affärer', label: 'Radera leads' },
   { key: 'leads.export', group: 'Leads & affärer', label: 'Exportera data' },
   { key: 'prospecting.use', group: 'Leads & affärer', label: 'Söka och importera nya företag (prospektering)' },
+  { key: 'products.manage', group: 'Leads & affärer', label: 'Hantera produkter, priser och offertinställningar' },
   { key: 'reports.view', group: 'Rapporter', label: 'Se rapporter och teamstatistik' },
   { key: 'integrations.manage', group: 'Administration', label: 'Hantera integrationer' },
   { key: 'automation.manage', group: 'Administration', label: 'Hantera automatiseringar' },
@@ -79,16 +80,17 @@ export const PERMISSIONS = [
 ];
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
 
-// Nya behörigheter: administratören får alltid alla, säljchefen får prospektering första gången den finns.
+// Nya behörigheter: administratören får alltid alla, säljchefen får de nya första gången de finns.
 {
   run('UPDATE roles SET permissions = ? WHERE name = ?', JSON.stringify(PERMISSION_KEYS), 'Administratör');
-  if (!get("SELECT 1 FROM settings WHERE key = 'migrated:prospecting.use'")) {
+  for (const key of ['prospecting.use', 'products.manage']) {
+    if (get('SELECT 1 FROM settings WHERE key = ?', `migrated:${key}`)) continue;
     const chef = get("SELECT * FROM roles WHERE name = 'Säljchef'");
     if (chef) {
       const perms = JSON.parse(chef.permissions || '[]');
-      if (!perms.includes('prospecting.use')) run('UPDATE roles SET permissions = ? WHERE id = ?', JSON.stringify([...perms, 'prospecting.use']), chef.id);
+      if (!perms.includes(key)) run('UPDATE roles SET permissions = ? WHERE id = ?', JSON.stringify([...perms, key]), chef.id);
     }
-    run("INSERT INTO settings (key, value) VALUES ('migrated:prospecting.use', '1')");
+    run('INSERT INTO settings (key, value) VALUES (?, ?)', `migrated:${key}`, '1');
   }
 }
 
