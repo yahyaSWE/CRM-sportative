@@ -2,6 +2,11 @@ import { Router } from 'express';
 import { all, get, run, audit, parseJSON } from '../db.js';
 import { hashPassword, PERMISSION_KEYS, can } from '../security.js';
 import { requirePerm } from '../middleware.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { writeBackup, listBackups } from '../backup.js';
+import { PROD } from '../config.js';
 
 const r = Router();
 const COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
@@ -114,6 +119,17 @@ r.delete('/automations/:id', requirePerm('automation.manage'), (req, res) => {
   run('DELETE FROM automation_rules WHERE id = ?', req.params.id);
   audit(req.user.id, 'automation.delete', 'automation', Number(req.params.id));
   res.json({ ok: true });
+});
+
+// ---------- Säkerhetskopior ----------
+r.get('/admin/backups', requirePerm('users.manage'), (req, res) => res.json({ items: listBackups(), auto: PROD }));
+
+// Laddar ned en färsk kopia av hela databasen (för att spara utanför servern).
+r.get('/admin/backup', requirePerm('users.manage'), (req, res) => {
+  const file = path.join(os.tmpdir(), `leadflow-${Date.now()}.db`);
+  writeBackup(file);
+  audit(req.user.id, 'backup.download', 'settings', null);
+  res.download(file, `leadflow-${new Date().toISOString().slice(0, 10)}.db`, () => fs.rm(file, () => {}));
 });
 
 // ---------- Notiser & logg ----------

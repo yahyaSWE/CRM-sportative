@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { db, run, get, tx } from './db.js';
 import { hashPassword, PERMISSION_KEYS, encrypt, randomToken } from './security.js';
 import { migrateCompanies } from './services/companies.js';
+import { PROD } from './config.js';
 
 export const DEMO_PASSWORD = 'Demo1234!';
 
@@ -47,11 +48,21 @@ const ts = (daysAgo, hours = 0) => new Date(Date.now() - daysAgo * 864e5 + hours
 // Förfallotid för uppgifter: en given dag kl 07–10 UTC (förmiddag i Sverige).
 const dueAt = (daysAhead) => { const d = new Date(Date.now() + daysAhead * 864e5); d.setUTCHours(7 + Math.floor(rand() * 4), 0, 0, 0); return d.toISOString().slice(0, 19).replace('T', ' '); };
 
+/** Skapar standardrollerna om de saknas och returnerar deras id i samma ordning som ROLES. Används även i produktion. */
+export function ensureRoles() {
+  return ROLES.map(([name, desc, perms], i) => {
+    const existing = get('SELECT id FROM roles WHERE name = ?', name);
+    if (existing) return existing.id;
+    return Number(run('INSERT INTO roles (name, description, permissions, is_system) VALUES (?,?,?,?)', name, desc, JSON.stringify(perms), i < 4 ? 1 : 0).lastInsertRowid);
+  });
+}
+
+// Demodata med kända lösenord – får aldrig köras i produktion.
 export function seed({ reset = false } = {}) {
+  if (PROD) throw new Error('Demodata skapas inte i produktion');
   tx(() => {
     if (reset) for (const t of ['notifications', 'ingest_log', 'quotes', 'deal_items', 'products', 'meetings', 'google_accounts', 'prospects', 'prospect_searches', 'activities', 'deals', 'leads', 'companies', 'automation_rules', 'integrations', 'audit_log', 'settings', 'users', 'roles']) db.exec(`DELETE FROM ${t}`);
-    const roleIds = ROLES.map(([name, desc, perms], i) =>
-      Number(run('INSERT INTO roles (name, description, permissions, is_system) VALUES (?,?,?,?)', name, desc, JSON.stringify(perms), i < 4 ? 1 : 0).lastInsertRowid));
+    const roleIds = ensureRoles();
     const pw = hashPassword(DEMO_PASSWORD);
     const userIds = USERS.map(([name, email, role, color]) =>
       Number(run('INSERT INTO users (name, email, password_hash, role_id, color) VALUES (?,?,?,?,?)', name, email, pw, roleIds[role], color).lastInsertRowid));
@@ -174,6 +185,10 @@ export function seed({ reset = false } = {}) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
+  if (PROD) {
+    console.error('Avbrutet: npm run seed raderar all data och skapar demokonton. Det är spärrat när NODE_ENV=production.');
+    process.exit(1);
+  }
   seed({ reset: process.argv.includes('--reset') || !!get('SELECT 1 FROM users LIMIT 1') });
   console.log(`Klart. Logga in med admin@leadflow.se / ${DEMO_PASSWORD}`);
 }

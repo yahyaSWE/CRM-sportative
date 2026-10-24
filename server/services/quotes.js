@@ -4,11 +4,14 @@ import { all, get, run, tx, parseJSON, audit } from '../db.js';
 import { randomToken } from '../security.js';
 import { broadcast } from '../events.js';
 import { notify, getLead, leadName } from './leads.js';
+import { PROD } from '../config.js';
 
 const PROFILE_KEY = 'sales:profile';
+// I produktion är företagsuppgifterna tomma tills de fylls i under Produkter & offerter → Offertinställningar.
+const DEMO_COMPANY = PROD ? { name: '', org_nr: '', address: '', email: '', phone: '', website: '' }
+  : { name: 'LeadFlow Demo AB', org_nr: '559000-0000', address: 'Storgatan 1, 111 22 Stockholm', email: 'offert@leadflow.se', phone: '08-123 456 78', website: 'leadflow.se' };
 export const DEFAULT_PROFILE = {
-  name: 'LeadFlow Demo AB', org_nr: '559000-0000', address: 'Storgatan 1, 111 22 Stockholm', email: 'offert@leadflow.se', phone: '08-123 456 78',
-  website: 'leadflow.se', validity_days: 30,
+  ...DEMO_COMPANY, validity_days: 30,
   terms: 'Priser anges exklusive moms. Betalningsvillkor 30 dagar netto. Licenser faktureras kvartalsvis i förskott. Avtalet löper i 12 månader och förlängs därefter med 12 månader om det inte sägs upp senast 3 månader före avtalstidens slut.',
 };
 export const getProfile = () => ({ ...DEFAULT_PROFILE, ...parseJSON(get('SELECT value FROM settings WHERE key = ?', PROFILE_KEY)?.value, {}) });

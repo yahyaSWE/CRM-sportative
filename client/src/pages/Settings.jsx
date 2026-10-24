@@ -1,10 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Download, DatabaseBackup } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp } from '../lib/app.jsx';
 import { Card, PageHeader, Field, Input, Button, Avatar, Badge, useToast } from '../components/ui.jsx';
 
+// Säkerhetskopior: automatiska dagliga kopior i produktion och nedladdning av en färsk kopia.
+function BackupCard() {
+  const [data, setData] = useState(null);
+  useEffect(() => { api.get('/admin/backups').then(setData).catch(() => {}); }, []);
+  if (!data) return null;
+  return (
+    <Card className="p-6">
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><DatabaseBackup className="size-4 text-slate-400" />Säkerhetskopior</h3>
+      <p className="text-sm text-slate-500 mb-4">{data.auto ? 'En kopia av databasen sparas automatiskt varje dag (de senaste 14 behålls). Ladda gärna ned en kopia ibland och spara den utanför servern.' : 'Automatiska kopior körs bara i produktion. Du kan alltid ladda ned en kopia.'}</p>
+      <a href="/api/admin/backup"><Button variant="secondary" icon={Download}>Ladda ned säkerhetskopia nu</Button></a>
+      {data.items.length > 0 && <p className="mt-3 text-xs text-slate-500">Senaste automatiska kopior: {data.items.slice(0, 3).map((b) => b.name.replace('crm-', '').replace('.db', '')).join(', ')}</p>}
+    </Card>
+  );
+}
+
 export default function Settings() {
-  const { user, permissions } = useApp();
+  const { user, permissions, can } = useApp();
   const toast = useToast();
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [saving, setSaving] = useState(false);
@@ -44,6 +60,7 @@ export default function Settings() {
           <div className="sm:col-span-3"><Button type="submit" loading={saving}>Uppdatera lösenord</Button></div>
         </form>
       </Card>
+      {can('users.manage') && <BackupCard />}
     </div>
   );
 }

@@ -17,12 +17,21 @@ import calendarRoutes from './routes/calendar.js';
 import { tick as calendarTick } from './calendar/service.js';
 import { startScheduler } from './integrations/scheduler.js';
 import { scheduledTick as prospectingTick } from './prospecting/service.js';
-import { seed } from './seed.js';
+import { seed, ensureRoles } from './seed.js';
+import { PROD, ADMIN_EMAIL } from './config.js';
+import { dailyBackup } from './backup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.set('trust proxy', 'loopback');
+// I produktion står appen bakom Railways proxy: lita på ett proxysteg så att https och klientens IP blir rätt.
+app.set('trust proxy', PROD ? 1 : 'loopback');
 app.disable('x-powered-by');
+
+app.use((req, res, next) => {
+  res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'SAMEORIGIN' });
+  if (PROD) res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
 
 // Rå body sparas för verifiering av Metas webhook-signatur.
 app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
@@ -52,11 +61,17 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ error: err.status ? err.message : 'Ett oväntat fel inträffade' });
 });
 
-if (!get('SELECT 1 FROM users LIMIT 1')) seed();
+// Utveckling: tom databas fylls med demodata. Produktion: bara roller, administratören skapas via setup-sidan.
+if (!get('SELECT 1 FROM users LIMIT 1')) {
+  if (PROD) {
+    ensureRoles();
+    console.log(ADMIN_EMAIL ? `Inga användare än – öppna appen och skapa administratörskontot för ${ADMIN_EMAIL}.` : 'Inga användare än – sätt ADMIN_EMAIL och starta om för att kunna skapa administratörskontot.');
+  } else seed();
+}
 migrateCompanies();
 
 // API_PORT används i utveckling (Vite tar PORT); i produktion räcker PORT.
-const PORT = Number(process.env.API_PORT || (process.argv.includes('--serve') && process.env.PORT) || 4000);
+const PORT = Number(process.env.API_PORT || ((PROD || process.argv.includes('--serve')) && process.env.PORT) || 4000);
 app.listen(PORT, () => {
   console.log(`LeadFlow CRM API körs på http://localhost:${PORT}`);
   startScheduler();
@@ -65,4 +80,10 @@ app.listen(PORT, () => {
   setInterval(prospectingTick, 15 * 60000);
   // Mötespåminnelser, uppföljning och synk med Google Kalender varje minut.
   setInterval(() => calendarTick().catch((e) => console.error('[kalender]', e)), 60000);
+  // Daglig säkerhetskopia i produktion (kontrolleras varje timme).
+  if (PROD) {
+    const backup = () => { try { dailyBackup(); } catch (e) { console.error('[backup]', e); } };
+    setTimeout(backup, 60000);
+    setInterval(backup, 3600000);
+  }
 });
