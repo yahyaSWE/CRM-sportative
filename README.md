@@ -48,6 +48,22 @@ Gemensamt mönster som LeadFlow följer: **alla kanaler matas in i en och samma 
 
 Korten i pipelinen varnar när en affär saknar nästa steg, har en försenad uppgift eller stått still i 14+ dagar.
 
+## Kalender och Google Kalender
+
+- **Kalender** (vecka/månad) visar dina möten; säljchefer kan se hela teamet. Klicka i en tom ruta för att boka.
+- **Boka möte** finns på leads och affärer: kunden blir deltagare, mötet loggas på tidslinjen och en affär i *Kvalificerad* flyttas till *Möte bokat*.
+- Påminnelse som notis 15 minuter innan. Efter mötet: "Hur gick det?" – utfallet loggas och nästa steg blir en uppgift.
+
+**Full tvåvägssynk med Google Kalender** (rekommenderat):
+
+1. Admin: Google Cloud Console → aktivera *Google Calendar API* → OAuth-medgivandeskärm (*Intern* för Google Workspace) → skapa *OAuth-klient-id* av typen Webbapplikation med omdirigerings-URI:n som visas i appen (`<PUBLIC_URL>/api/calendar/google/callback`).
+2. Admin: Kalender → kugghjulet vid Google Kalender → klistra in klient-id och hemlighet.
+3. Varje säljare: Kalender → **Koppla Google Kalender**.
+
+Möten bokade i LeadFlow skapas i Google (valfritt med Meet-länk och inbjudan till kunden). Möten bokade, flyttade eller avbokade i Google hämtas varje minut; har en deltagare samma e-post som ett lead kopplas mötet automatiskt till kunden.
+
+**iCal-prenumeration** (reserv, bara läsning): varje användare har en personlig länk under Kalender som kan läggas till i Google, Outlook eller Apple Kalender. Kalenderappen hämtar ändringar med fördröjning.
+
 ## Prospektering (kalla leads)
 
 Under **Prospektering** söker du företag efter bransch och ort, granskar listan och importerar de du vill bearbeta.

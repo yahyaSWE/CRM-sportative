@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Leads from './pages/Leads.jsx';
 import Pipeline from './pages/Pipeline.jsx';
 import Tasks from './pages/Tasks.jsx';
+import Calendar from './pages/Calendar.jsx';
 import Inflow from './pages/Inflow.jsx';
 import Integrations from './pages/Integrations.jsx';
 import Automations from './pages/Automations.jsx';
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="pipeline" element={<Pipeline />} />
         <Route path="pipeline/:id" element={<Pipeline />} />
         <Route path="tasks" element={<Tasks />} />
+        <Route path="calendar" element={<Calendar />} />
         <Route path="inflow" element={<Guard perm="integrations.manage"><Inflow /></Guard>} />
         <Route path="integrations" element={<Guard perm="integrations.manage"><Integrations /></Guard>} />
         <Route path="prospecting" element={<Guard perm="prospecting.use"><Prospecting /></Guard>} />

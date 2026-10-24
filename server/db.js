@@ -164,12 +164,51 @@ CREATE TABLE IF NOT EXISTS prospects (
 CREATE INDEX IF NOT EXISTS prospects_search ON prospects(search_id, status);
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS meetings (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  location TEXT,
+  video_url TEXT,
+  start_at TEXT NOT NULL,
+  end_at TEXT NOT NULL,
+  all_day INTEGER NOT NULL DEFAULT 0,
+  owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  lead_id INTEGER REFERENCES leads(id) ON DELETE SET NULL,
+  deal_id INTEGER REFERENCES deals(id) ON DELETE SET NULL,
+  attendees TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'scheduled',
+  outcome TEXT,
+  source TEXT NOT NULL DEFAULT 'crm',
+  reminder_sent INTEGER NOT NULL DEFAULT 0,
+  followup_sent INTEGER NOT NULL DEFAULT 0,
+  google_event_id TEXT,
+  google_updated TEXT,
+  sync_error TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS meetings_owner_start ON meetings(owner_id, start_at);
+CREATE UNIQUE INDEX IF NOT EXISTS meetings_google ON meetings(owner_id, google_event_id) WHERE google_event_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS google_accounts (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  email TEXT,
+  tokens TEXT NOT NULL,
+  calendar_id TEXT NOT NULL DEFAULT 'primary',
+  last_sync_at TEXT,
+  last_error TEXT,
+  connected_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
 // Enkla migreringar för databaser som skapades innan kolumnerna fanns.
 function addColumn(table, column, def) {
   if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
 }
 addColumn('deals', 'lost_reason', 'TEXT');
 addColumn('deals', 'stage_changed_at', 'TEXT');
+addColumn('users', 'ical_token', 'TEXT');
 db.exec("UPDATE deals SET stage_changed_at = coalesce(closed_at, updated_at, created_at) WHERE stage_changed_at IS NULL");
 db.exec('CREATE INDEX IF NOT EXISTS activities_deal ON activities(deal_id)');
 

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight } from 'lucide-react';
+import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
 import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, useToast } from './ui.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
+import MeetingModal from './MeetingModal.jsx';
+import LeadMeetings from './LeadMeetings.jsx';
 import { STATUSES, STAGES, leadName, timeAgo, sek, toSqlDate } from '../lib/meta.jsx';
 
 export function EditableField({ icon: Icon, value, placeholder, onSave, disabled, href }) {
@@ -40,12 +42,14 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
   const [deal, setDeal] = useState({});
   const [del, setDel] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [book, setBook] = useState(false);
 
   const load = () => api.get(`/leads/${id}`).then(setLead).catch((e) => { toast(e.message, 'error'); onClose(); });
   useEffect(() => { setLead(null); load(); }, [id]);
   useLive('lead', (d) => d.lead?.id === id && load());
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && !convert && !del && onClose();
+    // Escape stänger panelen bara när ingen dialog ligger ovanpå.
+    const onKey = (e) => e.key === 'Escape' && !convert && !del && !document.querySelector('.z-50.fixed') && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [convert, del]);
@@ -80,6 +84,11 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
   const editable = lead?.canEdit;
   const ownerSelectable = can('leads.assign') || (editable && !lead?.owner_id);
   const openDeals = lead?.deals.filter((d) => !['won', 'lost'].includes(d.stage)) || [];
+  // Bokas mötet från leadet kopplas det också till kontaktens senaste öppna affär.
+  const meetingPreset = lead && {
+    lead_id: lead.id, deal_id: openDeals[0]?.id, owner_id: openDeals[0]?.owner_id || lead.owner_id, title: `Möte – ${leadName(lead)}`, attendees: lead.email ? [lead.email] : [],
+    context: `Med ${leadName(lead)}${openDeals[0] ? ` · ${openDeals[0].title}` : ''}`,
+  };
 
   return (
     <div className="fixed inset-0 z-40">
@@ -106,6 +115,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
               <div className="mt-4 flex flex-wrap gap-2">
                 {lead.phone && <a href={`tel:${lead.phone}`}><Button size="sm" variant="secondary" icon={Phone}>Ring</Button></a>}
                 {lead.email && <a href={`mailto:${lead.email}`}><Button size="sm" variant="secondary" icon={Mail}>Mejla</Button></a>}
+                {editable && <Button size="sm" variant="secondary" icon={CalendarPlus} onClick={() => setBook(true)}>Boka möte</Button>}
                 {editable && <Button size="sm" variant="soft" icon={ArrowRightLeft} onClick={openConvert}>{lead.deals.length ? 'Ny affär' : 'Konvertera till affär'}</Button>}
                 {can('leads.delete') && <Button size="sm" variant="ghost" icon={Trash2} className="ml-auto !text-rose-600" onClick={() => setDel(true)} />}
               </div>
@@ -158,6 +168,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                   )}
                   {!lead.owner_id && editable && !can('leads.assign') && <Button size="sm" variant="soft" className="mt-2 w-full" onClick={() => patch({ owner_id: user.id })}>Ta detta lead</Button>}
                 </div>
+                <LeadMeetings leadId={lead.id} preset={meetingPreset} canBook={editable} onChanged={load} />
                 <div>
                   <p className="label">Kontaktuppgifter</p>
                   <EditableField icon={Mail} value={lead.email} placeholder="Lägg till e-post" href={lead.email && `mailto:${lead.email}`} disabled={!editable} onSave={(v) => patch({ email: v })} />
@@ -232,6 +243,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
           </div>
         </div>
       </Modal>
+      <MeetingModal open={book} onClose={() => setBook(false)} preset={meetingPreset || {}} onSaved={load} />
       <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title="Radera lead?" text="Leadet och all dess historik raderas permanent." />
     </div>
   );

@@ -54,7 +54,7 @@ export function AppProvider({ children }) {
       }
       if (type === 'notification') bus.dispatchEvent(new CustomEvent('notifications', { detail: data }));
     };
-    ['lead', 'refresh', 'notification', 'integration', 'prospect', 'prospects'].forEach((t) => es.addEventListener(t, relay(t)));
+    ['lead', 'refresh', 'notification', 'integration', 'prospect', 'prospects', 'meeting'].forEach((t) => es.addEventListener(t, relay(t)));
     return () => es.close();
   }, [state.user?.id]);
 

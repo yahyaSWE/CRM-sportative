@@ -10,6 +10,8 @@ import leadRoutes from './routes/leads.js';
 import adminRoutes from './routes/admin.js';
 import { manage as integrationRoutes, webhooks } from './routes/integrations.js';
 import prospectingRoutes from './routes/prospecting.js';
+import calendarRoutes from './routes/calendar.js';
+import { tick as calendarTick } from './calendar/service.js';
 import { startScheduler } from './integrations/scheduler.js';
 import { scheduledTick as prospectingTick } from './prospecting/service.js';
 import { seed } from './seed.js';
@@ -25,6 +27,8 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 app.use('/api/webhooks', webhooks);
 app.use('/api/auth', authRoutes);
+// Kalendern har två publika vägar (iCal-flöde och Googles OAuth-svar); resten kräver inloggning i routern.
+app.use('/api', calendarRoutes);
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api', authenticate);
@@ -53,4 +57,6 @@ app.listen(PORT, () => {
   // Sparade sökningar körs veckovis, gammal Google-data rensas och avbruten berikning återupptas.
   setTimeout(prospectingTick, 8000);
   setInterval(prospectingTick, 15 * 60000);
+  // Mötespåminnelser, uppföljning och synk med Google Kalender varje minut.
+  setInterval(() => calendarTick().catch((e) => console.error('[kalender]', e)), 60000);
 });

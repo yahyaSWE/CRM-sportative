@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, KanbanSquare, CheckSquare, Plug, Zap, Shield, ScrollText, Settings, Bell, Search, LogOut,
-  Menu, X, Radio, Plus, ChevronDown, Crosshair,
+  Menu, X, Radio, Plus, ChevronDown, Crosshair, CalendarDays,
 } from 'lucide-react';
 import { useApp, useLive } from '../lib/app.jsx';
 import { api } from '../api.js';
@@ -15,6 +15,7 @@ const NAV = [
     { to: '/', label: 'Översikt', icon: LayoutDashboard, end: true },
     { to: '/leads', label: 'Leads', icon: Users },
     { to: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
+    { to: '/calendar', label: 'Kalender', icon: CalendarDays },
     { to: '/tasks', label: 'Uppgifter', icon: CheckSquare },
   ] },
   { group: 'Leadinsamling', items: [

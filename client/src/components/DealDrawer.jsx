@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, MessageSquare, Trophy, XCircle, Clock, CalendarDays, AlertTriangle, ArrowUpRight, RotateCcw } from 'lucide-react';
+import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, MessageSquare, Trophy, XCircle, Clock, CalendarDays, AlertTriangle, ArrowUpRight, RotateCcw, CalendarPlus } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
 import { Avatar, Button, SourceBadge, Select, Spinner, Modal, Field, Input, Textarea, Confirm, useToast, cx } from './ui.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
+import MeetingModal from './MeetingModal.jsx';
+import LeadMeetings from './LeadMeetings.jsx';
 import { STAGES, LOST_REASONS, leadName, sek, formatDate, dueLabel, daysSince, timeAgo } from '../lib/meta.jsx';
 
 export function LostReasonModal({ deal, onClose, onConfirm }) {
@@ -62,12 +64,14 @@ export default function DealDrawer({ id, onClose, onChanged }) {
   const [deal, setDeal] = useState(null);
   const [lost, setLost] = useState(false);
   const [del, setDel] = useState(false);
+  const [book, setBook] = useState(false);
 
   const load = () => api.get(`/deals/${id}`).then(setDeal).catch((e) => { toast(e.message, 'error'); onClose(); });
   useEffect(() => { setDeal(null); load(); }, [id]);
   useLive('lead', (d) => deal?.lead_id && d.lead?.id === deal.lead_id && load());
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && !lost && !del && onClose();
+    // Escape stänger panelen bara när ingen dialog ligger ovanpå.
+    const onKey = (e) => e.key === 'Escape' && !lost && !del && !document.querySelector('.z-50.fixed') && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [lost, del]);
@@ -94,6 +98,10 @@ export default function DealDrawer({ id, onClose, onChanged }) {
   const inStage = deal ? daysSince(deal.stage_changed_at || deal.updated_at) : 0;
   const isOpen = deal && !['won', 'lost'].includes(deal.stage);
   const nextTask = deal?.next_task;
+  const meetingPreset = deal && {
+    deal_id: deal.id, lead_id: deal.lead_id, owner_id: deal.owner_id, title: `Möte – ${lead ? leadName(lead) : deal.title}`,
+    attendees: lead?.email ? [lead.email] : [], context: deal.title,
+  };
 
   return (
     <div className="fixed inset-0 z-40">
@@ -139,6 +147,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                   {deal.stage === 'lost' && <span className="inline-flex items-center gap-1.5 text-sm font-medium text-rose-600"><XCircle className="size-4" />Förlorad – {deal.lost_reason || 'ingen anledning angiven'}</span>}
                   {editable && (isOpen ? (
                     <div className="ml-auto flex gap-2">
+                      <Button size="sm" variant="secondary" icon={CalendarPlus} onClick={() => setBook(true)}>Boka möte</Button>
                       <Button size="sm" variant="secondary" icon={XCircle} className="!text-rose-600" onClick={() => setLost(true)}>Förlorad</Button>
                       <Button size="sm" icon={Trophy} className="!bg-emerald-600 hover:!bg-emerald-700" onClick={() => setStage('won')}>Vunnen</Button>
                     </div>
@@ -174,6 +183,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                     <Select value={deal.owner_id || ''} onChange={(e) => patch({ owner_id: Number(e.target.value) })}>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>
                   ) : <div className="flex items-center gap-2 text-sm">{deal.owner_name && <Avatar name={deal.owner_name} color={deal.owner_color} size="xs" />}{deal.owner_name || '–'}</div>}
                 </div>
+                <LeadMeetings dealId={deal.id} preset={meetingPreset} canBook={editable} onChanged={load} />
                 {lead ? (
                   <>
                     <div>
@@ -225,6 +235,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
       </div>
       <LostReasonModal deal={lost ? deal : null} onClose={() => setLost(false)}
         onConfirm={async (reason, note) => { if (await patch({ stage: 'lost', lost_reason: reason, lost_note: note })) setLost(false); }} />
+      <MeetingModal open={book} onClose={() => setBook(false)} preset={meetingPreset || {}} onSaved={() => { load(); onChanged?.(); }} />
       <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title="Radera affär?" text="Affären tas bort från pipelinen. Historiken på leadet finns kvar." />
     </div>
   );

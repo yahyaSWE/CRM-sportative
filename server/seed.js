@@ -48,7 +48,7 @@ const dueAt = (daysAhead) => { const d = new Date(Date.now() + daysAhead * 864e5
 
 export function seed({ reset = false } = {}) {
   tx(() => {
-    if (reset) for (const t of ['notifications', 'ingest_log', 'activities', 'deals', 'leads', 'automation_rules', 'integrations', 'audit_log', 'settings', 'users', 'roles']) db.exec(`DELETE FROM ${t}`);
+    if (reset) for (const t of ['notifications', 'ingest_log', 'meetings', 'google_accounts', 'prospects', 'prospect_searches', 'activities', 'deals', 'leads', 'automation_rules', 'integrations', 'audit_log', 'settings', 'users', 'roles']) db.exec(`DELETE FROM ${t}`);
     const roleIds = ROLES.map(([name, desc, perms], i) =>
       Number(run('INSERT INTO roles (name, description, permissions, is_system) VALUES (?,?,?,?)', name, desc, JSON.stringify(perms), i < 4 ? 1 : 0).lastInsertRowid));
     const pw = hashPassword(DEMO_PASSWORD);
@@ -127,6 +127,22 @@ export function seed({ reset = false } = {}) {
       }
     }
     run(`UPDATE integrations SET leads_count = (SELECT count(*) FROM ingest_log g WHERE g.integration_id = integrations.id AND g.result = 'created')`);
+    // Demomöten: öppna affärer får möten den här och nästa vecka (och några passerade som väntar på utfall).
+    const MEETING_TYPES = ['Demo', 'Behovsanalys', 'Offertgenomgång', 'Uppstartsmöte', 'Avtalsgenomgång'];
+    const openDeals = db.prepare("SELECT d.*, l.email, l.first_name, l.last_name FROM deals d JOIN leads l ON l.id = d.lead_id WHERE d.stage IN ('contact','proposal','negotiation')").all();
+    openDeals.forEach((d, i) => {
+      const day = new Date(); day.setUTCDate(day.getUTCDate() + (i % 12) - 3);
+      if ([0, 6].includes(day.getUTCDay())) day.setUTCDate(day.getUTCDate() + 2);
+      day.setUTCHours(7 + (i * 3) % 8, i % 2 ? 30 : 0, 0, 0);
+      const start = day.toISOString().slice(0, 19).replace('T', ' ');
+      const end = new Date(day.getTime() + (i % 3 ? 60 : 45) * 60000).toISOString().slice(0, 19).replace('T', ' ');
+      const past = day < new Date();
+      run(`INSERT INTO meetings (title, location, video_url, start_at, end_at, owner_id, lead_id, deal_id, attendees, status, outcome, reminder_sent, followup_sent)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, `${pick(MEETING_TYPES)} – ${d.first_name} ${d.last_name}`, i % 3 === 0 ? 'Kundens kontor' : null,
+        i % 3 === 0 ? null : 'https://meet.google.com/abc-defg-hij', start, end, d.owner_id, d.lead_id, d.id,
+        JSON.stringify([{ email: d.email, name: `${d.first_name} ${d.last_name}` }]),
+        past && i % 2 ? 'done' : 'scheduled', past && i % 2 ? 'Bra möte, de vill ha en offert.' : null, past ? 1 : 0, past && i % 2 ? 1 : 0);
+    });
     run("INSERT INTO notifications (user_id, text, link) VALUES (?, 'Välkommen till LeadFlow! Koppla in dina kanaler under Integrationer.', '/integrations')", userIds[0]);
   });
 }
