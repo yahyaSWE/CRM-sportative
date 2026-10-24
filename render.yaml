@@ -1,0 +1,32 @@
+# Render Blueprint för LeadFlow CRM.
+# Skapa via Render Dashboard → New → Blueprint → välj GitHub-repot. Se DEPLOY.md.
+services:
+  - type: web
+    name: leadflow-crm
+    runtime: node
+    # Persistenta diskar kräver en betald instans (inte "free").
+    plan: 0.5c-512mb
+    region: frankfurt
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATA_DIR
+        value: /var/data
+      # Krypteringsnyckel – genereras en gång av Render. Ändra den aldrig efteråt.
+      - key: APP_SECRET
+        generateValue: true
+      # Fylls i när Blueprinten skapas.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+    disk:
+      name: leadflow-data
+      mountPath: /var/data
+      sizeGB: 1

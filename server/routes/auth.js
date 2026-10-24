@@ -8,7 +8,7 @@ import { ensureRoles } from '../seed.js';
 const r = Router();
 const attempts = new Map();
 
-// I produktion skickas sessionscookien bara över https (servern står bakom Railways proxy).
+// I produktion skickas sessionscookien bara över https (Render terminerar https i sin proxy).
 const setSession = (req, res, userId) => res.cookie(COOKIE, signSession(userId), {
   httpOnly: true, sameSite: 'lax', secure: PROD || req.secure, maxAge: 7 * 864e5, path: '/',
 });

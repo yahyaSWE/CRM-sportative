@@ -1,42 +1,36 @@
-# Publicera LeadFlow på Railway
+# Publicera LeadFlow på Render
 
-LeadFlow körs som en vanlig Node-server med databasen (SQLite) på en beständig disk. Räkna med cirka 5–10 USD/månad på Railways Hobby-plan.
+LeadFlow körs som en vanlig Node-server med databasen (SQLite) på en beständig disk. Repot innehåller en Render Blueprint, [`render.yaml`](render.yaml), som sätter upp allt utom två värden du fyller i själv.
 
-## 1. Skapa tjänsten
+**Kostnad:** diskar kräver en betald instans – den minsta (0,5 CPU / 512 MB) plus 1 GB disk. Gratisinstanser fungerar inte: de saknar disk (all data försvinner) och somnar vid inaktivitet, vilket stoppar e-posthämtning och påminnelser.
 
-1. Logga in på [railway.com](https://railway.com) → **New Project** → **Deploy from GitHub repo** → välj `CRM-sportative`.
-2. Railway känner igen Node-projektet och kör automatiskt `npm run build` (bygger gränssnittet) och `npm start`. Node 22.13 eller senare krävs (anges i `package.json`).
+## 1. Skapa tjänsten från Blueprinten
 
-## 2. Lägg till en beständig disk (viktigt)
+1. Logga in på [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint**.
+2. Koppla GitHub och välj repot `CRM-sportative`. Render läser `render.yaml`.
+3. Fyll i värdena Render frågar efter:
+   - `ADMIN_EMAIL` – din e-postadress (bara den får skapa första administratörskontot)
+   - `PUBLIC_URL` – adressen tjänsten får, t.ex. `https://leadflow-crm.onrender.com` (utan `/` på slutet). Byt senare om du kopplar egen domän.
+4. **Apply**. Render bygger (`npm ci && npm run build`) och startar (`npm start`).
 
-Utan disk försvinner all data vid varje ny version.
+Blueprinten ställer in:
 
-1. I tjänsten: **⋯ / högerklick → Attach Volume** (eller *Settings → Volumes*).
-2. **Mount path:** `/data`
-
-## 3. Miljövariabler
-
-Under **Variables** (se även `.env.example`):
-
-| Variabel | Värde |
+| Inställning | Värde |
 |---|---|
+| Region | Frankfurt |
+| Disk | 1 GB monterad på `/var/data` (kan utökas, inte minskas) |
 | `NODE_ENV` | `production` |
-| `ADMIN_EMAIL` | din e-postadress – bara den får skapa första administratörskontot |
-| `APP_SECRET` | 64 hextecken, skapa med `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `DATA_DIR` | `/data` |
-| `PUBLIC_URL` | den publika adressen, t.ex. `https://crm.dittforetag.se` (utan `/` på slutet) |
+| `NODE_VERSION` | `22` (krävs för den inbyggda SQLite-databasen) |
+| `DATA_DIR` | `/var/data` |
+| `APP_SECRET` | genereras automatiskt av Render |
+| Health check | `/api/health` |
+| Automatisk driftsättning | vid varje push till GitHub |
 
-Spara `APP_SECRET` på ett säkert ställe (t.ex. lösenordshanteraren). Byts den ut går sparade integrationslösenord och tokens inte att läsa.
+> **Spara `APP_SECRET`:** öppna tjänsten → *Environment* → kopiera värdet till din lösenordshanterare. Om det ändras går sparade integrationslösenord och tokens inte att läsa.
 
-## 4. Adress och https
+## 2. Första inloggningen
 
-*Settings → Networking → Generate Domain* ger en `…up.railway.app`-adress direkt. För egen domän: *Custom Domain* och lägg till CNAME-posten hos din domänleverantör. Railway sköter https-certifikatet. Uppdatera `PUBLIC_URL` till den slutliga adressen.
-
-Valfritt: *Settings → Deploy → Healthcheck Path* = `/api/health`.
-
-## 5. Första inloggningen
-
-Öppna adressen. Eftersom databasen är tom visas **Välkommen till LeadFlow** – skapa administratörskontot med e-postadressen i `ADMIN_EMAIL` (lösenord minst 10 tecken). Ingen demodata och inga demokonton skapas i produktion.
+Öppna adressen. Databasen är tom, så **Välkommen till LeadFlow** visas – skapa administratörskontot med e-postadressen i `ADMIN_EMAIL` (lösenord minst 10 tecken). Ingen demodata och inga demokonton skapas i produktion.
 
 Därefter:
 
@@ -44,7 +38,11 @@ Därefter:
 2. **Produkter & offerter → Offertinställningar** → fyll i era företagsuppgifter och villkor.
 3. **Integrationer** → koppla e-post, Facebook, Instagram och webbformulär.
 
-## 6. Uppdatera adresser hos andra tjänster
+## 3. Egen domän (valfritt)
+
+Tjänsten → *Settings → Custom Domains* → lägg till t.ex. `crm.dittforetag.se` och skapa CNAME-posten hos din domänleverantör. Render ordnar https-certifikatet. Uppdatera sedan `PUBLIC_URL` under *Environment*.
+
+## 4. Uppdatera adresser hos andra tjänster
 
 | Tjänst | Adress att ange |
 |---|---|
@@ -52,18 +50,24 @@ Därefter:
 | Google OAuth (kalender) – omdirigerings-URI | `https://<din-adress>/api/calendar/google/callback` |
 | Webbformulär och e-postvidarebefordran | de nya adresserna som visas under Integrationer |
 
+## 5. Kontrollera klient-IP (rekommenderas)
+
+Kundens IP-adress används i spärren mot lösenordsgissning och i signaturbeviset på offerter. Render dokumenterar inte hur många proxysteg som ligger framför appen, så kontrollera en gång:
+
+1. Öppna `https://<din-adress>/api/health?ip=1` i webbläsaren.
+2. Jämför `ip` med din egen IP-adress (sök "vad är min ip").
+3. Stämmer den inte: se `forwardedFor`-listan, räkna din adress plats från höger (sista = 1) och sätt `TRUST_PROXY` till den siffran under *Environment*. Ladda om och kontrollera igen.
+
 ## Säkerhetskopior
 
-- En kopia av databasen sparas automatiskt varje dag i `/data/backups` (de senaste 14 behålls).
-- **Inställningar → Säkerhetskopior → Ladda ned** ger en färsk kopia att spara utanför Railway – gör det regelbundet.
-- Återställning: stoppa tjänsten, ersätt `/data/crm.db` med kopian (t.ex. via `railway ssh`) och starta igen.
+- Appen sparar varje dag en konsistent kopia av databasen i `/var/data/backups` (de senaste 14 behålls).
+- **Inställningar → Säkerhetskopior → Ladda ned** ger en färsk kopia att spara utanför Render – gör det regelbundet.
+- Render tar även egna ögonblicksbilder av disken dagligen (sparas 7 dagar), men Render avråder från att återställa databaser från dem – använd hellre appens kopior.
+- Återställning: tjänsten → *Shell* → ersätt `/var/data/crm.db` med en kopia från `/var/data/backups` och starta om tjänsten.
 
-## Det här är inställt för produktion
+## Bra att veta
 
-- Ingen demodata; `npm run seed` är spärrat när `NODE_ENV=production`.
-- Inloggningscookien är `Secure`, `HttpOnly` och `SameSite=Lax`; servern litar på Railways proxy för https och klientens IP-adress (används för spärren mot lösenordsgissning).
-- Säkerhetshuvuden (HSTS, nosniff, referrer-policy, skydd mot inramning).
-
-## Uppdateringar
-
-Varje push till `master` på GitHub driftsätts automatiskt. Databasen ligger kvar på volymen, och nya tabeller och kolumner läggs till automatiskt vid start.
+- **Kort avbrott vid uppdatering:** med disk stoppar Render den gamla versionen innan den nya startar, så appen är nere några sekunder vid varje driftsättning.
+- **En instans:** en tjänst med disk kan inte skalas till flera instanser. Behövs mer kraft väljer du en större instanstyp.
+- **Säkerhet i produktion:** ingen demodata (`npm run seed` är spärrat), inloggningscookien är `Secure`, `HttpOnly` och `SameSite=Lax`, och säkerhetshuvuden (HSTS, nosniff, referrer-policy, skydd mot inramning) skickas.
+- **Uppdateringar:** varje push till `master` driftsätts automatiskt. Databasen ligger kvar på disken och nya tabeller och kolumner läggs till automatiskt vid start.

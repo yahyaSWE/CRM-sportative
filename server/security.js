@@ -8,7 +8,9 @@ const keyFile = path.join(DATA_DIR, 'secret.key');
 if (!process.env.APP_SECRET && !fs.existsSync(keyFile)) {
   fs.writeFileSync(keyFile, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
 }
-const SECRET = Buffer.from(process.env.APP_SECRET || fs.readFileSync(keyFile, 'utf8').trim(), 'hex');
+// 64 hextecken används som de är; annan text (t.ex. Renders base64-genererade värde) hashas till 32 byte.
+const rawSecret = process.env.APP_SECRET || fs.readFileSync(keyFile, 'utf8').trim();
+const SECRET = /^[0-9a-fA-F]{64}$/.test(rawSecret) ? Buffer.from(rawSecret, 'hex') : crypto.createHash('sha256').update(rawSecret).digest();
 const ENC_KEY = crypto.createHash('sha256').update(Buffer.concat([SECRET, Buffer.from('enc')])).digest();
 
 export function hashPassword(password) {

@@ -18,13 +18,13 @@ import { tick as calendarTick } from './calendar/service.js';
 import { startScheduler } from './integrations/scheduler.js';
 import { scheduledTick as prospectingTick } from './prospecting/service.js';
 import { seed, ensureRoles } from './seed.js';
-import { PROD, ADMIN_EMAIL } from './config.js';
+import { PROD, ADMIN_EMAIL, TRUST_PROXY } from './config.js';
 import { dailyBackup } from './backup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-// I produktion står appen bakom Railways proxy: lita på ett proxysteg så att https och klientens IP blir rätt.
-app.set('trust proxy', PROD ? 1 : 'loopback');
+// I produktion står appen bakom Renders proxy; antalet betrodda steg styrs av TRUST_PROXY (se config.js).
+app.set('trust proxy', TRUST_PROXY);
 app.disable('x-powered-by');
 
 app.use((req, res, next) => {
@@ -43,7 +43,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api', calendarRoutes);
 // Kundens offertsida (öppnas via hemlig länk, utan inloggning).
 app.use('/api/public', publicQuotes);
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+// ?ip=1 visar vilken IP appen ser för dig och hela X-Forwarded-For-kedjan – för att ställa in TRUST_PROXY.
+app.get('/api/health', (req, res) => res.json(req.query.ip ? { ok: true, ip: req.ip, forwardedFor: req.get('x-forwarded-for') || null, trustProxy: TRUST_PROXY } : { ok: true }));
 
 app.use('/api', authenticate);
 app.get('/api/events', sseHandler);

@@ -20,7 +20,7 @@ Första gången skapas en databas (`data/crm.db`) med demodata. Demokonton (lös
 
 `npm run seed` återställer demodatan (bara i utvecklingsläge).
 
-**Publicera:** se [DEPLOY.md](DEPLOY.md) för Railway. I produktion (`NODE_ENV=production`) skapas ingen demodata – första administratören skapas via en setup-sida av e-postadressen i `ADMIN_EMAIL`.
+**Publicera:** se [DEPLOY.md](DEPLOY.md) för Render (`render.yaml` finns i repot). I produktion (`NODE_ENV=production`) skapas ingen demodata – första administratören skapas via en setup-sida av e-postadressen i `ADMIN_EMAIL`.
 
 ## Analys: vad de ledande CRM-tjänsterna gör
 
