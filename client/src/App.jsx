@@ -4,6 +4,9 @@ import { Spinner } from './components/ui.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import MyDay from './pages/MyDay.jsx';
+import Customers from './pages/Customers.jsx';
+import SearchResults from './pages/SearchResults.jsx';
 import Leads from './pages/Leads.jsx';
 import Pipeline from './pages/Pipeline.jsx';
 import Tasks from './pages/Tasks.jsx';
@@ -28,7 +31,10 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<MyDay />} />
+        <Route path="overview" element={<Dashboard />} />
+        <Route path="customers" element={<Customers />} />
+        <Route path="search" element={<SearchResults />} />
         <Route path="leads" element={<Leads />} />
         <Route path="leads/:id" element={<Leads />} />
         <Route path="pipeline" element={<Pipeline />} />

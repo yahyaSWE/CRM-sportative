@@ -17,6 +17,60 @@ export function leadVisibilitySql(user, alias = 'l') {
   return { sql: `(${alias}.owner_id IS NULL OR ${alias}.owner_id = ?)`, params: [user.id] };
 }
 
+// ---------- Sökning ----------
+// Telefonnummer jämförs som siffror i svenskt format (+4670… = 070…), så det spelar ingen roll hur de skrivs.
+const PHONE_SQL = (col) => `replace(replace(replace(replace(${col}, '+46', '0'), ' ', ''), '-', ''), '+', '')`;
+function phoneDigits(q) {
+  let d = q.replace(/\D/g, '');
+  if (/^\s*(\+|00)?46/.test(q) && d.length > 9) d = '0' + d.replace(/^0{0,2}46/, '');
+  return d;
+}
+
+/** Fritextsökning på leads: namn, e-post (även domän), företag, telefon, ort, titel, org.nr, hemsida, kampanj och taggar. */
+export function leadSearchSql(q, alias = 'l') {
+  const text = `%${q.trim().toLowerCase()}%`;
+  const a = alias;
+  const parts = [
+    `sv_lower(coalesce(${a}.first_name,'') || ' ' || coalesce(${a}.last_name,'')) LIKE ?`,
+    `sv_lower(${a}.email) LIKE ?`, `sv_lower(${a}.company) LIKE ?`, `sv_lower(${a}.city) LIKE ?`, `sv_lower(${a}.title) LIKE ?`,
+    `sv_lower(${a}.source_detail) LIKE ?`, `sv_lower(json_extract(${a}.fields, '$.hemsida')) LIKE ?`,
+    `EXISTS (SELECT 1 FROM json_each(${a}.tags) WHERE sv_lower(value) LIKE ?)`,
+  ];
+  const params = Array(parts.length).fill(text);
+  const digits = phoneDigits(q);
+  if (digits.length >= 4) {
+    parts.push(`${PHONE_SQL(`${a}.phone`)} LIKE ?`); params.push(`%${digits}%`);
+    parts.push(`replace(json_extract(${a}.fields, '$.org_nr'), '-', '') LIKE ?`); params.push(`%${digits}%`);
+  }
+  return { sql: `(${parts.join(' OR ')})`, params };
+}
+
+// Kunder = kontakter med minst en vunnen affär (eller som märkts Kund).
+export const CUSTOMER_SQL = (a = 'l') =>
+  `(EXISTS (SELECT 1 FROM deals cd WHERE cd.lead_id = ${a}.id AND cd.stage = 'won') OR EXISTS (SELECT 1 FROM json_each(${a}.tags) WHERE value = 'Kund'))`;
+
+// Leads som riskerar att glömmas: kontaktade men utan öppen uppgift eller kommande möte.
+export const NEEDS_FOLLOWUP_SQL = (a = 'l') => `(${a}.status IN ('contacted','qualified')
+  AND NOT EXISTS (SELECT 1 FROM activities t WHERE t.lead_id = ${a}.id AND t.type = 'task' AND t.done = 0)
+  AND NOT EXISTS (SELECT 1 FROM meetings mt WHERE mt.lead_id = ${a}.id AND mt.status = 'scheduled' AND mt.end_at > datetime('now')))`;
+
+// Extra kolumner för listor: senaste kontakt och nästa steg (uppgift eller möte, det som kommer först).
+export const LEAD_NEXT_COLUMNS = (a = 'l') => `
+  (SELECT max(x.created_at) FROM activities x WHERE x.lead_id = ${a}.id AND x.type IN ('call','email','meeting','note')) AS last_contact_at,
+  (SELECT json_object('kind', 'task', 'content', t.content, 'due_at', t.due_at) FROM activities t
+    WHERE t.lead_id = ${a}.id AND t.type = 'task' AND t.done = 0 ORDER BY coalesce(t.due_at, '9999') LIMIT 1) AS next_task,
+  (SELECT json_object('kind', 'meeting', 'content', mt.title, 'due_at', mt.start_at, 'id', mt.id) FROM meetings mt
+    WHERE mt.lead_id = ${a}.id AND mt.status = 'scheduled' AND mt.end_at > datetime('now') ORDER BY mt.start_at LIMIT 1) AS next_meeting`;
+
+// Väljer det som infaller först av nästa uppgift och nästa möte.
+export function pickNextStep(row) {
+  const t = row.next_task ? JSON.parse(row.next_task) : null;
+  const m = row.next_meeting ? JSON.parse(row.next_meeting) : null;
+  const next = !t ? m : !m ? t : (m.due_at < (t.due_at || '9999') ? m : t);
+  const { next_task, next_meeting, ...rest } = row;
+  return { ...rest, next_step: next };
+}
+
 export function hydrateLead(l) {
   if (!l) return l;
   return { ...l, tags: parseJSON(l.tags, []), fields: parseJSON(l.fields, {}) };

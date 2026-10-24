@@ -38,6 +38,14 @@ Första gången skapas en databas (`data/crm.db`) med demodata. Demokonton (lös
 
 Gemensamt mönster som LeadFlow följer: **alla kanaler matas in i en och samma pipeline** → normalisering → dubblettkontroll → poäng → regler (fördela/tagga/skapa uppgift) → notis till ansvarig säljare.
 
+## Säljarens vardag
+
+- **Min dag** (startsidan): dagens möten, möten utan utfall, försenade och dagens uppgifter, nya leads att ringa, affärer utan nästa steg och leads som behöver följas upp – med Ring-knappar direkt i listan. Diagrammen finns under **Översikt**.
+- **Sök (Ctrl + K)**: hittar kunder, leads och affärer på namn, företag, telefon (oavsett format: 070…, +4670…), e-post och domän, ort, org.nr, kampanj och taggar. Affärer hittas även via kontaktperson. Enter visar alla resultat.
+- **Kunder**: alla kontakter med vunna affärer, med vunnet och pågående värde, nästa steg och "Mina kunder".
+- **Leads**: snabbflikarna *Nya att ringa*, *Behöver uppföljning* (kontaktade utan uppgift eller bokat möte) och *Kunder*, samt kolumnen *Nästa steg* med senaste kontakt.
+- **Pipeline**: sökruta och listvy (sorterbar, med äldre avslutade affärer). Tavlan visar avslutade affärer från de senaste 30 dagarna.
+
 ## Från lead till affär
 
 1. **Lead** (personen/förfrågan) kommer in automatiskt och kvalificeras: Ny → Kontaktad → Kvalificerad.

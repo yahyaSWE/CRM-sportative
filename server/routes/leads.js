@@ -5,7 +5,7 @@ import { requirePerm } from '../middleware.js';
 import { broadcast } from '../events.js';
 import {
   getLead, hydrateLead, canSeeLead, canEditLead, leadVisibilitySql, normalizeLeadData, notify, leadName,
-  STATUSES, SOURCES, runAutomations,
+  STATUSES, SOURCES, runAutomations, leadSearchSql, CUSTOMER_SQL, NEEDS_FOLLOWUP_SQL, LEAD_NEXT_COLUMNS, pickNextStep,
 } from '../services/leads.js';
 
 const r = Router();
@@ -28,28 +28,36 @@ function checkOwnerChange(req, lead, ownerId) {
 
 // ---------- Leads ----------
 r.get('/leads', (req, res) => {
-  const { q, status, source, owner, tag, sort = 'created_at', dir = 'desc' } = req.query;
+  const { q, status, source, owner, tag, view, sort = 'created_at', dir = 'desc' } = req.query;
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(200, Number(req.query.limit || 50));
   const vis = leadVisibilitySql(req.user);
   const where = [vis.sql];
   const params = [...vis.params];
-  if (q) {
-    where.push(`(l.first_name || ' ' || coalesce(l.last_name,'') LIKE ? OR l.email LIKE ? OR l.phone LIKE ? OR l.company LIKE ?)`);
-    params.push(...Array(4).fill(`%${q}%`));
-  }
+  if (q) { const s = leadSearchSql(q); where.push(s.sql); params.push(...s.params); }
+  // Snabbvyer: nya att ringa, behöver uppföljning, kunder.
+  if (view === 'new') where.push("l.status = 'new'");
+  else if (view === 'followup') where.push(NEEDS_FOLLOWUP_SQL());
+  else if (view === 'customers') where.push(CUSTOMER_SQL());
   if (status) { where.push('l.status = ?'); params.push(status); }
   if (source) { where.push('l.source = ?'); params.push(source); }
   if (owner === 'me') { where.push('l.owner_id = ?'); params.push(req.user.id); }
   else if (owner === 'none') where.push('l.owner_id IS NULL');
   else if (owner) { where.push('l.owner_id = ?'); params.push(Number(owner)); }
   if (tag) { where.push('EXISTS (SELECT 1 FROM json_each(l.tags) WHERE value = ?)'); params.push(tag); }
-  const sortCol = { created_at: 'l.created_at', score: 'l.score', name: 'l.first_name', company: 'l.company', last_activity_at: 'l.last_activity_at', status: 'l.status' }[sort] || 'l.created_at';
+  const sortCol = {
+    created_at: 'l.created_at', score: 'l.score', name: 'sv_lower(l.first_name)', company: 'sv_lower(l.company)', status: 'l.status',
+    last_activity_at: 'l.last_activity_at', last_contact_at: 'coalesce(last_contact_at, l.created_at)',
+  }[sort] || 'l.created_at';
   const sql = `FROM leads l LEFT JOIN users u ON u.id = l.owner_id WHERE ${where.join(' AND ')}`;
   const total = get(`SELECT count(*) AS n ${sql}`, ...params).n;
-  const rows = all(`SELECT l.*, u.name AS owner_name, u.color AS owner_color ${sql}
+  // Antal per snabbvy (inom samma synlighet och sökning) för flikarna i gränssnittet.
+  const base = { sql: [vis.sql, ...(q ? [leadSearchSql(q).sql] : [])].join(' AND '), params: [...vis.params, ...(q ? leadSearchSql(q).params : [])] };
+  const counts = get(`SELECT count(*) AS total, sum(l.status = 'new') AS new, sum(${NEEDS_FOLLOWUP_SQL()}) AS followup, sum(${CUSTOMER_SQL()}) AS customers
+    FROM leads l WHERE ${base.sql}`, ...base.params);
+  const rows = all(`SELECT l.*, u.name AS owner_name, u.color AS owner_color, ${LEAD_NEXT_COLUMNS()} ${sql}
     ORDER BY ${sortCol} ${dir === 'asc' ? 'ASC' : 'DESC'}, l.id DESC LIMIT ? OFFSET ?`, ...params, limit, (page - 1) * limit);
-  res.json({ rows: rows.map(hydrateLead), total, page, limit });
+  res.json({ rows: rows.map((x) => hydrateLead(pickNextStep(x))), total, page, limit, counts });
 });
 
 r.get('/leads/export.csv', requirePerm('leads.export'), (req, res) => {
@@ -408,15 +416,81 @@ r.get('/dashboard', (req, res) => {
   });
 });
 
+// Global sökning: kunder, leads och affärer (affärer hittas även via kontaktperson, företag, telefon och ansvarig).
 r.get('/search', (req, res) => {
-  const q = `%${req.query.q || ''}%`;
-  if ((req.query.q || '').length < 2) return res.json({ leads: [], deals: [] });
+  const q = String(req.query.q || '').trim();
+  const limit = req.query.all ? 100 : 6;
+  if (q.length < 2) return res.json({ customers: [], leads: [], deals: [], counts: { customers: 0, leads: 0, deals: 0 } });
   const vis = leadVisibilitySql(req.user);
-  const leads = all(`SELECT l.id, l.first_name, l.last_name, l.email, l.company, l.source FROM leads l WHERE ${vis.sql}
-    AND (l.first_name || ' ' || coalesce(l.last_name,'') LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR l.phone LIKE ?) LIMIT 8`, ...vis.params, q, q, q, q);
+  const s = leadSearchSql(q);
+  const leadCols = `l.id, l.first_name, l.last_name, l.email, l.phone, l.company, l.city, l.source, l.status, l.tags, u.name AS owner_name, u.color AS owner_color`;
+  const leadFrom = `FROM leads l LEFT JOIN users u ON u.id = l.owner_id WHERE ${vis.sql} AND ${s.sql}`;
+  const find = (extra) => ({
+    rows: all(`SELECT ${leadCols} ${leadFrom} AND ${extra} ORDER BY l.last_activity_at DESC LIMIT ?`, ...vis.params, ...s.params, limit).map(hydrateLead),
+    n: get(`SELECT count(*) AS n ${leadFrom} AND ${extra}`, ...vis.params, ...s.params).n,
+  });
+  const customers = find(CUSTOMER_SQL());
+  const leads = find(`NOT ${CUSTOMER_SQL()}`);
   const dv = dealVisibility(req.user);
-  const deals = all(`SELECT d.id, d.title, d.value, d.stage FROM deals d WHERE ${dv.sql} AND d.title LIKE ? LIMIT 5`, ...dv.params, q);
-  res.json({ leads, deals });
+  const ds = leadSearchSql(q, 'l');
+  const dealWhere = `${dv.sql} AND (sv_lower(d.title) LIKE ? OR sv_lower(u.name) LIKE ? OR (d.lead_id IS NOT NULL AND ${ds.sql}))`;
+  const dParams = [...dv.params, `%${q.toLowerCase()}%`, `%${q.toLowerCase()}%`, ...ds.params];
+  const dealFrom = `FROM deals d LEFT JOIN leads l ON l.id = d.lead_id LEFT JOIN users u ON u.id = d.owner_id WHERE ${dealWhere}`;
+  const deals = all(`SELECT d.id, d.title, d.value, d.stage, d.lead_id, l.first_name, l.last_name, l.company, u.name AS owner_name ${dealFrom}
+    ORDER BY (d.stage IN ('won','lost')), d.updated_at DESC LIMIT ?`, ...dParams, limit);
+  res.json({
+    customers: customers.rows, leads: leads.rows, deals,
+    counts: { customers: customers.n, leads: leads.n, deals: get(`SELECT count(*) AS n ${dealFrom}`, ...dParams).n },
+  });
+});
+
+// Kundregister: kontakter med vunna affärer, med totalt värde och läget just nu.
+r.get('/customers', (req, res) => {
+  const { q, owner, sort = 'won_value', dir = 'desc' } = req.query;
+  const vis = leadVisibilitySql(req.user);
+  const where = [vis.sql, CUSTOMER_SQL()];
+  const params = [...vis.params];
+  if (q) { const s = leadSearchSql(q); where.push(s.sql); params.push(...s.params); }
+  if (owner === 'me') { where.push('l.owner_id = ?'); params.push(req.user.id); }
+  else if (owner && can(req.user, 'leads.view_all')) { where.push('l.owner_id = ?'); params.push(Number(owner)); }
+  const sortCol = { won_value: 'won_value', name: 'sv_lower(coalesce(l.company, l.first_name))', last_contact_at: 'coalesce(last_contact_at, l.created_at)', customer_since: 'customer_since', open_value: 'open_value' }[sort] || 'won_value';
+  const rows = all(`SELECT l.*, u.name AS owner_name, u.color AS owner_color, ${LEAD_NEXT_COLUMNS()},
+      (SELECT coalesce(sum(value),0) FROM deals WHERE lead_id = l.id AND stage = 'won') AS won_value,
+      (SELECT count(*) FROM deals WHERE lead_id = l.id AND stage = 'won') AS won_count,
+      (SELECT min(closed_at) FROM deals WHERE lead_id = l.id AND stage = 'won') AS customer_since,
+      (SELECT coalesce(sum(value),0) FROM deals WHERE lead_id = l.id AND stage NOT IN ('won','lost')) AS open_value,
+      (SELECT count(*) FROM deals WHERE lead_id = l.id AND stage NOT IN ('won','lost')) AS open_count
+    FROM leads l LEFT JOIN users u ON u.id = l.owner_id WHERE ${where.join(' AND ')}
+    ORDER BY ${sortCol} ${dir === 'asc' ? 'ASC' : 'DESC'}, l.id DESC LIMIT 500`, ...params);
+  const list = rows.map((x) => hydrateLead(pickNextStep(x)));
+  res.json({ rows: list, total: list.length, totalValue: list.reduce((s, c) => s + c.won_value, 0) });
+});
+
+// Min dag: allt säljaren behöver agera på idag, samlat. `from`/`to` = dagens gränser i användarens tidszon (UTC).
+r.get('/today', (req, res) => {
+  const uid = req.user.id;
+  const from = req.query.from || new Date(new Date().setHours(0, 0, 0, 0)).toISOString().slice(0, 19).replace('T', ' ');
+  const to = req.query.to || new Date(new Date().setHours(24, 0, 0, 0)).toISOString().slice(0, 19).replace('T', ' ');
+  const meetings = all(`SELECT m.*, l.first_name, l.last_name, l.company, l.phone AS lead_phone, d.title AS deal_title FROM meetings m
+    LEFT JOIN leads l ON l.id = m.lead_id LEFT JOIN deals d ON d.id = m.deal_id
+    WHERE m.owner_id = ? AND m.status != 'cancelled' AND m.start_at < ? AND m.end_at > ? ORDER BY m.start_at`, uid, to, from)
+    .map((m) => ({ ...m, attendees: JSON.parse(m.attendees || '[]') }));
+  const outcomes = all(`SELECT m.id, m.title, m.start_at, m.end_at, l.first_name, l.last_name, l.company FROM meetings m LEFT JOIN leads l ON l.id = m.lead_id
+    WHERE m.owner_id = ? AND m.status = 'scheduled' AND m.end_at <= datetime('now') AND m.end_at < ? AND (m.lead_id IS NOT NULL OR m.deal_id IS NOT NULL)
+    ORDER BY m.start_at DESC LIMIT 10`, uid, from);
+  const tasks = all(`SELECT a.*, l.first_name, l.last_name, l.company, l.phone, dl.title AS deal_title FROM activities a
+    LEFT JOIN leads l ON l.id = a.lead_id LEFT JOIN deals dl ON dl.id = a.deal_id
+    WHERE a.type = 'task' AND a.done = 0 AND (a.user_id = ? OR (a.user_id IS NULL AND l.owner_id = ?)) AND (a.due_at IS NULL OR a.due_at < ?)
+    ORDER BY a.due_at IS NULL, a.due_at LIMIT 30`, uid, uid, to);
+  const newLeads = all(`SELECT l.*, u.name AS owner_name FROM leads l LEFT JOIN users u ON u.id = l.owner_id
+    WHERE l.status = 'new' AND (l.owner_id = ? OR l.owner_id IS NULL) ORDER BY l.owner_id IS NULL, l.score DESC, l.created_at DESC LIMIT 12`, uid).map(hydrateLead);
+  const stuckDeals = dealRows(`d.owner_id = ? AND d.stage NOT IN ('won','lost')`, [uid])
+    .filter((d) => !d.next_task || (d.next_task.due_at && d.next_task.due_at < from))
+    .filter((d) => !get("SELECT 1 FROM meetings WHERE deal_id = ? AND status = 'scheduled' AND end_at > datetime('now')", d.id));
+  const followups = all(`SELECT l.*, ${LEAD_NEXT_COLUMNS()} FROM leads l WHERE l.owner_id = ? AND ${NEEDS_FOLLOWUP_SQL()}
+    AND NOT EXISTS (SELECT 1 FROM deals fd WHERE fd.lead_id = l.id AND fd.stage NOT IN ('won','lost'))
+    ORDER BY coalesce(last_contact_at, l.created_at) LIMIT 12`, uid).map((x) => hydrateLead(pickNextStep(x)));
+  res.json({ meetings, outcomes, tasks, newLeads, stuckDeals, followups });
 });
 
 export default r;

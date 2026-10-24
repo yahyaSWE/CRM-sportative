@@ -3,9 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Search, Download, Upload, Users, Trash2, UserCheck, Tag, Filter, ChevronLeft, ChevronRight, ArrowUpDown, X } from 'lucide-react';
 import { api, qs } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
-import { Button, Card, PageHeader, SourceBadge, StatusBadge, Avatar, ScoreBar, Empty, Spinner, Select, Modal, useToast, Confirm, cx } from '../components/ui.jsx';
+import { Button, Card, PageHeader, SourceBadge, StatusBadge, Avatar, ScoreBar, Empty, Spinner, Select, Modal, Tabs, useToast, Confirm, cx } from '../components/ui.jsx';
 import { SOURCES, STATUSES, leadName, timeAgo } from '../lib/meta.jsx';
 import LeadDrawer from '../components/LeadDrawer.jsx';
+import { NextStepCell } from '../components/Records.jsx';
 
 function parseCsv(text) {
   const sep = (text.split('\n')[0].match(/;/g) || []).length > (text.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
@@ -40,7 +41,7 @@ export default function Leads() {
   const fileRef = useRef();
 
   const filters = useMemo(() => ({
-    status: sp.get('status') || '', source: sp.get('source') || '', owner: sp.get('owner') || '', tag: sp.get('tag') || '',
+    status: sp.get('status') || '', source: sp.get('source') || '', owner: sp.get('owner') || '', tag: sp.get('tag') || '', view: sp.get('view') || '',
     sort: sp.get('sort') || 'created_at', dir: sp.get('dir') || 'desc', page: sp.get('page') || '1', q: sp.get('q') || '',
   }), [sp]);
   const setFilter = (k, v) => { const n = new URLSearchParams(sp); v ? n.set(k, v) : n.delete(k); if (k !== 'page') n.delete('page'); setSp(n, { replace: true }); };
@@ -92,11 +93,20 @@ export default function Leads() {
           {can('leads.export') && <a href="/api/leads/export.csv"><Button variant="secondary" icon={Download}>Exportera</Button></a>}
         </>} />
 
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Tabs value={filters.view} onChange={(v) => setFilter('view', v)} tabs={[
+          { value: '', label: 'Alla', count: data?.counts?.total },
+          { value: 'new', label: 'Nya att ringa', count: data?.counts?.new },
+          { value: 'followup', label: 'Behöver uppföljning', count: data?.counts?.followup },
+          { value: 'customers', label: 'Kunder', count: data?.counts?.customers },
+        ]} />
+        {filters.view === 'followup' && <span className="text-xs text-slate-500">Kontaktade leads utan uppgift eller bokat möte – risk att de glöms bort.</span>}
+      </div>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 p-3 border-b border-slate-100">
           <div className="relative flex-1 min-w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sök namn, e-post, telefon, företag…" className="input pl-9" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sök namn, företag, telefon, e-post, ort, org.nr eller tagg…" className="input pl-9" />
           </div>
           <Select value={filters.status} onChange={(e) => setFilter('status', e.target.value)} className="w-auto">
             <option value="">Alla statusar</option>{Object.entries(STATUSES).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
@@ -130,7 +140,7 @@ export default function Leads() {
             <thead className="bg-slate-50/80 text-left text-xs text-slate-500 border-b border-slate-100">
               <tr>
                 <th className="w-10 pl-4"><input type="checkbox" checked={allOnPage} onChange={() => setSelected(allOnPage ? new Set() : new Set(data.rows.map((r) => r.id)))} className="rounded accent-brand-600" /></th>
-                <Th col="name">Namn</Th><Th col="company">Företag</Th><Th>Källa</Th><Th col="status">Status</Th><Th col="score">Poäng</Th><Th>Ansvarig</Th><Th col="created_at" className="text-right">Inkom</Th>
+                <Th col="name">Namn</Th><Th col="company">Företag</Th><Th>Källa</Th><Th col="status">Status</Th><Th col="last_contact_at">Nästa steg</Th><Th>Ansvarig</Th><Th col="created_at" className="text-right">Inkom</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -148,8 +158,8 @@ export default function Leads() {
                     {l.tags.length > 0 && <div className="mt-1 flex gap-1">{l.tags.slice(0, 3).map((t) => <span key={t} className="rounded bg-slate-100 px-1.5 py-px text-[10px] font-medium text-slate-600">{t}</span>)}</div>}
                   </td>
                   <td className="px-4 py-3"><SourceBadge source={l.source} detail={l.source_detail} /></td>
-                  <td className="px-4 py-3"><StatusBadge status={l.status} /></td>
-                  <td className="px-4 py-3"><ScoreBar score={l.score} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={l.status} /><div className="mt-1.5" title="Poäng"><ScoreBar score={l.score} /></div></td>
+                  <td className="px-4 py-3 max-w-56"><NextStepCell step={l.next_step} lastContact={l.last_contact_at} status={l.status} /></td>
                   <td className="px-4 py-3">{l.owner_name ? <span className="flex items-center gap-2"><Avatar name={l.owner_name} color={l.owner_color} size="xs" /><span className="text-slate-600 truncate">{l.owner_name.split(' ')[0]}</span></span> : <span className="text-xs text-amber-600 font-medium">Otilldelad</span>}</td>
                   <td className="px-4 py-3 text-right text-xs text-slate-500 whitespace-nowrap">{timeAgo(l.created_at)}</td>
                 </tr>

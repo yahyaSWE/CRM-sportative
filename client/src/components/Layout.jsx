@@ -1,22 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, KanbanSquare, CheckSquare, Plug, Zap, Shield, ScrollText, Settings, Bell, Search, LogOut,
-  Menu, X, Radio, Plus, ChevronDown, Crosshair, CalendarDays,
+  LayoutDashboard, Users, KanbanSquare, CheckSquare, Plug, Zap, Shield, ScrollText, Settings, Bell, LogOut,
+  Menu, X, Radio, Plus, ChevronDown, Crosshair, CalendarDays, Sun, Star,
 } from 'lucide-react';
 import { useApp, useLive } from '../lib/app.jsx';
 import { api } from '../api.js';
-import { Avatar, cx, SourceBadge } from './ui.jsx';
-import { leadName, timeAgo, sek } from '../lib/meta.jsx';
+import { Avatar, cx } from './ui.jsx';
+import { timeAgo } from '../lib/meta.jsx';
 import LeadForm from './LeadForm.jsx';
+import GlobalSearch from './GlobalSearch.jsx';
 
 const NAV = [
   { group: 'Försäljning', items: [
-    { to: '/', label: 'Översikt', icon: LayoutDashboard, end: true },
+    { to: '/', label: 'Min dag', icon: Sun, end: true },
     { to: '/leads', label: 'Leads', icon: Users },
+    { to: '/customers', label: 'Kunder', icon: Star },
     { to: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
     { to: '/calendar', label: 'Kalender', icon: CalendarDays },
     { to: '/tasks', label: 'Uppgifter', icon: CheckSquare },
+    { to: '/overview', label: 'Översikt', icon: LayoutDashboard },
   ] },
   { group: 'Leadinsamling', items: [
     { to: '/integrations', label: 'Integrationer', icon: Plug, perm: 'integrations.manage' },
@@ -74,51 +77,6 @@ function LiveIndicator() {
         Automatisk insamling aktiv
       </div>
       <p className="mt-1 text-xs text-slate-500">{count ? `${count} nya leads sedan du loggade in` : 'Nya leads visas i realtid'}</p>
-    </div>
-  );
-}
-
-function GlobalSearch() {
-  const [q, setQ] = useState('');
-  const [res, setRes] = useState(null);
-  const [open, setOpen] = useState(false);
-  const ref = useRef();
-  const nav = useNavigate();
-  useEffect(() => {
-    const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); ref.current?.focus(); } };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-  useEffect(() => {
-    if (q.length < 2) return setRes(null);
-    const t = setTimeout(() => api.get(`/search?q=${encodeURIComponent(q)}`).then(setRes).catch(() => {}), 180);
-    return () => clearTimeout(t);
-  }, [q]);
-  const go = (path) => { setOpen(false); setQ(''); nav(path); };
-  return (
-    <div className="relative w-full max-w-md">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-      <input ref={ref} value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Sök leads, företag, affärer…" className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-14 text-sm outline-none focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-100" />
-      <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 text-[10px] font-medium text-slate-400">Ctrl K</kbd>
-      {open && res && (
-        <div className="absolute z-40 mt-2 w-full card shadow-xl py-2 animate-fade-in">
-          {!res.leads.length && !res.deals.length && <p className="px-4 py-3 text-sm text-slate-500">Inga träffar</p>}
-          {res.leads.length > 0 && <p className="px-4 pt-1 pb-1 text-[11px] font-semibold uppercase text-slate-400">Leads</p>}
-          {res.leads.map((l) => (
-            <button key={l.id} onMouseDown={() => go(`/leads/${l.id}`)} className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-slate-50">
-              <SourceBadge source={l.source} compact />
-              <span className="min-w-0"><span className="block text-sm font-medium text-slate-800 truncate">{leadName(l)}</span><span className="block text-xs text-slate-500 truncate">{l.company || l.email}</span></span>
-            </button>
-          ))}
-          {res.deals.length > 0 && <p className="px-4 pt-2 pb-1 text-[11px] font-semibold uppercase text-slate-400">Affärer</p>}
-          {res.deals.map((d) => (
-            <button key={d.id} onMouseDown={() => go(`/pipeline/${d.id}`)} className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-slate-50">
-              <span className="text-sm text-slate-800 truncate">{d.title}</span><span className="text-xs text-slate-500">{sek(d.value)}</span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -212,6 +212,9 @@ addColumn('users', 'ical_token', 'TEXT');
 db.exec("UPDATE deals SET stage_changed_at = coalesce(closed_at, updated_at, created_at) WHERE stage_changed_at IS NULL");
 db.exec('CREATE INDEX IF NOT EXISTS activities_deal ON activities(deal_id)');
 
+// SQLite:s lower() hanterar bara ASCII – den här klarar å, ä och ö så att sökningar blir skiftlägesokänsliga.
+db.function('sv_lower', { deterministic: true }, (s) => (s == null ? null : String(s).toLowerCase()));
+
 export const all = (sql, ...p) => db.prepare(sql).all(...p);
 export const get = (sql, ...p) => db.prepare(sql).get(...p);
 export const run = (sql, ...p) => db.prepare(sql).run(...p);
