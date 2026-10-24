@@ -1,0 +1,32 @@
+{
+  "name": "leadflow-crm",
+  "version": "1.0.0",
+  "description": "LeadFlow CRM – automatisk leadinsamling från e-post, Facebook och Instagram",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "node --watch-path=server server/index.js",
+    "dev:client": "vite",
+    "build": "vite build",
+    "start": "node server/index.js --serve",
+    "seed": "node server/seed.js --reset"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "imapflow": "^2.9.1",
+    "mailparser": "^3.12.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "lucide-react": "^1.61.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.4",
+    "recharts": "^3.10.1",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.5"
+  }
+}

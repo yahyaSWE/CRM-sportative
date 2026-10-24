@@ -1,0 +1,103 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { DATA_DIR, get, run } from './db.js';
+
+// En lokal hemlig nyckel används för att signera sessioner och kryptera integrationsuppgifter.
+const keyFile = path.join(DATA_DIR, 'secret.key');
+if (!process.env.APP_SECRET && !fs.existsSync(keyFile)) {
+  fs.writeFileSync(keyFile, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
+}
+const SECRET = Buffer.from(process.env.APP_SECRET || fs.readFileSync(keyFile, 'utf8').trim(), 'hex');
+const ENC_KEY = crypto.createHash('sha256').update(Buffer.concat([SECRET, Buffer.from('enc')])).digest();
+
+export function hashPassword(password) {
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.scryptSync(password, salt, 64);
+  return `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`;
+}
+
+export function verifyPassword(password, stored) {
+  const [, saltHex, hashHex] = String(stored).split('$');
+  if (!saltHex || !hashHex) return false;
+  const hash = crypto.scryptSync(password, Buffer.from(saltHex, 'hex'), 64);
+  return crypto.timingSafeEqual(hash, Buffer.from(hashHex, 'hex'));
+}
+
+const b64url = (buf) => Buffer.from(buf).toString('base64url');
+
+export function signSession(userId, days = 7) {
+  const payload = b64url(JSON.stringify({ uid: userId, exp: Date.now() + days * 864e5 }));
+  const sig = b64url(crypto.createHmac('sha256', SECRET).update(payload).digest());
+  return `${payload}.${sig}`;
+}
+
+export function readSession(token) {
+  if (!token || !token.includes('.')) return null;
+  const [payload, sig] = token.split('.');
+  const expected = b64url(crypto.createHmac('sha256', SECRET).update(payload).digest());
+  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    return data.exp > Date.now() ? data : null;
+  } catch { return null; }
+}
+
+export function encrypt(obj) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', ENC_KEY, iv);
+  const enc = Buffer.concat([cipher.update(JSON.stringify(obj), 'utf8'), cipher.final()]);
+  return `${iv.toString('hex')}:${cipher.getAuthTag().toString('hex')}:${enc.toString('hex')}`;
+}
+
+export function decrypt(str) {
+  if (!str) return {};
+  try {
+    const [iv, tag, data] = str.split(':');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', ENC_KEY, Buffer.from(iv, 'hex'));
+    decipher.setAuthTag(Buffer.from(tag, 'hex'));
+    return JSON.parse(Buffer.concat([decipher.update(Buffer.from(data, 'hex')), decipher.final()]).toString('utf8'));
+  } catch { return {}; }
+}
+
+export const randomToken = (bytes = 18) => crypto.randomBytes(bytes).toString('base64url');
+
+// ---------- Behörigheter ----------
+export const PERMISSIONS = [
+  { key: 'leads.view_all', group: 'Leads & affärer', label: 'Se alla leads och affärer' },
+  { key: 'leads.edit_own', group: 'Leads & affärer', label: 'Skapa och redigera egna leads' },
+  { key: 'leads.edit_all', group: 'Leads & affärer', label: 'Redigera alla leads' },
+  { key: 'leads.assign', group: 'Leads & affärer', label: 'Tilldela leads till andra' },
+  { key: 'leads.delete', group: 'Leads & affärer', label: 'Radera leads' },
+  { key: 'leads.export', group: 'Leads & affärer', label: 'Exportera data' },
+  { key: 'prospecting.use', group: 'Leads & affärer', label: 'Söka och importera nya företag (prospektering)' },
+  { key: 'reports.view', group: 'Rapporter', label: 'Se rapporter och teamstatistik' },
+  { key: 'integrations.manage', group: 'Administration', label: 'Hantera integrationer' },
+  { key: 'automation.manage', group: 'Administration', label: 'Hantera automatiseringar' },
+  { key: 'users.manage', group: 'Administration', label: 'Hantera användare och roller' },
+  { key: 'audit.view', group: 'Administration', label: 'Se aktivitetslogg' },
+];
+export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
+
+// Nya behörigheter: administratören får alltid alla, säljchefen får prospektering första gången den finns.
+{
+  run('UPDATE roles SET permissions = ? WHERE name = ?', JSON.stringify(PERMISSION_KEYS), 'Administratör');
+  if (!get("SELECT 1 FROM settings WHERE key = 'migrated:prospecting.use'")) {
+    const chef = get("SELECT * FROM roles WHERE name = 'Säljchef'");
+    if (chef) {
+      const perms = JSON.parse(chef.permissions || '[]');
+      if (!perms.includes('prospecting.use')) run('UPDATE roles SET permissions = ? WHERE id = ?', JSON.stringify([...perms, 'prospecting.use']), chef.id);
+    }
+    run("INSERT INTO settings (key, value) VALUES ('migrated:prospecting.use', '1')");
+  }
+}
+
+export function loadUser(userId) {
+  const u = get(`SELECT u.id, u.name, u.email, u.active, u.color, u.role_id, r.name AS role, r.permissions
+                 FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?`, userId);
+  if (!u || !u.active) return null;
+  u.permissions = JSON.parse(u.permissions || '[]');
+  return u;
+}
+
+export const can = (user, perm) => !!user?.permissions?.includes(perm);
