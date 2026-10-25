@@ -6,6 +6,7 @@ import { tr } from '../lib/i18n.js';
 
 const LABELS = {
   'user.login': tr("loggade in"), 'user.create': tr("skapade användare"), 'user.update': tr("uppdaterade användare"), 'user.password_changed': tr("bytte lösenord"),
+  'ai.connect': tr("kopplade en AI-assistent (MCP)"), 'ai.disconnect': tr("kopplade bort en AI-assistent"),
   'role.create': tr("skapade roll"), 'role.update': tr("ändrade behörigheter för roll"), 'role.delete': tr("raderade roll"),
   'lead.create': tr("skapade lead"), 'lead.update': tr("uppdaterade lead"), 'lead.delete': tr("raderade lead"), 'lead.convert': tr("konverterade lead till affär"),
   'lead.created': tr("tog emot nytt lead automatiskt"), 'lead.merged': tr("slog ihop inkommande lead med befintlig kontakt"),
@@ -33,6 +34,7 @@ export default function Audit() {
                     <span className="font-medium text-slate-900">{a.user_name || tr("LeadFlow")}</span> {LABELS[a.action] || a.action}
                     {a.entity_id && <span className="text-slate-400"> #{a.entity_id}</span>}
                     {details?.source && <span className="text-slate-400"> · {details.source}</span>}
+                    {details?.via === 'claude' && <span className="text-orange-600"> · {tr('via Claude')}</span>}
                     {details?.count != null && <span className="text-slate-400"> · {details.count} {tr("st")}</span>}
                   </p>
                   <span className="text-xs text-slate-400 whitespace-nowrap">{formatDateTime(a.created_at)}</span>

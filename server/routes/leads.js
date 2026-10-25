@@ -452,7 +452,7 @@ r.get('/search', (req, res) => {
   // Företag: namn, org.nr, ort, bransch, domän eller växelnummer.
   const cv = companyVisibilitySql(req.user);
   const t = `%${q.toLowerCase()}%`;
-  const digits = q.replace(/D/g, '');
+  const digits = q.replace(/\D/g, '');
   const coWhere = `${cv.sql} AND (sv_lower(c.name) LIKE ? OR sv_lower(c.city) LIKE ? OR sv_lower(c.industry) LIKE ? OR sv_lower(c.domain) LIKE ?${digits.length >= 4 ? " OR replace(c.org_nr, '-', '') LIKE ? OR replace(replace(c.phone, ' ', ''), '-', '') LIKE ?" : ''})`;
   const coParams = [...cv.params, t, t, t, t, ...(digits.length >= 4 ? [`%${digits}%`, `%${digits}%`] : [])];
   const companies = {

@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import MyDay from './pages/MyDay.jsx';
 import Companies from './pages/Companies.jsx';
 import PublicQuote from './pages/PublicQuote.jsx';
+import OAuthConsent from './pages/OAuthConsent.jsx';
 import Products from './pages/Products.jsx';
 import SearchResults from './pages/SearchResults.jsx';
 import Leads from './pages/Leads.jsx';
@@ -33,6 +34,8 @@ export default function App() {
   if (location.pathname.startsWith('/q/')) return <Routes><Route path="/q/:token" element={<PublicQuote />} /></Routes>;
   if (loading) return <div className="h-full grid place-items-center"><Spinner className="size-8" /></div>;
   if (!user) return <Login />;
+  // Godkännande av en AI-koppling (MCP) visas utan appens meny, efter inloggning.
+  if (location.pathname === '/oauth/consent') return <OAuthConsent />;
   return (
     <Routes>
       <Route element={<Layout />}>

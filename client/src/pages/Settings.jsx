@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Download, DatabaseBackup, Languages } from 'lucide-react';
+import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp } from '../lib/app.jsx';
 import { Card, PageHeader, Field, Input, Button, Avatar, Badge, useToast, cx } from '../components/ui.jsx';
 import { tr, LANGUAGES, getLanguage, applyLanguage } from '../lib/i18n.js';
+import { timeAgo } from '../lib/meta.jsx';
 
 // Säkerhetskopior: automatiska dagliga kopior i produktion och nedladdning av en färsk kopia.
 function BackupCard() {
@@ -16,6 +17,47 @@ function BackupCard() {
       <p className="text-sm text-slate-500 mb-4">{data.auto ? tr("En kopia av databasen sparas automatiskt varje dag (de senaste 14 behålls). Ladda gärna ned en kopia ibland och spara den utanför servern.") : tr("Automatiska kopior körs bara i produktion. Du kan alltid ladda ned en kopia.")}</p>
       <a href="/api/admin/backup"><Button variant="secondary" icon={Download}>{tr("Ladda ned säkerhetskopia nu")}</Button></a>
       {data.items.length > 0 && <p className="mt-3 text-xs text-slate-500">{tr("Senaste automatiska kopior:")} {data.items.slice(0, 3).map((b) => b.name.replace('crm-', '').replace('.db', '')).join(', ')}</p>}
+    </Card>
+  );
+}
+
+// Claude och andra AI-assistenter som kopplats in via MCP. Administratörer ser och kan koppla bort allas.
+function AiCard() {
+  const { can } = useApp();
+  const toast = useToast();
+  const admin = can('users.manage');
+  const [items, setItems] = useState(null);
+  const load = () => api.get(`/oauth/connections${admin ? '?all=1' : ''}`).then(setItems).catch(() => setItems([]));
+  useEffect(() => { load(); }, []);
+  const url = `${window.location.origin}/mcp`;
+  const copy = () => navigator.clipboard?.writeText(url).then(() => toast(tr('Adressen är kopierad')));
+  const remove = async (c) => {
+    try { await api.del(`/oauth/connections/${c.id}`); toast(tr('Kopplingen är borttagen')); load(); }
+    catch (e) { toast(e.message, 'error'); }
+  };
+  return (
+    <Card className="p-6">
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Bot className="size-4 text-slate-400" />{tr('Claude och AI-assistenter')}</h3>
+      <p className="text-sm text-slate-500 mb-4">{tr('Låt Claude läsa och uppdatera CRM:et åt dig, med samma behörigheter som du har. I Claude: Inställningar → Connectors → Lägg till anpassad connector, och klistra in adressen nedan.')}</p>
+      {can('ai.connect') ? (
+        <div className="flex gap-2 max-w-lg">
+          <Input readOnly value={url} onFocus={(e) => e.target.select()} />
+          <Button variant="secondary" icon={Copy} onClick={copy}>{tr('Kopiera')}</Button>
+        </div>
+      ) : <p className="text-sm text-amber-700">{tr('Din roll har inte behörighet att koppla AI-assistenter.')}</p>}
+      {items?.length > 0 && (
+        <ul className="mt-5 divide-y divide-slate-100 rounded-lg border border-slate-200">
+          {items.map((c) => (
+            <li key={c.id} className="flex items-center gap-3 px-4 py-3 text-sm">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-slate-800">{c.client_name}{admin && <span className="font-normal text-slate-500"> · {c.user_name}</span>}</p>
+                <p className="text-xs text-slate-500">{tr('Kopplad {when}', { when: timeAgo(c.created_at) })}{c.last_used_at && ` · ${tr('senast använd {when}', { when: timeAgo(c.last_used_at) })}`}</p>
+              </div>
+              <Button size="sm" variant="secondary" icon={Unplug} onClick={() => remove(c)}>{tr('Koppla bort')}</Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }
@@ -70,6 +112,7 @@ export default function Settings() {
         <Badge className="bg-brand-50 text-brand-700 ring-brand-600/20">{tr(user.role)}</Badge>
       </Card>
       <LanguageCard />
+      <AiCard />
       <Card className="p-6">
         <h3 className="font-semibold text-slate-900">{tr("Dina behörigheter")}</h3>
         <p className="text-sm text-slate-500 mb-4">{tr("Styrs av din roll. Kontakta en administratör för ändringar.")}</p>

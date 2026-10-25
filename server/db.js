@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { currentVia } from './context.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -296,8 +297,53 @@ db.exec('CREATE INDEX IF NOT EXISTS leads_company ON leads(company_id); CREATE I
 db.exec("UPDATE deals SET stage_changed_at = coalesce(closed_at, updated_at, created_at) WHERE stage_changed_at IS NULL");
 db.exec('CREATE INDEX IF NOT EXISTS activities_deal ON activities(deal_id)');
 
+// OAuth för AI-assistenter (MCP). Koder och token sparas bara som SHA-256-hashar.
+db.exec(`
+CREATE TABLE IF NOT EXISTS oauth_clients (
+  client_id TEXT PRIMARY KEY,
+  info TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS oauth_requests (
+  id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+  params TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS oauth_codes (
+  code_hash TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  redirect_uri TEXT NOT NULL,
+  code_challenge TEXT NOT NULL,
+  scopes TEXT NOT NULL DEFAULT '[]',
+  resource TEXT,
+  expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+  id INTEGER PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  access_hash TEXT UNIQUE,
+  refresh_hash TEXT UNIQUE,
+  scopes TEXT NOT NULL DEFAULT '[]',
+  resource TEXT,
+  access_expires INTEGER,
+  refresh_expires INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_used_at TEXT
+);
+CREATE INDEX IF NOT EXISTS oauth_tokens_user ON oauth_tokens(user_id);
+`);
+
 // SQLite:s lower() hanterar bara ASCII – den här klarar å, ä och ö så att sökningar blir skiftlägesokänsliga.
 db.function('sv_lower', { deterministic: true }, (s) => (s == null ? null : String(s).toLowerCase()));
+
+// Aktiviteter som skapas genom en AI-koppling märks "via Claude" i tidslinjen, oavsett vilken kod som skapar dem.
+addColumn('activities', 'via', 'TEXT');
+db.function('current_via', () => currentVia());
+db.exec(`CREATE TRIGGER IF NOT EXISTS activities_via AFTER INSERT ON activities WHEN current_via() IS NOT NULL
+  BEGIN UPDATE activities SET via = current_via() WHERE id = NEW.id; END`);
 
 export const all = (sql, ...p) => db.prepare(sql).all(...p);
 export const get = (sql, ...p) => db.prepare(sql).get(...p);
@@ -321,5 +367,5 @@ export const parseJSON = (s, fallback) => {
 
 export function audit(userId, action, entity, entityId, details) {
   run('INSERT INTO audit_log (user_id, action, entity, entity_id, details) VALUES (?,?,?,?,?)',
-    userId ?? null, action, entity ?? null, entityId ?? null, details ? JSON.stringify(details) : null);
+    userId ?? null, action, entity ?? null, entityId ?? null, details || currentVia() ? JSON.stringify({ ...details, ...(currentVia() && { via: currentVia() }) }) : null);
 }

@@ -10,7 +10,7 @@ LeadFlow körs som en vanlig Node-server med databasen (SQLite) på en beständi
 2. Koppla GitHub och välj repot `CRM-sportative`. Render läser `render.yaml`.
 3. Fyll i värdena Render frågar efter:
    - `ADMIN_EMAIL` – din e-postadress (bara den får skapa första administratörskontot)
-   - `PUBLIC_URL` – adressen tjänsten får, t.ex. `https://leadflow-crm.onrender.com` (utan `/` på slutet). Byt senare om du kopplar egen domän.
+   - `PUBLIC_URL` – adressen tjänsten får, t.ex. `https://leadflow-crm.onrender.com` (utan `/` på slutet). Byt senare om du kopplar egen domän. Lämnas den tom används Renders egen adress (`RENDER_EXTERNAL_URL`).
 4. **Apply**. Render bygger (`npm ci && npm run build`) och startar (`npm start`).
 
 Blueprinten ställer in:
@@ -50,6 +50,7 @@ Tjänsten → *Settings → Custom Domains* → lägg till t.ex. `crm.dittforeta
 | Meta (Facebook/Instagram) webhook | `https://<din-adress>/api/webhooks/meta` |
 | Google OAuth (kalender) – omdirigerings-URI | `https://<din-adress>/api/calendar/google/callback` |
 | Webbformulär och e-postvidarebefordran | de nya adresserna som visas under Integrationer |
+| Claude (anpassad connector) | `https://<din-adress>/mcp` – koppla in igen efter byte av domän |
 
 ## 5. Kontrollera klient-IP (rekommenderas)
 

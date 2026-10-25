@@ -85,6 +85,7 @@ const EN = {
   'Välj minst ett företag': 'Choose at least one company',
   'Kopplingen har gått ut – koppla Google Kalender igen': 'The connection has expired – connect Google Calendar again',
   'Google är inte konfigurerat ännu': 'Google is not configured yet',
+  'Förfrågan har gått ut. Starta kopplingen igen från Claude.': 'The request has expired. Start the connection again from Claude.',
 };
 
 // Meddelanden med inbakade värden ({0}) matchas som mönster; det inbakade värdet översätts också om det går.

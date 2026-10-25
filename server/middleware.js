@@ -1,4 +1,5 @@
 import { loadUser, readSession, can } from './security.js';
+import { requestContext } from './context.js';
 
 export const COOKIE = 'lf_session';
 
@@ -11,6 +12,8 @@ export function authenticate(req, res, next) {
   const user = session && loadUser(session.uid);
   if (!user) return res.status(401).json({ error: 'Inte inloggad' });
   req.user = user;
+  // Anrop som MCP-kopplingen gör åt användaren bär via: 'claude' – det märker loggen och tidslinjen.
+  if (session.via) { req.via = session.via; return requestContext.run({ via: session.via, clientId: session.cid }, next); }
   next();
 }
 

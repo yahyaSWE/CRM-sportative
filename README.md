@@ -151,6 +151,28 @@ POST:a formulärdata eller JSON till formulärets adress. Fält som `namn`, `epo
 
 Administratörer kan skapa egna roller och ändra behörighetsmatrisen under **Team & behörigheter**.
 
+## Claude och AI-assistenter (MCP)
+
+LeadFlow har en inbyggd MCP-server, så att Claude (webben, skrivbordsappen, mobilen och Claude Code) kan arbeta i CRM:et åt dig.
+
+**Koppla in:** I Claude → *Inställningar → Connectors → Lägg till anpassad connector* och ange `https://<din-adress>/mcp` (adressen finns att kopiera under *Inställningar* i LeadFlow). Claude skickar dig till LeadFlow, där du loggar in och godkänner kopplingen. För Claude Code: `claude mcp add --transport http leadflow https://<din-adress>/mcp` och sedan `/mcp` för att logga in.
+
+**Vad Claude kan göra:**
+
+| Läsa | Skriva |
+|---|---|
+| Söka kunder, kontakter och affärer | Skapa och uppdatera leads |
+| Min dag: möten, uppgifter, nya leads, affärer som står still | Logga samtal, anteckningar, mejl och möten |
+| Visa lead, företag och affär med hela tidslinjen | Skapa och klarmarkera uppgifter |
+| Pipeline per steg med affärer som står still | Skapa affärer (från lead eller företag) och flytta steg, med förlustorsak |
+| Översikt och statistik, uppgifter, möten, produkter, teamet | Boka möten (synkas till Google Kalender), lägga till produkter och skapa offerter |
+
+Det finns inga verktyg för att radera.
+
+**Säkerhet:** Inloggningen sker med OAuth 2.1 och PKCE; Claude får aldrig ditt lösenord. Claude har exakt samma behörigheter som din roll – en säljare med läsbehörighet får bara läsverktygen, och en säljare ser bara det den får se i appen. Allt som görs märks *via Claude* i tidslinjen och i aktivitetsloggen. Du kopplar bort under *Inställningar → Claude och AI-assistenter*, och administratörer ser och kan koppla bort allas kopplingar där. Rätten att koppla in styrs av behörigheten *Koppla Claude och andra AI-assistenter (MCP)* under Team & behörigheter. Åtkomsttoken gäller en timme och förnyas automatiskt; en koppling som inte används på 90 dagar måste godkännas igen.
+
+Tider tolkas som svensk tid (ändra med miljövariabeln `DEFAULT_TIMEZONE`).
+
 ## Teknik
 
 - **Server:** Node.js 22+ (inbyggd `node:sqlite`), Express, ImapFlow/Mailparser. Ingen extern databas krävs.

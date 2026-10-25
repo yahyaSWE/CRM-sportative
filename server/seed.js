@@ -10,9 +10,9 @@ export const DEMO_PASSWORD = 'Demo1234!';
 const ROLES = [
   ['Administratör', 'Full åtkomst till allt, inklusive användare, roller och integrationer.', PERMISSION_KEYS],
   ['Säljchef', 'Ser och fördelar teamets leads, ser rapporter och styr automatiseringar.',
-    ['leads.view_all', 'leads.edit_own', 'leads.edit_all', 'leads.assign', 'leads.export', 'prospecting.use', 'products.manage', 'reports.view', 'automation.manage', 'audit.view']],
-  ['Säljare', 'Arbetar med egna och otilldelade leads.', ['leads.edit_own']],
-  ['Läsbehörighet', 'Kan se leads, affärer och rapporter men inte ändra något.', ['leads.view_all', 'reports.view']],
+    ['leads.view_all', 'leads.edit_own', 'leads.edit_all', 'leads.assign', 'leads.export', 'prospecting.use', 'products.manage', 'reports.view', 'automation.manage', 'audit.view', 'ai.connect']],
+  ['Säljare', 'Arbetar med egna och otilldelade leads.', ['leads.edit_own', 'ai.connect']],
+  ['Läsbehörighet', 'Kan se leads, affärer och rapporter men inte ändra något.', ['leads.view_all', 'reports.view', 'ai.connect']],
 ];
 
 const USERS = [

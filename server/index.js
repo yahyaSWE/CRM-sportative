@@ -18,9 +18,10 @@ import { tick as calendarTick } from './calendar/service.js';
 import { startScheduler } from './integrations/scheduler.js';
 import { scheduledTick as prospectingTick } from './prospecting/service.js';
 import { seed, ensureRoles } from './seed.js';
-import { PROD, ADMIN_EMAIL, TRUST_PROXY } from './config.js';
+import { PROD, ADMIN_EMAIL, TRUST_PROXY, PORT } from './config.js';
 import { dailyBackup } from './backup.js';
 import { translateErrors } from './i18n.js';
+import { mcpRoutes, oauthApi, setApiPort } from './mcp/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -50,9 +51,12 @@ app.use('/api/public', publicQuotes);
 // ?ip=1 visar vilken IP appen ser för dig och hela X-Forwarded-For-kedjan – för att ställa in TRUST_PROXY.
 app.get('/api/health', (req, res) => res.json(req.query.ip ? { ok: true, ip: req.ip, forwardedFor: req.get('x-forwarded-for') || null, trustProxy: TRUST_PROXY } : { ok: true }));
 
+// MCP för Claude: OAuth-vägar i roten och själva servern på /mcp (egen token-autentisering).
+app.use(mcpRoutes());
+
 app.use('/api', authenticate);
 app.get('/api/events', sseHandler);
-app.use('/api', leadRoutes, companyRoutes, salesRoutes, adminRoutes, integrationRoutes, prospectingRoutes);
+app.use('/api', oauthApi, leadRoutes, companyRoutes, salesRoutes, adminRoutes, integrationRoutes, prospectingRoutes);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Okänd endpoint' }));
 
 const dist = path.join(__dirname, '..', 'dist');
@@ -75,10 +79,9 @@ if (!get('SELECT 1 FROM users LIMIT 1')) {
 }
 migrateCompanies();
 
-// API_PORT används i utveckling (Vite tar PORT); i produktion räcker PORT.
-const PORT = Number(process.env.API_PORT || ((PROD || process.argv.includes('--serve')) && process.env.PORT) || 4000);
 app.listen(PORT, () => {
   console.log(`LeadFlow CRM API körs på http://localhost:${PORT}`);
+  setApiPort(PORT);
   startScheduler();
   // Sparade sökningar körs veckovis, gammal Google-data rensas och avbruten berikning återupptas.
   setTimeout(prospectingTick, 8000);

@@ -65,6 +65,7 @@ export function Timeline({ activities, onToggleTask, currentDealId, showContact 
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 <span className="font-medium text-slate-700">{a.user_name || tr("LeadFlow")}</span><span>·</span><span>{m.label}</span><span>·</span>
                 <span title={formatDateTime(a.created_at)}>{timeAgo(a.created_at)}</span>
+                {a.via === 'claude' && <span className="rounded bg-orange-50 px-1.5 py-px text-[11px] font-medium text-orange-700">{tr('via Claude')}</span>}
                 {a.deal_id && a.deal_id !== currentDealId && a.deal_title && (
                   <Link to={`/pipeline/${a.deal_id}`} className="inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-px text-[11px] font-medium text-violet-700 hover:bg-violet-100">
                     <Briefcase className="size-3" />{a.deal_title}

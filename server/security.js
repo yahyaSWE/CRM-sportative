@@ -28,8 +28,9 @@ export function verifyPassword(password, stored) {
 
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 
-export function signSession(userId, days = 7) {
-  const payload = b64url(JSON.stringify({ uid: userId, exp: Date.now() + days * 864e5 }));
+// extra: t.ex. { via: 'claude' } för de interna anrop som MCP-kopplingen gör åt användaren.
+export function signSession(userId, days = 7, extra = {}) {
+  const payload = b64url(JSON.stringify({ ...extra, uid: userId, exp: Date.now() + days * 864e5 }));
   const sig = b64url(crypto.createHmac('sha256', SECRET).update(payload).digest());
   return `${payload}.${sig}`;
 }
@@ -79,18 +80,22 @@ export const PERMISSIONS = [
   { key: 'automation.manage', group: 'Administration', label: 'Hantera automatiseringar' },
   { key: 'users.manage', group: 'Administration', label: 'Hantera användare och roller' },
   { key: 'audit.view', group: 'Administration', label: 'Se aktivitetslogg' },
+  { key: 'ai.connect', group: 'Administration', label: 'Koppla Claude och andra AI-assistenter (MCP)' },
 ];
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
 
 // Nya behörigheter: administratören får alltid alla, säljchefen får de nya första gången de finns.
 {
   run('UPDATE roles SET permissions = ? WHERE name = ?', JSON.stringify(PERMISSION_KEYS), 'Administratör');
-  for (const key of ['prospecting.use', 'products.manage']) {
+  // AI-kopplingen ges till alla standardroller; vad assistenten får göra styrs ändå av rollens övriga behörigheter.
+  const NEW = { 'prospecting.use': ['Säljchef'], 'products.manage': ['Säljchef'], 'ai.connect': ['Säljchef', 'Säljare', 'Läsbehörighet'] };
+  for (const [key, roleNames] of Object.entries(NEW)) {
     if (get('SELECT 1 FROM settings WHERE key = ?', `migrated:${key}`)) continue;
-    const chef = get("SELECT * FROM roles WHERE name = 'Säljchef'");
-    if (chef) {
-      const perms = JSON.parse(chef.permissions || '[]');
-      if (!perms.includes(key)) run('UPDATE roles SET permissions = ? WHERE id = ?', JSON.stringify([...perms, key]), chef.id);
+    for (const name of roleNames) {
+      const role = get('SELECT * FROM roles WHERE name = ?', name);
+      if (!role) continue;
+      const perms = JSON.parse(role.permissions || '[]');
+      if (!perms.includes(key)) run('UPDATE roles SET permissions = ? WHERE id = ?', JSON.stringify([...perms, key]), role.id);
     }
     run('INSERT INTO settings (key, value) VALUES (?, ?)', `migrated:${key}`, '1');
   }
