@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus } from 'lucide-react';
+import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus, FileText } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
 import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, useToast } from './ui.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
 import MeetingModal from './MeetingModal.jsx';
 import LeadMeetings from './LeadMeetings.jsx';
+import TemplatePicker from './TemplatePicker.jsx';
 import { STATUSES, STAGES, leadName, timeAgo, sek, toSqlDate } from '../lib/meta.jsx';
 import { tr } from '../lib/i18n.js';
 
@@ -80,6 +81,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
   const [del, setDel] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [book, setBook] = useState(false);
+  const [templates, setTemplates] = useState(false);
 
   const load = () => api.get(`/leads/${id}`).then(setLead).catch((e) => { toast(e.message, 'error'); onClose(); });
   useEffect(() => { setLead(null); load(); }, [id]);
@@ -152,6 +154,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
               <div className="mt-4 flex flex-wrap gap-2">
                 {lead.phone && <a href={`tel:${lead.phone}`}><Button size="sm" variant="secondary" icon={Phone}>{tr("Ring")}</Button></a>}
                 {lead.email && <a href={`mailto:${lead.email}`}><Button size="sm" variant="secondary" icon={Mail}>{tr("Mejla")}</Button></a>}
+                <Button size="sm" variant="secondary" icon={FileText} onClick={() => setTemplates(true)}>{tr("Mall")}</Button>
                 {editable && <Button size="sm" variant="secondary" icon={CalendarPlus} onClick={() => setBook(true)}>{tr("Boka möte")}</Button>}
                 {editable && <Button size="sm" variant="soft" icon={ArrowRightLeft} onClick={openConvert}>{lead.deals.length ? tr("Ny affär") : tr("Konvertera till affär")}</Button>}
                 {can('leads.delete') && <Button size="sm" variant="ghost" icon={Trash2} className="ml-auto !text-rose-600" onClick={() => setDel(true)} />}
@@ -280,6 +283,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
           </div>
         </div>
       </Modal>
+      {lead && <TemplatePicker lead={lead} open={templates} onClose={() => setTemplates(false)} onLogged={() => { load(); onChanged?.(); }} />}
       <MeetingModal open={book} onClose={() => setBook(false)} preset={meetingPreset || {}} onSaved={load} />
       <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title={tr("Radera lead?")} text={tr("Leadet och all dess historik raderas permanent.")} />
     </div>

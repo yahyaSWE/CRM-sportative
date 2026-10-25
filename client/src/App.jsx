@@ -9,6 +9,7 @@ import Companies from './pages/Companies.jsx';
 import PublicQuote from './pages/PublicQuote.jsx';
 import OAuthConsent from './pages/OAuthConsent.jsx';
 import Products from './pages/Products.jsx';
+import Templates from './pages/Templates.jsx';
 import SearchResults from './pages/SearchResults.jsx';
 import Leads from './pages/Leads.jsx';
 import Pipeline from './pages/Pipeline.jsx';
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="pipeline" element={<Pipeline />} />
         <Route path="pipeline/:id" element={<Pipeline />} />
         <Route path="tasks" element={<Tasks />} />
+        <Route path="templates" element={<Templates />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="inflow" element={<Guard perm="integrations.manage"><Inflow /></Guard>} />
         <Route path="integrations" element={<Guard perm="integrations.manage"><Integrations /></Guard>} />

@@ -48,6 +48,15 @@ Gemensamt mönster som LeadFlow följer: **alla kanaler matas in i en och samma 
 - **Leads**: snabbflikarna *Nya att ringa*, *Behöver uppföljning* (kontaktade utan uppgift eller bokat möte) och *Kunder*, samt kolumnen *Nästa steg* med senaste kontakt.
 - **Pipeline**: sökruta och listvy (sorterbar, med äldre avslutade affärer). Tavlan visar avslutade affärer från de senaste 30 dagarna.
 
+## Mallar
+
+Under **Mallar** sparar teamet texter som används ofta: **e-post** (ämnesrad och text), **meddelanden** (SMS, LinkedIn) och **samtalsmanus**. Alla i arbetsytan kan använda mallarna; den som har rätt att skapa leads kan skapa egna, och säljchefer och administratörer kan ändra alla.
+
+- **Kopiera** text eller ämnesrad med ett klick direkt från fliken. *Duplicera* gör en egen variant.
+- **Fält** som `{förnamn}`, `{företag}`, `{min_namn}` och `{mitt_företag}` infogas med knapparna under texten.
+- **Från ett lead:** knappen *Mall* fyller i fälten med kontaktens och dina uppgifter. Sedan kopierar du, öppnar mejlet i ditt e-postprogram eller loggar det direkt i tidslinjen. Fält som saknar värde markeras innan du skickar.
+- De mest använda mallarna visas först. Claude kan också läsa mallarna via MCP-kopplingen.
+
 ## Företag och kontaktpersoner
 
 - **Företag** samlar alla kontaktpersoner (VD, inköpare, ekonomi …), affärer och en gemensam tidslinje för organisationen. Flikar: Alla, Kunder, Med öppna affärer, Prospekt.

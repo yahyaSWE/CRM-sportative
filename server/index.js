@@ -14,6 +14,7 @@ import companyRoutes from './routes/companies.js';
 import salesRoutes, { publicQuotes } from './routes/sales.js';
 import './services/companies.js';
 import workspaceRoutes from './routes/workspaces.js';
+import templateRoutes from './routes/templates.js';
 import calendarRoutes from './routes/calendar.js';
 import { tick as calendarTick } from './calendar/service.js';
 import { startScheduler } from './integrations/scheduler.js';
@@ -57,7 +58,7 @@ app.use(mcpRoutes());
 
 app.use('/api', authenticate);
 app.get('/api/events', sseHandler);
-app.use('/api', workspaceRoutes, oauthApi, leadRoutes, companyRoutes, salesRoutes, adminRoutes, integrationRoutes, prospectingRoutes);
+app.use('/api', workspaceRoutes, oauthApi, leadRoutes, companyRoutes, salesRoutes, templateRoutes, adminRoutes, integrationRoutes, prospectingRoutes);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Okänd endpoint' }));
 
 const dist = path.join(__dirname, '..', 'dist');

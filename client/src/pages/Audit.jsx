@@ -6,6 +6,7 @@ import { tr } from '../lib/i18n.js';
 
 const LABELS = {
   'user.login': tr("loggade in"), 'user.create': tr("skapade användare"), 'user.update': tr("uppdaterade användare"), 'user.password_changed': tr("bytte lösenord"),
+  'template.create': tr("skapade mall"), 'template.update': tr("ändrade mall"), 'template.delete': tr("raderade mall"),
   'workspace.create': tr("skapade arbetsyta"), 'workspace.rename': tr("bytte namn på arbetsytan"),
   'ai.connect': tr("kopplade en AI-assistent (MCP)"), 'ai.disconnect': tr("kopplade bort en AI-assistent"),
   'role.create': tr("skapade roll"), 'role.update': tr("ändrade behörigheter för roll"), 'role.delete': tr("raderade roll"),
@@ -35,6 +36,7 @@ export default function Audit() {
                     <span className="font-medium text-slate-900">{a.user_name || tr("LeadFlow")}</span> {LABELS[a.action] || a.action}
                     {a.entity_id && <span className="text-slate-400"> #{a.entity_id}</span>}
                     {details?.source && <span className="text-slate-400"> · {details.source}</span>}
+                    {a.entity === 'template' && details?.name && <span className="text-slate-400"> · {details.name}</span>}
                     {details?.via === 'claude' && <span className="text-orange-600"> · {tr('via Claude')}</span>}
                     {details?.count != null && <span className="text-slate-400"> · {details.count} {tr("st")}</span>}
                   </p>

@@ -295,6 +295,13 @@ export function buildServer(auth) {
     annotations: READ,
   }, async () => ok((await api(auth, 'GET', '/products')).map(({ used, active, created_at, ...p }) => p)));
 
+  tool('list_templates', {
+    title: 'Mallar',
+    description: 'Teamets sparade mallar för e-post, meddelanden (SMS/LinkedIn) och samtalsmanus. Fält som {förnamn}, {företag}, {min_namn} och {mitt_företag} ska ersättas med kontaktens och användarens uppgifter när mallen används.',
+    inputSchema: { type: z.enum(['email', 'message', 'call']).optional().describe('email = e-post, message = SMS/meddelande, call = samtalsmanus') },
+    annotations: READ,
+  }, async ({ type }) => ok((await api(auth, 'GET', `/templates${qs({ type })}`)).map((t) => ({ id: t.id, type: t.type, name: t.name, subject: t.subject, body: t.body, uses: t.use_count }))));
+
   tool('list_team', {
     title: 'Teamet',
     description: 'Listar aktiva användare (för att tilldela leads, affärer och möten).',

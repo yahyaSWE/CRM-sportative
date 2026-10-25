@@ -283,6 +283,18 @@ function initSchema(db) {
     decline_reason TEXT
   );
   CREATE INDEX IF NOT EXISTS quotes_deal ON quotes(deal_id);
+  CREATE TABLE IF NOT EXISTS templates (
+    id INTEGER PRIMARY KEY,
+    type TEXT NOT NULL DEFAULT 'email',
+    name TEXT NOT NULL,
+    subject TEXT,
+    body TEXT NOT NULL DEFAULT '',
+    use_count INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
   `);
 
   // Enkla migreringar för databaser som skapades innan kolumnerna fanns.
