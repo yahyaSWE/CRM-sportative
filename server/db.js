@@ -317,6 +317,9 @@ function initSchema(db) {
 
   // Aktiviteter som skapas genom en AI-koppling märks "via Claude" i tidslinjen, oavsett vilken kod som skapar dem.
   addColumn('activities', 'via', 'TEXT');
+  addColumn('google_accounts', 'scopes', 'TEXT');
+  // Gmails tråd-id för skickade mejl (för att kunna koppla svar senare).
+  addColumn('activities', 'email_thread_id', 'TEXT');
   db.function('current_via', () => currentVia());
   db.exec(`CREATE TRIGGER IF NOT EXISTS activities_via AFTER INSERT ON activities WHEN current_via() IS NOT NULL
     BEGIN UPDATE activities SET via = current_via() WHERE id = NEW.id; END`);

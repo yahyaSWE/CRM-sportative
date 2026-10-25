@@ -156,7 +156,7 @@ function GoogleConfigModal({ open, onClose, status, onSaved }) {
       footer={<><Button variant="secondary" onClick={onClose}>{tr("Avbryt")}</Button><Button onClick={save}>{tr("Spara")}</Button></>}>
       <div className="space-y-5">
         <ol className="space-y-2.5 text-sm text-slate-600 list-decimal pl-5">
-          <li>{tr("Öppna")} <a className="text-brand-600 underline" href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noreferrer">{tr("Google Cloud Console")}</a> {tr("(gärna samma projekt som Places-nyckeln) och aktivera")} <b>{tr("Google Calendar API")}</b>.</li>
+          <li>{tr("Öppna")} <a className="text-brand-600 underline" href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noreferrer">{tr("Google Cloud Console")}</a> {tr("(gärna samma projekt som Places-nyckeln) och aktivera")} <b>{tr("Google Calendar API")}</b>{tr(" samt ")}<b>{tr("Gmail API")}</b>{tr(" (för att skicka e-post från appen).")}</li>
           <li>{tr("Under")} <b>{tr("OAuth-medgivandeskärm")}</b>{tr(": välj")} <i>{tr("Intern")}</i> {tr("om ni har Google Workspace, annars")} <i>{tr("Extern")}</i> {tr("och lägg till säljarna som testanvändare.")}</li>
           <li>{tr("Under")} <b>{tr("Inloggningsuppgifter → Skapa → OAuth-klient-id")}</b>{tr(": välj")} <i>{tr("Webbapplikation")}</i> {tr("och lägg till omdirigerings-URI:n nedan.")}</li>
           <li>{tr("Klistra in klient-id och klienthemlighet här.")}</li>

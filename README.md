@@ -57,6 +57,15 @@ Under **Mallar** sparar teamet texter som används ofta: **e-post** (ämnesrad o
 - **Från ett lead:** knappen *Mall* fyller i fälten med kontaktens och dina uppgifter. Sedan kopierar du, öppnar mejlet i ditt e-postprogram eller loggar det direkt i tidslinjen. Fält som saknar värde markeras innan du skickar.
 - De mest använda mallarna visas först. Claude kan också läsa mallarna via MCP-kopplingen.
 
+### Skicka e-post från appen (Gmail)
+
+Säljare med Google Workspace eller Gmail kopplar sin brevlåda under **Inställningar → E-post → Koppla Gmail** (samma Google-koppling som kalendern). Därefter öppnar **Mejla** och **Mall** på ett lead en skriv-ruta där mallen fylls i och allt går att redigera innan man klickar **Skicka**.
+
+- Mejlet skickas från säljarens egen adress och hamnar i hens Skickat-mapp; svar kommer till den vanliga inkorgen.
+- Det loggas automatiskt i tidslinjen (med ämne och text), leadet markeras som *Kontaktad* och utskicket syns i aktivitetsloggen.
+- Utan kopplad Gmail fungerar *Kopiera* och *Öppna i e-post* som tidigare.
+- Appen begär bara rätten att **skicka** e-post (gmail.send) – den kan inte läsa säljarens inkorg. Högst 100 mejl per säljare och timme.
+
 ## Företag och kontaktpersoner
 
 - **Företag** samlar alla kontaktpersoner (VD, inköpare, ekonomi …), affärer och en gemensam tidslinje för organisationen. Flikar: Alla, Kunder, Med öppna affärer, Prospekt.

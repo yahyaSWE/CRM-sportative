@@ -8,6 +8,7 @@ import { ActivityComposer, Timeline } from './Activity.jsx';
 import MeetingModal from './MeetingModal.jsx';
 import LeadMeetings from './LeadMeetings.jsx';
 import TemplatePicker from './TemplatePicker.jsx';
+import { useEmailStatus } from '../lib/email.js';
 import { STATUSES, STAGES, leadName, timeAgo, sek, toSqlDate } from '../lib/meta.jsx';
 import { tr } from '../lib/i18n.js';
 
@@ -82,6 +83,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
   const [newTag, setNewTag] = useState('');
   const [book, setBook] = useState(false);
   const [templates, setTemplates] = useState(false);
+  const mail = useEmailStatus();
 
   const load = () => api.get(`/leads/${id}`).then(setLead).catch((e) => { toast(e.message, 'error'); onClose(); });
   useEffect(() => { setLead(null); load(); }, [id]);
@@ -153,7 +155,10 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {lead.phone && <a href={`tel:${lead.phone}`}><Button size="sm" variant="secondary" icon={Phone}>{tr("Ring")}</Button></a>}
-                {lead.email && <a href={`mailto:${lead.email}`}><Button size="sm" variant="secondary" icon={Mail}>{tr("Mejla")}</Button></a>}
+                {/* Med Gmail kopplat skrivs och skickas mejlet i appen; annars öppnas e-postprogrammet. */}
+                {lead.email && (mail?.canSend && editable
+                  ? <Button size="sm" variant="secondary" icon={Mail} onClick={() => setTemplates('blank')}>{tr("Mejla")}</Button>
+                  : <a href={`mailto:${lead.email}`}><Button size="sm" variant="secondary" icon={Mail}>{tr("Mejla")}</Button></a>)}
                 <Button size="sm" variant="secondary" icon={FileText} onClick={() => setTemplates(true)}>{tr("Mall")}</Button>
                 {editable && <Button size="sm" variant="secondary" icon={CalendarPlus} onClick={() => setBook(true)}>{tr("Boka möte")}</Button>}
                 {editable && <Button size="sm" variant="soft" icon={ArrowRightLeft} onClick={openConvert}>{lead.deals.length ? tr("Ny affär") : tr("Konvertera till affär")}</Button>}
@@ -283,7 +288,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
           </div>
         </div>
       </Modal>
-      {lead && <TemplatePicker lead={lead} open={templates} onClose={() => setTemplates(false)} onLogged={() => { load(); onChanged?.(); }} />}
+      {lead && <TemplatePicker lead={lead} open={!!templates} blank={templates === 'blank'} onClose={() => setTemplates(false)} onLogged={() => { load(); onChanged?.(); }} />}
       <MeetingModal open={book} onClose={() => setBook(false)} preset={meetingPreset || {}} onSaved={load} />
       <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title={tr("Radera lead?")} text={tr("Leadet och all dess historik raderas permanent.")} />
     </div>

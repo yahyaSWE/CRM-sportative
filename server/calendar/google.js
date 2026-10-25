@@ -1,4 +1,4 @@
-// Google Kalender: OAuth per användare och anrop mot Calendar API v3.
+// Google: OAuth per användare, Google Kalender (Calendar API v3) och utskick via Gmail.
 import crypto from 'node:crypto';
 import { get, run } from '../db.js';
 import { encrypt, decrypt } from '../security.js';
@@ -6,7 +6,8 @@ import { encrypt, decrypt } from '../security.js';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const API = 'https://www.googleapis.com/calendar/v3';
-const SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/calendar.events'];
+export const GMAIL_SEND = 'https://www.googleapis.com/auth/gmail.send';
+const SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/calendar.events', GMAIL_SEND];
 const CONFIG_KEY = 'calendar:google';
 
 export const getAppConfig = () => decrypt(get('SELECT value FROM settings WHERE key = ?', CONFIG_KEY)?.value);
@@ -45,9 +46,10 @@ export async function connectAccount(userId, code, redirectUri) {
   if (!t.refresh_token) throw new Error('Google gav ingen offline-åtkomst. Ta bort LeadFlow under myaccount.google.com/permissions och försök igen.');
   const info = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${t.access_token}` } }).then((r) => r.json()).catch(() => ({}));
   const tokens = { refresh: t.refresh_token, access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 };
-  run(`INSERT INTO google_accounts (user_id, email, tokens) VALUES (?,?,?)
-    ON CONFLICT(user_id) DO UPDATE SET email = excluded.email, tokens = excluded.tokens, last_error = NULL, last_sync_at = NULL, connected_at = datetime('now')`,
-    userId, info.email || null, encrypt(tokens));
+  // Användaren kan avmarkera enskilda rättigheter hos Google; vilka som gavs sparas så att appen vet om Gmail får användas.
+  run(`INSERT INTO google_accounts (user_id, email, tokens, scopes) VALUES (?,?,?,?)
+    ON CONFLICT(user_id) DO UPDATE SET email = excluded.email, tokens = excluded.tokens, scopes = excluded.scopes, last_error = NULL, last_sync_at = NULL, connected_at = datetime('now')`,
+    userId, info.email || null, encrypt(tokens), t.scope || '');
   return info.email;
 }
 
@@ -93,3 +95,55 @@ export async function api(userId, method, path, { query, body } = {}) {
 }
 
 export const newRequestId = () => crypto.randomUUID();
+
+// ---------- Gmail ----------
+export const canSendMail = (acc) => !!acc && String(acc.scopes || '').split(' ').includes(GMAIL_SEND);
+
+// RFC 2047: rubriker med å, ä, ö kodas som UTF-8.
+const header = (s) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${Buffer.from(s, 'utf8').toString('base64')}?=`);
+const address = (name, email) => (name ? `${header(name.replace(/["\r\n]/g, ''))} <${email}>` : email);
+const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const wrap76 = (b64) => b64.replace(/.{1,76}/g, '$&\r\n');
+
+/** Bygger ett MIME-mejl med text- och HTML-del (radbrytningar behålls i båda). */
+export function buildMime({ fromName, fromEmail, to, subject, body }) {
+  const boundary = `lf-${crypto.randomBytes(12).toString('hex')}`;
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">${escapeHtml(body).replace(/\r?\n/g, '<br>')}</div>`;
+  return [
+    `From: ${address(fromName, fromEmail)}`,
+    `To: ${to}`,
+    `Subject: ${header(subject)}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrap76(Buffer.from(body, 'utf8').toString('base64')),
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrap76(Buffer.from(html, 'utf8').toString('base64')),
+    `--${boundary}--`,
+    '',
+  ].join('\r\n');
+}
+
+/** Skickar ett mejl från användarens Gmail. Returnerar Gmails id och tråd-id. */
+export async function sendGmail(userId, { fromName, to, subject, body }) {
+  const auth = await accessToken(userId);
+  if (!auth || !canSendMail(auth.acc)) throw Object.assign(new Error('Koppla Gmail under Inställningar för att skicka e-post från appen'), { status: 400 });
+  const raw = Buffer.from(buildMime({ fromName, fromEmail: auth.acc.email, to, subject, body }), 'utf8').toString('base64url');
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST', headers: { Authorization: `Bearer ${auth.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw }), signal: AbortSignal.timeout(20000),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) throw Object.assign(new Error('Google-kopplingen har gått ut – koppla Gmail igen under Inställningar'), { status: 400 });
+  if (res.status === 403 && /scope|permission/i.test(data.error?.message || '')) throw Object.assign(new Error('Google-kopplingen saknar rätt att skicka e-post – koppla Gmail igen under Inställningar'), { status: 400 });
+  if (!res.ok) throw Object.assign(new Error(`Gmail svarade: ${data.error?.message || res.status}`), { status: 502 });
+  return { id: data.id, threadId: data.threadId, from: auth.acc.email };
+}
+

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug } from 'lucide-react';
+import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { loadEmailStatus } from '../lib/email.js';
 import { api } from '../api.js';
 import { useApp } from '../lib/app.jsx';
 import { Card, PageHeader, Field, Input, Button, Avatar, Badge, useToast, cx } from '../components/ui.jsx';
@@ -17,6 +19,41 @@ function BackupCard() {
       <p className="text-sm text-slate-500 mb-4">{data.auto ? tr("En kopia av databasen sparas automatiskt varje dag (de senaste 14 behålls). Ladda gärna ned en kopia ibland och spara den utanför servern.") : tr("Automatiska kopior körs bara i produktion. Du kan alltid ladda ned en kopia.")}</p>
       <a href="/api/admin/backup"><Button variant="secondary" icon={Download}>{tr("Ladda ned säkerhetskopia nu")}</Button></a>
       {data.items.length > 0 && <p className="mt-3 text-xs text-slate-500">{tr("Senaste automatiska kopior:")} {data.items.slice(0, 3).map((b) => b.name.replace(/^(crm|ws\d+)-/, '').replace('.db', '')).join(', ')}</p>}
+    </Card>
+  );
+}
+
+// E-post: säljaren kopplar sin Gmail (samma Google-koppling som kalendern) för att skicka mejl från appen.
+function EmailCard() {
+  const { can } = useApp();
+  const toast = useToast();
+  const [sp, setSp] = useSearchParams();
+  const [s, setS] = useState(null);
+  useEffect(() => {
+    loadEmailStatus(true).then(setS).catch(() => setS({}));
+    const g = sp.get('google');
+    if (g === 'connected') toast(tr('Google är kopplat'));
+    if (g === 'error') toast(tr('Kunde inte koppla Google: {0}', { 0: sp.get('reason') || 'okänt fel' }), 'error');
+    if (g) setSp({}, { replace: true });
+  }, []);
+  if (!s) return null;
+  return (
+    <Card className="p-6">
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Mail className="size-4 text-slate-400" />{tr('E-post')}</h3>
+      <p className="text-sm text-slate-500 mb-4">{tr('Koppla din Gmail för att skicka mejl direkt från ett lead. Mejlen skickas från din egen adress, hamnar i din Skickat-mapp och loggas i tidslinjen. Samma koppling används för Google Kalender.')}</p>
+      {!s.configured ? (
+        <p className="text-sm text-slate-600">{can('integrations.manage') ? tr('Google är inte uppsatt ännu. Lägg in Google-uppgifterna under Kalender → Google Kalender (kugghjulet).') : tr('En administratör behöver koppla Google först.')}</p>
+      ) : s.canSend ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700"><CheckCircle2 className="size-4" />{tr('Kopplad som {email}', { email: s.email })}</span>
+          <a href="/api/calendar/google/connect?return=settings" className="text-sm text-slate-500 underline hover:text-slate-700">{tr('Koppla ett annat konto')}</a>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {s.needsReconnect && <p className="text-sm text-slate-600">{tr('Du har kopplat Google ({email}) men inte gett rätt att skicka e-post.', { email: s.email })}</p>}
+          <a href="/api/calendar/google/connect?return=settings"><Button icon={Mail}>{s.needsReconnect ? tr('Ge rätt att skicka e-post') : tr('Koppla Gmail')}</Button></a>
+        </div>
+      )}
     </Card>
   );
 }
@@ -112,6 +149,7 @@ export default function Settings() {
         <Badge className="bg-brand-50 text-brand-700 ring-brand-600/20">{tr(user.role)}</Badge>
       </Card>
       <LanguageCard />
+      <EmailCard />
       <AiCard />
       <Card className="p-6">
         <h3 className="font-semibold text-slate-900">{tr("Dina behörigheter")}</h3>

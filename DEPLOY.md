@@ -48,7 +48,7 @@ Tjänsten → *Settings → Custom Domains* → lägg till t.ex. `crm.dittforeta
 | Tjänst | Adress att ange |
 |---|---|
 | Meta (Facebook/Instagram) webhook | `https://<din-adress>/api/webhooks/meta` |
-| Google OAuth (kalender) – omdirigerings-URI | `https://<din-adress>/api/calendar/google/callback` |
+| Google OAuth (kalender och Gmail) – omdirigerings-URI | `https://<din-adress>/api/calendar/google/callback` |
 | Webbformulär och e-postvidarebefordran | de nya adresserna som visas under Integrationer |
 | Claude (anpassad connector) | `https://<din-adress>/mcp` – koppla in igen efter byte av domän |
 
@@ -59,6 +59,12 @@ Kundens IP-adress används i spärren mot lösenordsgissning och i signaturbevis
 1. Öppna `https://<din-adress>/api/health?ip=1` i webbläsaren.
 2. Jämför `ip` med din egen IP-adress (sök "vad är min ip").
 3. Stämmer den inte: se `forwardedFor`-listan, räkna din adress plats från höger (sista = 1) och sätt `TRUST_PROXY` till den siffran under *Environment*. Ladda om och kontrollera igen.
+
+## Gmail för e-postutskick
+
+1. I samma Google Cloud-projekt som kalendern: aktivera **Gmail API** (APIs & Services → Library).
+2. Under *OAuth consent screen*: välj **Internal** om ni har Google Workspace – då krävs ingen granskning från Google. Lägg till rättigheten `.../auth/gmail.send` under *Scopes*.
+3. Varje säljare klickar **Inställningar → E-post → Koppla Gmail**. Den som redan kopplat Google Kalender klickar **Ge rätt att skicka e-post** (en gång).
 
 ## Säkerhetskopior
 

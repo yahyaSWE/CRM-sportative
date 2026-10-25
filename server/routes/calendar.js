@@ -25,19 +25,21 @@ r.get('/calendar/ical/:token.ics', (req, res) => {
 r.get('/calendar/google/callback', wrap(async (req, res) => {
   const session = readSession(parseCookies(req.headers.cookie)[COOKIE]);
   const state = readSession(req.query.state);
-  if (!session || !state || state.uid !== session.uid || !state.ws) return res.redirect('/calendar?google=error&reason=session');
-  if (req.query.error) return res.redirect(`/calendar?google=error&reason=${encodeURIComponent(req.query.error)}`);
+  // Kopplingen kan startas från kalendern eller inställningarna; svaret skickas tillbaka dit.
+  const back = state?.ret === 'settings' ? '/settings' : '/calendar';
+  if (!session || !state || state.uid !== session.uid || !state.ws) return res.redirect(`${back}?google=error&reason=session`);
+  if (req.query.error) return res.redirect(`${back}?google=error&reason=${encodeURIComponent(req.query.error)}`);
   // Kopplingen hör till arbetsytan där användaren startade den (state är signerad).
-  await withWorkspace(state.ws, () => connectGoogle(req, res, session));
+  await withWorkspace(state.ws, () => connectGoogle(req, res, session, back));
 }));
 
-async function connectGoogle(req, res, session) {
+async function connectGoogle(req, res, session, back) {
   try {
     await google.connectAccount(session.uid, req.query.code, redirectUri(req));
     pullAccount(session.uid).catch(() => {});
-    res.redirect('/calendar?google=connected');
+    res.redirect(`${back}?google=connected`);
   } catch (e) {
-    res.redirect(`/calendar?google=error&reason=${encodeURIComponent(e.message)}`);
+    res.redirect(`${back}?google=error&reason=${encodeURIComponent(e.message)}`);
   }
 }
 
@@ -61,9 +63,10 @@ r.patch('/calendar/google/config', requirePerm('integrations.manage'), (req, res
 });
 
 r.get('/calendar/google/connect', (req, res) => {
-  if (!google.isConfigured()) return res.redirect('/calendar?google=error&reason=' + encodeURIComponent('Google är inte konfigurerat ännu'));
+  const ret = req.query.return === 'settings' ? 'settings' : undefined;
+  if (!google.isConfigured()) return res.redirect(`/${ret || 'calendar'}?google=error&reason=` + encodeURIComponent('Google är inte konfigurerat ännu'));
   // state = kortlivad signerad token som binder svaret till den inloggade användaren (skydd mot CSRF).
-  res.redirect(google.authUrl(redirectUri(req), signSession(req.user.id, 1 / 144, { ws: currentWorkspaceId() })));
+  res.redirect(google.authUrl(redirectUri(req), signSession(req.user.id, 1 / 144, { ws: currentWorkspaceId(), ret })));
 });
 
 r.post('/calendar/google/disconnect', wrap(async (req, res) => {
