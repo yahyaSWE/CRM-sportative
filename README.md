@@ -64,6 +64,18 @@ Gemensamt mönster som LeadFlow följer: **alla kanaler matas in i en och samma 
 
 Signaturen är en enkel elektronisk underskrift. För avancerad underskrift med BankID behöver en tjänst som Scrive, Oneflow eller Signicat kopplas in. Kunden kan skriva ut eller spara offerten som PDF via webbläsaren.
 
+## Arbetsytor (flera bolag)
+
+Har du flera bolag eller varumärken får varje bolag en egen **arbetsyta** med helt egna kunder, leads, affärer, produkter, offertinställningar, integrationer (egna e-post-, Facebook- och Instagramkopplingar, formuläradresser), Google-kalenderkopplingar, automatiseringar, roller och aktivitetslogg. Inget delas mellan arbetsytorna.
+
+- **Byta:** klicka på arbetsytans namn högst upp i sidomenyn och välj bolag. Appen kommer ihåg ditt senaste val.
+- **Skapa:** samma meny → *Ny arbetsyta* (kräver att du hanterar användare). Du blir administratör i den nya arbetsytan.
+- **Bjuda in:** under *Team & behörigheter* i respektive arbetsyta. Har personen redan ett konto i en annan arbetsyta läggs kontot till med sitt befintliga lösenord – samma inloggning, men egen roll per arbetsyta. Att inaktivera någon gäller bara den arbetsytan.
+- **Konton:** namn, e-post, lösenord och språk hör till kontot. En administratör kan bara ändra dem för personer som enbart finns i arbetsytor där hen själv är administratör.
+- **Claude:** en koppling gäller den arbetsyta som var vald när du godkände den. Vill du nå två bolag från Claude kopplar du in en gång per arbetsyta.
+
+Tekniskt har varje arbetsyta en egen databasfil (`data/workspaces/ws-<id>.db`; den ursprungliga `crm.db` blir arbetsyta 1), och en gemensam `accounts.db` håller konton, medlemskap och AI-kopplingar. En befintlig installation flyttas över automatiskt vid första start.
+
 ## Språk
 
 Varje användare väljer **svenska eller engelska** under *Inställningar → Språk*. Valet sparas på kontot och gäller på alla enheter. Innan inloggning går språket att välja uppe till höger på inloggningssidan.

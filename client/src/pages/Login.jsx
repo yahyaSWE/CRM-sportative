@@ -14,13 +14,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [setup, setSetup] = useState(null);
   const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
   const [confirm, setConfirm] = useState('');
   useEffect(() => { api.get('/auth/setup').then(setSetup).catch(() => setSetup({ needed: false, demo: false })); }, []);
   const createAdmin = async (e) => {
     e.preventDefault();
     if (password !== confirm) return setError(tr("Lösenorden matchar inte"));
     setLoading(true); setError('');
-    try { const r = await api.post('/auth/setup', { name, email, password, language: getLanguage() }); setUser(r.user); }
+    try { const r = await api.post('/auth/setup', { name, email, password, company, language: getLanguage() }); setUser(r.user); }
     catch (err) { setError(err.message); } finally { setLoading(false); }
   };
 
@@ -68,6 +69,7 @@ export default function Login() {
           <p className="mt-1 text-sm text-slate-500">{tr("Skapa administratörskontot. Därefter bjuder du in resten av teamet under Team & behörigheter.")}</p>
           <div className="mt-8 space-y-4">
             <label className="block"><span className="label">{tr("Ditt namn")}</span><input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus required /></label>
+            <label className="block"><span className="label">{tr("Företagets namn")}</span><input className="input" value={company} onChange={(e) => setCompany(e.target.value)} placeholder={tr("t.ex. Sportative Event AB")} /></label>
             <label className="block"><span className="label">{tr("E-post")}</span><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={setup.adminEmail || ''} required />
               {setup.adminEmail && <span className="mt-1 block text-xs text-slate-400">{tr("Måste vara adressen i ADMIN_EMAIL (")}{setup.adminEmail})</span>}</label>
             <label className="block"><span className="label">{tr("Lösenord (minst 10 tecken)")}</span><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} required autoComplete="new-password" /></label>

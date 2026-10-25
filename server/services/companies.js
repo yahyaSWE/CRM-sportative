@@ -1,6 +1,6 @@
 // Företag: en organisation med flera kontaktpersoner och affärer.
 // Kontakter kopplas automatiskt via org.nr, företagets e-postdomän eller namn.
-import { all, get, run } from '../db.js';
+import { all, get, run, onWorkspaceOpen } from '../db.js';
 import { can } from '../security.js';
 
 // Domäner som är privata e-posttjänster och därför aldrig pekar ut ett företag.
@@ -64,6 +64,9 @@ export function linkLeadToCompany(leadId) {
 }
 
 // Engångsmigrering: befintliga leads med företagsnamn får ett företag.
+// Körs när en arbetsyta öppnas: kopplar leads och affärer som saknar företag.
+onWorkspaceOpen(migrateCompanies);
+
 export function migrateCompanies() {
   for (const l of all("SELECT id FROM leads WHERE company_id IS NULL AND (company IS NOT NULL OR json_extract(fields, '$.org_nr') IS NOT NULL)")) linkLeadToCompany(l.id);
   run('UPDATE deals SET company_id = (SELECT company_id FROM leads WHERE leads.id = deals.lead_id) WHERE company_id IS NULL AND lead_id IS NOT NULL');

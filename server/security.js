@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA_DIR, get, run } from './db.js';
+import { DATA_DIR, get, run, central, onWorkspaceOpen, currentWorkspaceId } from './db.js';
 
 // En lokal hemlig nyckel används för att signera sessioner och kryptera integrationsuppgifter.
 const keyFile = path.join(DATA_DIR, 'secret.key');
@@ -84,8 +84,8 @@ export const PERMISSIONS = [
 ];
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
 
-// Nya behörigheter: administratören får alltid alla, säljchefen får de nya första gången de finns.
-{
+// Nya behörigheter: administratören får alltid alla, övriga roller får de nya första gången de finns (per arbetsyta).
+onWorkspaceOpen(() => {
   run('UPDATE roles SET permissions = ? WHERE name = ?', JSON.stringify(PERMISSION_KEYS), 'Administratör');
   // AI-kopplingen ges till alla standardroller; vad assistenten får göra styrs ändå av rollens övriga behörigheter.
   const NEW = { 'prospecting.use': ['Säljchef'], 'products.manage': ['Säljchef'], 'ai.connect': ['Säljchef', 'Säljare', 'Läsbehörighet'] };
@@ -99,14 +99,16 @@ export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
     }
     run('INSERT INTO settings (key, value) VALUES (?, ?)', `migrated:${key}`, '1');
   }
-}
+});
 
+// Användaren i den aktuella arbetsytan: kontot (namn, e-post, språk) plus medlemskapets roll och behörigheter.
 export function loadUser(userId) {
-  const u = get(`SELECT u.id, u.name, u.email, u.active, u.color, u.language, u.role_id, r.name AS role, r.permissions
+  const account = central.get('SELECT name, email, language, active FROM users WHERE id = ?', userId);
+  if (!account?.active) return null;
+  const u = get(`SELECT u.id, u.active, u.color, u.role_id, r.name AS role, r.permissions
                  FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?`, userId);
   if (!u || !u.active) return null;
-  u.permissions = JSON.parse(u.permissions || '[]');
-  return u;
+  return { ...u, name: account.name, email: account.email, language: account.language, permissions: JSON.parse(u.permissions || '[]'), workspace_id: currentWorkspaceId() };
 }
 
 export const can = (user, perm) => !!user?.permissions?.includes(perm);

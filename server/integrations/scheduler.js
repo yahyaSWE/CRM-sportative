@@ -1,5 +1,5 @@
 // Kör automatisk hämtning av leads för alla aktiva integrationer med polling.
-import { all, get, run } from '../db.js';
+import { all, get, run, forEachWorkspace, currentWorkspaceId } from '../db.js';
 import { decrypt } from '../security.js';
 import { broadcast } from '../events.js';
 import { pollImap } from './email.js';
@@ -14,11 +14,12 @@ export function isPollable(integ, cfg) {
 }
 
 export async function syncIntegration(id) {
-  if (running.has(id)) return { skipped: true };
+  const key = `${currentWorkspaceId()}:${id}`;
+  if (running.has(key)) return { skipped: true };
   const row = get('SELECT * FROM integrations WHERE id = ?', id);
   if (!row) throw new Error('Integrationen finns inte');
   const integ = { ...row, cfg: decrypt(row.config) };
-  running.add(id);
+  running.add(key);
   run("UPDATE integrations SET status = 'syncing' WHERE id = ?", id);
   broadcast('integration', { id, status: 'syncing' }, () => true);
   try {
@@ -32,12 +33,12 @@ export async function syncIntegration(id) {
     broadcast('integration', { id, status: 'error', error: msg }, () => true);
     throw e;
   } finally {
-    running.delete(id);
+    running.delete(key);
   }
 }
 
 export function startScheduler() {
-  const tick = () => {
+  const tick = () => forEachWorkspace(() => {
     for (const row of all('SELECT * FROM integrations WHERE enabled = 1')) {
       const cfg = decrypt(row.config);
       if (!isPollable(row, cfg)) continue;
@@ -45,7 +46,7 @@ export function startScheduler() {
       const last = row.last_sync_at ? new Date(row.last_sync_at + 'Z').getTime() : 0;
       if (Date.now() - last >= interval * 60000) syncIntegration(row.id).catch(() => {});
     }
-  };
+  }, 'integrationer');
   setTimeout(tick, 5000);
   return setInterval(tick, 30000);
 }

@@ -1,4 +1,6 @@
-// Realtidshändelser till inloggade klienter via Server-Sent Events.
+// Realtidshändelser till inloggade klienter via Server-Sent Events. Händelser når bara användare i samma arbetsyta.
+import { currentWorkspaceId } from './db.js';
+
 const clients = new Set();
 
 export function sseHandler(req, res) {
@@ -14,5 +16,6 @@ export function sseHandler(req, res) {
 // `filter` avgör vilka användare som får händelsen (t.ex. bara de som får se leadet).
 export function broadcast(type, data, filter = () => true) {
   const msg = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const c of clients) if (filter(c.user)) c.res.write(msg);
+  const ws = currentWorkspaceId();
+  for (const c of clients) if (c.user.workspace_id === ws && filter(c.user)) c.res.write(msg);
 }

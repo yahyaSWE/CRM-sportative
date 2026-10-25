@@ -62,10 +62,10 @@ Kundens IP-adress används i spärren mot lösenordsgissning och i signaturbevis
 
 ## Säkerhetskopior
 
-- Appen sparar varje dag en konsistent kopia av databasen i `/var/data/backups` (de senaste 14 behålls).
-- **Inställningar → Säkerhetskopior → Ladda ned** ger en färsk kopia att spara utanför Render – gör det regelbundet.
+- Appen sparar varje dag en konsistent kopia av varje databas i `/var/data/backups`: `accounts-<datum>.db` (konton och arbetsytor) och `ws<id>-<datum>.db` per arbetsyta (de senaste 14 av varje behålls).
+- **Inställningar → Säkerhetskopior → Ladda ned** ger en färsk kopia av den arbetsyta du står i – gör det regelbundet för varje arbetsyta.
 - Render tar även egna ögonblicksbilder av disken dagligen (sparas 7 dagar), men Render avråder från att återställa databaser från dem – använd hellre appens kopior.
-- Återställning: tjänsten → *Shell* → ersätt `/var/data/crm.db` med en kopia från `/var/data/backups` och starta om tjänsten.
+- Återställning: tjänsten → *Shell* → ersätt rätt fil med en kopia från `/var/data/backups` och starta om tjänsten. Arbetsyta 1 ligger i `/var/data/crm.db`, nyare arbetsytor i `/var/data/workspaces/ws-<id>.db` och konton i `/var/data/accounts.db`.
 
 ## Bra att veta
 

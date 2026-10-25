@@ -96,6 +96,16 @@ async function importMessage({ kind, accountId, senderId, text }) {
   });
 }
 
+/** Hör webhooken till en sida (eller ett Instagram-konto) som är kopplad i den aktuella arbetsytan? */
+export function ownsWebhook(body) {
+  const ids = new Set();
+  for (const entry of body?.entry || []) {
+    ids.add(String(entry.id));
+    for (const change of entry.changes || []) if (change.value?.page_id) ids.add(String(change.value.page_id));
+  }
+  return metaIntegrations().some((i) => ids.has(String(i.cfg.pageId)) || ids.has(String(i.cfg.instagramAccountId)));
+}
+
 export async function handleWebhook(body) {
   const results = [];
   for (const entry of body.entry || []) {

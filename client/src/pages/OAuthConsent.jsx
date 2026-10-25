@@ -41,6 +41,7 @@ export default function OAuthConsent() {
           <>
             <h1 className="text-center text-lg font-semibold text-slate-900">{tr('{name} vill ansluta till ditt LeadFlow-konto', { name: req.client.name })}</h1>
             <p className="mt-1 text-center text-sm text-slate-500">{tr('Inloggad som {name} ({email})', { name: req.user.name, email: req.user.email })}</p>
+            {req.workspace && <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-center text-sm text-slate-700">{tr('Arbetsyta')}: <strong>{req.workspace.name}</strong><span className="block text-xs text-slate-500">{tr('Byt arbetsyta i LeadFlow först om Claude ska kopplas till ett annat bolag.')}</span></p>}
             {req.allowed ? (
               <ul className="mt-6 space-y-3 text-sm text-slate-700">
                 {[

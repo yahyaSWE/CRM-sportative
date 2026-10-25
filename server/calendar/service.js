@@ -1,5 +1,5 @@
 // Möten: bokning från lead/affär, tvåvägssynk mot Google Kalender, påminnelser och iCal-flöde.
-import { all, get, run, tx, parseJSON, audit } from '../db.js';
+import { all, get, run, tx, parseJSON, audit, currentWorkspaceId } from '../db.js';
 import { can, randomToken } from '../security.js';
 import { broadcast } from '../events.js';
 import { notify, leadName, getLead } from '../services/leads.js';
@@ -248,7 +248,8 @@ export function recordOutcome(user, m, { status, outcome, next_task, next_due })
 }
 
 // ---------- Schemalagt: påminnelser, uppföljning, synk ----------
-let syncing = false;
+// Arbetsytor där en Google-synk pågår.
+const syncing = new Set();
 export async function tick() {
   for (const m of all(`SELECT * FROM meetings WHERE status = 'scheduled' AND all_day = 0 AND reminder_sent = 0
       AND start_at > datetime('now') AND start_at <= datetime('now', '+15 minutes')`)) {
@@ -261,8 +262,9 @@ export async function tick() {
     run('UPDATE meetings SET followup_sent = 1 WHERE id = ?', m.id);
     notify(m.owner_id, `Hur gick mötet "${m.title}"? Logga utfallet och boka nästa steg.`, `/calendar?meeting=${m.id}`);
   }
-  if (syncing || !google.isConfigured()) return;
-  syncing = true;
+  const ws = currentWorkspaceId();
+  if (syncing.has(ws) || !google.isConfigured()) return;
+  syncing.add(ws);
   try {
     for (const acc of all('SELECT user_id FROM google_accounts')) await pullAccount(acc.user_id).catch(() => {});
     // Möten som inte kom fram till Google (t.ex. vid nätverksfel) försöks igen.
@@ -270,7 +272,7 @@ export async function tick() {
         WHERE m.status = 'scheduled' AND m.google_event_id IS NULL AND m.source = 'crm' AND m.end_at > datetime('now') LIMIT 20`)) {
       await pushMeeting(m.id);
     }
-  } finally { syncing = false; }
+  } finally { syncing.delete(ws); }
 }
 
 // ---------- iCal-prenumeration ----------

@@ -21,7 +21,7 @@ export function useLive(types, handler) {
 }
 
 export function AppProvider({ children }) {
-  const [state, setState] = useState({ loading: true, user: null, permissions: [] });
+  const [state, setState] = useState({ loading: true, user: null, permissions: [], workspace: null, workspaces: [] });
   const [team, setTeam] = useState([]);
   const toast = useToast();
 
@@ -30,7 +30,7 @@ export function AppProvider({ children }) {
       const me = await api.get('/auth/me');
       // Användarens sparade språk gäller på alla enheter; laddar om sidan om det skiljer sig.
       if (applyLanguage(me.user.language)) return;
-      setState({ loading: false, user: me.user, permissions: me.permissions });
+      setState({ loading: false, user: me.user, permissions: me.permissions, workspace: me.workspace, workspaces: me.workspaces || [] });
       setTeam(await api.get('/users'));
     } catch {
       setState({ loading: false, user: null, permissions: [] });

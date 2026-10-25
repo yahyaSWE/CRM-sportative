@@ -4,8 +4,12 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import { InvalidGrantError, InvalidTokenError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import { all, get, run, audit, parseJSON } from '../db.js';
+import { central, audit, parseJSON, withWorkspace, currentWorkspaceId } from '../db.js';
 import { loadUser, can, randomToken } from '../security.js';
+import { isMember } from '../accounts.js';
+
+// OAuth-data ligger i kontodatabasen; en koppling är bunden till en användare och en arbetsyta.
+const { all, get, run } = central;
 
 export const SCOPES = ['crm'];
 const ACCESS_TTL = 3600;              // sekunder
@@ -37,18 +41,19 @@ const clientsStore = {
   },
 };
 
-function issueTokens(tokenRowId, { clientId, userId, scopes, resource }) {
+function issueTokens(tokenRowId, { clientId, userId, workspaceId, scopes, resource }) {
   const access = `lfa_${randomToken(32)}`;
   const refresh = `lfr_${randomToken(32)}`;
   const values = [hash(access), hash(refresh), JSON.stringify(scopes), resource ?? null, now() + ACCESS_TTL, now() + REFRESH_TTL];
   if (tokenRowId) run('UPDATE oauth_tokens SET access_hash = ?, refresh_hash = ?, scopes = ?, resource = ?, access_expires = ?, refresh_expires = ? WHERE id = ?', ...values, tokenRowId);
-  else run('INSERT INTO oauth_tokens (access_hash, refresh_hash, scopes, resource, access_expires, refresh_expires, client_id, user_id) VALUES (?,?,?,?,?,?,?,?)', ...values, clientId, userId);
+  else run('INSERT INTO oauth_tokens (access_hash, refresh_hash, scopes, resource, access_expires, refresh_expires, client_id, user_id, workspace_id) VALUES (?,?,?,?,?,?,?,?,?)', ...values, clientId, userId, workspaceId);
   return { access_token: access, token_type: 'Bearer', expires_in: ACCESS_TTL, refresh_token: refresh, scope: scopes.join(' ') };
 }
 
-// Användaren måste fortfarande vara aktiv och ha rätt att koppla AI-assistenter.
-const allowedUser = (userId) => {
-  const user = loadUser(userId);
+// Användaren måste fortfarande vara aktiv medlem i arbetsytan och ha rätt att koppla AI-assistenter där.
+const allowedUser = (userId, workspaceId) => {
+  if (!isMember(userId, workspaceId)) return null;
+  const user = withWorkspace(workspaceId, () => loadUser(userId));
   return user && can(user, 'ai.connect') ? user : null;
 };
 
@@ -76,14 +81,14 @@ export const provider = {
     if (!row || row.expires_at < now()) throw new InvalidGrantError('Invalid or expired authorization code');
     if (redirectUri && redirectUri !== row.redirect_uri) throw new InvalidGrantError('redirect_uri does not match');
     if (resource && row.resource && resource.href !== row.resource) throw new InvalidGrantError('resource does not match');
-    if (!allowedUser(row.user_id)) throw new InvalidGrantError('The user can no longer connect AI assistants');
-    return issueTokens(null, { clientId: client.client_id, userId: row.user_id, scopes: parseJSON(row.scopes, SCOPES), resource: row.resource });
+    if (!allowedUser(row.user_id, row.workspace_id)) throw new InvalidGrantError('The user can no longer connect AI assistants');
+    return issueTokens(null, { clientId: client.client_id, userId: row.user_id, workspaceId: row.workspace_id, scopes: parseJSON(row.scopes, SCOPES), resource: row.resource });
   },
 
   async exchangeRefreshToken(client, refreshToken, scopes) {
     const row = get('SELECT * FROM oauth_tokens WHERE refresh_hash = ? AND client_id = ?', hash(refreshToken), client.client_id);
     if (!row || row.refresh_expires < now()) throw new InvalidGrantError('Invalid or expired refresh token');
-    if (!allowedUser(row.user_id)) throw new InvalidGrantError('The user can no longer connect AI assistants');
+    if (!allowedUser(row.user_id, row.workspace_id)) throw new InvalidGrantError('The user can no longer connect AI assistants');
     const granted = parseJSON(row.scopes, SCOPES);
     const next = scopes?.length ? scopes.filter((s) => granted.includes(s)) : granted;
     // Rotering: varje förnyelse ger ett nytt refresh-token och det gamla slutar gälla.
@@ -93,10 +98,10 @@ export const provider = {
   async verifyAccessToken(token) {
     const row = get('SELECT * FROM oauth_tokens WHERE access_hash = ?', hash(token));
     if (!row || row.access_expires < now()) throw new InvalidTokenError('Invalid or expired access token');
-    const user = allowedUser(row.user_id);
+    const user = allowedUser(row.user_id, row.workspace_id);
     if (!user) throw new InvalidTokenError('The user can no longer connect AI assistants');
     run("UPDATE oauth_tokens SET last_used_at = datetime('now') WHERE id = ? AND (last_used_at IS NULL OR last_used_at < datetime('now', '-1 minute'))", row.id);
-    return { token, clientId: row.client_id, scopes: parseJSON(row.scopes, SCOPES), expiresAt: row.access_expires, extra: { userId: user.id, connectionId: row.id } };
+    return { token, clientId: row.client_id, scopes: parseJSON(row.scopes, SCOPES), expiresAt: row.access_expires, extra: { userId: user.id, workspaceId: row.workspace_id, connectionId: row.id } };
   },
 
   async revokeToken(client, { token }) {
@@ -124,6 +129,7 @@ oauthApi.get('/oauth/requests/:id', (req, res) => {
     redirectHost: redirect.host,
     allowed: can(req.user, 'ai.connect'),
     user: { name: req.user.name, email: req.user.email, role: req.user.role },
+    workspace: get('SELECT id, name FROM workspaces WHERE id = ?', currentWorkspaceId()),
   });
 });
 
@@ -138,25 +144,26 @@ oauthApi.post('/oauth/requests/:id', (req, res) => {
     return res.json({ redirect: url.href });
   }
   const code = randomToken(32);
-  run('INSERT INTO oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, scopes, resource, expires_at) VALUES (?,?,?,?,?,?,?,?)',
-    hash(code), r.client_id, req.user.id, r.params.redirectUri, r.params.codeChallenge, JSON.stringify(r.params.scopes?.length ? r.params.scopes : SCOPES),
+  run('INSERT INTO oauth_codes (code_hash, client_id, user_id, workspace_id, redirect_uri, code_challenge, scopes, resource, expires_at) VALUES (?,?,?,?,?,?,?,?,?)',
+    hash(code), r.client_id, req.user.id, currentWorkspaceId(), r.params.redirectUri, r.params.codeChallenge, JSON.stringify(r.params.scopes?.length ? r.params.scopes : SCOPES),
     r.params.resource?.href ?? r.params.resource ?? null, now() + CODE_TTL);
   audit(req.user.id, 'ai.connect', 'oauth_client', null, { client: r.client?.client_name || r.client_id });
   url.searchParams.set('code', code);
   res.json({ redirect: url.href });
 });
 
-// Egna kopplingar – och alla användares för den som hanterar användare.
+// Egna kopplingar (i alla arbetsytor) – plus alla användares i arbetsytan för den som hanterar användare.
 oauthApi.get('/oauth/connections', (req, res) => {
   const everyone = can(req.user, 'users.manage') && req.query.all;
-  const rows = all(`SELECT t.id, t.client_id, t.user_id, t.created_at, t.last_used_at, u.name AS user_name FROM oauth_tokens t JOIN users u ON u.id = t.user_id
-    WHERE ${everyone ? '1=1' : 't.user_id = ?'} ORDER BY coalesce(t.last_used_at, t.created_at) DESC`, ...(everyone ? [] : [req.user.id]));
+  const rows = all(`SELECT t.id, t.client_id, t.user_id, t.workspace_id, t.created_at, t.last_used_at, u.name AS user_name, w.name AS workspace_name
+    FROM oauth_tokens t JOIN users u ON u.id = t.user_id JOIN workspaces w ON w.id = t.workspace_id
+    WHERE t.user_id = ? ${everyone ? 'OR t.workspace_id = ?' : ''} ORDER BY coalesce(t.last_used_at, t.created_at) DESC`, req.user.id, ...(everyone ? [currentWorkspaceId()] : []));
   res.json(rows.map((r) => ({ ...r, client_name: clientName(r.client_id) })));
 });
 
 oauthApi.delete('/oauth/connections/:id', (req, res) => {
   const t = get('SELECT * FROM oauth_tokens WHERE id = ?', Number(req.params.id));
-  if (!t || (t.user_id !== req.user.id && !can(req.user, 'users.manage'))) return res.status(404).json({ error: 'Hittades inte' });
+  if (!t || (t.user_id !== req.user.id && !(can(req.user, 'users.manage') && t.workspace_id === currentWorkspaceId()))) return res.status(404).json({ error: 'Hittades inte' });
   run('DELETE FROM oauth_tokens WHERE id = ?', t.id);
   audit(req.user.id, 'ai.disconnect', 'oauth_client', null, { client: clientName(t.client_id), user_id: t.user_id });
   res.json({ ok: true });

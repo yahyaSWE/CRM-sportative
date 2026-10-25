@@ -16,14 +16,14 @@ function BackupCard() {
       <h3 className="flex items-center gap-2 font-semibold text-slate-900"><DatabaseBackup className="size-4 text-slate-400" />{tr("Säkerhetskopior")}</h3>
       <p className="text-sm text-slate-500 mb-4">{data.auto ? tr("En kopia av databasen sparas automatiskt varje dag (de senaste 14 behålls). Ladda gärna ned en kopia ibland och spara den utanför servern.") : tr("Automatiska kopior körs bara i produktion. Du kan alltid ladda ned en kopia.")}</p>
       <a href="/api/admin/backup"><Button variant="secondary" icon={Download}>{tr("Ladda ned säkerhetskopia nu")}</Button></a>
-      {data.items.length > 0 && <p className="mt-3 text-xs text-slate-500">{tr("Senaste automatiska kopior:")} {data.items.slice(0, 3).map((b) => b.name.replace('crm-', '').replace('.db', '')).join(', ')}</p>}
+      {data.items.length > 0 && <p className="mt-3 text-xs text-slate-500">{tr("Senaste automatiska kopior:")} {data.items.slice(0, 3).map((b) => b.name.replace(/^(crm|ws\d+)-/, '').replace('.db', '')).join(', ')}</p>}
     </Card>
   );
 }
 
 // Claude och andra AI-assistenter som kopplats in via MCP. Administratörer ser och kan koppla bort allas.
 function AiCard() {
-  const { can } = useApp();
+  const { can, user } = useApp();
   const toast = useToast();
   const admin = can('users.manage');
   const [items, setItems] = useState(null);
@@ -50,7 +50,7 @@ function AiCard() {
           {items.map((c) => (
             <li key={c.id} className="flex items-center gap-3 px-4 py-3 text-sm">
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-slate-800">{c.client_name}{admin && <span className="font-normal text-slate-500"> · {c.user_name}</span>}</p>
+                <p className="font-medium text-slate-800">{c.client_name}<span className="font-normal text-slate-500"> · {c.workspace_name}{admin && c.user_id !== user.id && ` · ${c.user_name}`}</span></p>
                 <p className="text-xs text-slate-500">{tr('Kopplad {when}', { when: timeAgo(c.created_at) })}{c.last_used_at && ` · ${tr('senast använd {when}', { when: timeAgo(c.last_used_at) })}`}</p>
               </div>
               <Button size="sm" variant="secondary" icon={Unplug} onClick={() => remove(c)}>{tr('Koppla bort')}</Button>

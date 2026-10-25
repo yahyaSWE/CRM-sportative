@@ -10,6 +10,7 @@ import { Avatar, cx } from './ui.jsx';
 import { timeAgo } from '../lib/meta.jsx';
 import LeadForm from './LeadForm.jsx';
 import GlobalSearch from './GlobalSearch.jsx';
+import WorkspaceSwitcher from './WorkspaceSwitcher.jsx';
 import { tr, translateStored } from '../lib/i18n.js';
 
 const NAV = [
@@ -46,6 +47,7 @@ function Sidebar({ onNavigate }) {
         </div>
         <span className="text-[15px] font-semibold text-white tracking-tight">{tr("LeadFlow")}</span>
       </div>
+      <WorkspaceSwitcher />
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-6 scroll-thin">
         {NAV.map((g) => {
           const items = g.items.filter((i) => !i.perm || can(i.perm));

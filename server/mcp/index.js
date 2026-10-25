@@ -8,6 +8,7 @@ import { provider, SCOPES } from './oauth.js';
 import { buildServer } from './tools.js';
 import { requestContext } from '../context.js';
 import { APP_URL } from '../config.js';
+import { withWorkspace } from '../db.js';
 
 export { oauthApi } from './oauth.js';
 export { setApiPort } from './tools.js';
@@ -27,7 +28,7 @@ export function mcpRoutes() {
 
   // Tillståndslöst läge: varje anrop får en egen server byggd för användaren som token tillhör.
   router.post('/mcp', bearer, async (req, res) => {
-    const server = buildServer(req.auth);
+    const server = withWorkspace(req.auth.extra.workspaceId, () => buildServer(req.auth));
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => { transport.close(); server.close(); });
     try {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { all, get, run, audit, parseJSON } from '../db.js';
+import { all, get, run, audit, parseJSON, central } from '../db.js';
+import { findAccount, getAccount, createAccount, addMember, setMemberActive, updateAccountProfile, canManageAccount } from '../accounts.js';
 import { hashPassword, PERMISSION_KEYS, can } from '../security.js';
 import { requirePerm } from '../middleware.js';
 import fs from 'node:fs';
@@ -17,20 +18,28 @@ r.get('/users', (req, res) => {
   const rows = all(`SELECT u.id, u.name, u.email, u.active, u.color, u.role_id, r.name AS role, u.created_at, u.last_login_at,
     (SELECT count(*) FROM leads WHERE owner_id = u.id) AS lead_count
     FROM users u JOIN roles r ON r.id = u.role_id ORDER BY u.active DESC, u.name`);
+  // Senaste inloggning finns på kontot (gemensamt för alla arbetsytor).
+  const logins = new Map(central.all('SELECT id, last_login_at FROM users').map((a) => [a.id, a.last_login_at]));
+  for (const u of rows) u.last_login_at = logins.get(u.id) ?? null;
   res.json(full ? rows : rows.filter((u) => u.active).map(({ id, name, color, role }) => ({ id, name, color, role })));
 });
 
+// Ny medlem i arbetsytan. Har personen redan ett konto (i en annan arbetsyta) läggs kontot till och behåller sitt lösenord.
 r.post('/users', requirePerm('users.manage'), (req, res) => {
   const { name, email, password, role_id } = req.body || {};
   if (!name?.trim() || !email?.includes('@')) return res.status(400).json({ error: 'Namn och giltig e-post krävs' });
-  if (!password || password.length < 8) return res.status(400).json({ error: 'Lösenordet måste vara minst 8 tecken' });
   if (!get('SELECT 1 FROM roles WHERE id = ?', role_id)) return res.status(400).json({ error: 'Välj en roll' });
-  if (get('SELECT 1 FROM users WHERE email = ?', email.trim())) return res.status(409).json({ error: 'E-postadressen används redan' });
-  const n = get('SELECT count(*) AS n FROM users').n;
-  const ins = run('INSERT INTO users (name, email, password_hash, role_id, color) VALUES (?,?,?,?,?)',
-    name.trim(), email.trim().toLowerCase(), hashPassword(password), role_id, COLORS[n % COLORS.length]);
-  audit(req.user.id, 'user.create', 'user', Number(ins.lastInsertRowid), { email });
-  res.status(201).json({ id: Number(ins.lastInsertRowid) });
+  let account = findAccount(email);
+  if (account && get('SELECT 1 FROM users WHERE id = ? AND active = 1', account.id)) return res.status(409).json({ error: 'E-postadressen används redan' });
+  const existing = !!account;
+  if (!account) {
+    if (!password || password.length < 8) return res.status(400).json({ error: 'Lösenordet måste vara minst 8 tecken' });
+    const n = central.get('SELECT count(*) AS n FROM users').n;
+    account = getAccount(createAccount({ name, email, passwordHash: hashPassword(password), color: COLORS[n % COLORS.length] }));
+  }
+  addMember(account, role_id);
+  audit(req.user.id, 'user.create', 'user', account.id, { email, existing });
+  res.status(201).json({ id: account.id, existing });
 });
 
 const adminCount = () => get(`SELECT count(*) AS n FROM users u JOIN roles r ON r.id = u.role_id
@@ -44,9 +53,14 @@ r.patch('/users/:id', requirePerm('users.manage'), (req, res) => {
   const losingAdmin = roleIsAdmin(u.role_id) && u.active && ((role_id && !roleIsAdmin(role_id)) || active === false);
   if (losingAdmin && adminCount() <= 1) return res.status(400).json({ error: 'Det måste finnas minst en aktiv administratör' });
   if (password && password.length < 8) return res.status(400).json({ error: 'Lösenordet måste vara minst 8 tecken' });
-  run('UPDATE users SET name = coalesce(?, name), email = coalesce(?, email), role_id = coalesce(?, role_id), active = coalesce(?, active) WHERE id = ?',
-    name?.trim() || null, email?.trim().toLowerCase() || null, role_id || null, active == null ? null : active ? 1 : 0, u.id);
-  if (password) run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(password), u.id);
+  // Namn, e-post och lösenord hör till kontot, som kan finnas i flera arbetsytor.
+  const accountChange = (name?.trim() && name.trim() !== u.name) || (email?.trim() && email.trim().toLowerCase() !== u.email) || password;
+  if (accountChange && !canManageAccount(req.user.id, u.id, can)) return res.status(403).json({ error: 'Kontot finns även i en arbetsyta du inte administrerar. Personen ändrar själv namn, e-post och lösenord.' });
+  if (email?.trim() && central.get('SELECT 1 FROM users WHERE email = ? AND id != ?', email.trim(), u.id)) return res.status(409).json({ error: 'E-postadressen används redan' });
+  if (role_id) run('UPDATE users SET role_id = ? WHERE id = ?', role_id, u.id);
+  if (active != null) setMemberActive(u.id, active);
+  if (name?.trim() || email?.trim()) updateAccountProfile(u.id, { name: name?.trim(), email: email?.trim().toLowerCase() });
+  if (password) central.run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(password), u.id);
   if (active === false) run("UPDATE leads SET owner_id = NULL WHERE owner_id = ? AND status IN ('new','contacted')", u.id);
   audit(req.user.id, 'user.update', 'user', u.id, { role_id, active, passwordReset: !!password });
   res.json({ ok: true });

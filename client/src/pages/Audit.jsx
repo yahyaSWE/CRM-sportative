@@ -6,6 +6,7 @@ import { tr } from '../lib/i18n.js';
 
 const LABELS = {
   'user.login': tr("loggade in"), 'user.create': tr("skapade användare"), 'user.update': tr("uppdaterade användare"), 'user.password_changed': tr("bytte lösenord"),
+  'workspace.create': tr("skapade arbetsyta"), 'workspace.rename': tr("bytte namn på arbetsytan"),
   'ai.connect': tr("kopplade en AI-assistent (MCP)"), 'ai.disconnect': tr("kopplade bort en AI-assistent"),
   'role.create': tr("skapade roll"), 'role.update': tr("ändrade behörigheter för roll"), 'role.delete': tr("raderade roll"),
   'lead.create': tr("skapade lead"), 'lead.update': tr("uppdaterade lead"), 'lead.delete': tr("raderade lead"), 'lead.convert': tr("konverterade lead till affär"),

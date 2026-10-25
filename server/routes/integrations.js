@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { all, get, run, audit } from '../db.js';
+import { all, get, run, audit, findWorkspace, withWorkspace, listWorkspaces } from '../db.js';
 import { encrypt, decrypt, randomToken } from '../security.js';
 import { requirePerm } from '../middleware.js';
 import { ingestLead } from '../services/leads.js';
@@ -126,23 +126,34 @@ manage.get('/ingest-log/:id', (req, res) => {
 // ---------- Publika webhooks (ingen inloggning, skyddas av token/signatur) ----------
 export const webhooks = Router();
 
+// Webhooks har ingen inloggning; arbetsytan avgörs av vilken arbetsyta som äger verifieringstoken, sidan eller adressen.
 webhooks.get('/meta', (req, res) => {
-  const challenge = meta.verifySubscription(req.query);
+  let challenge = null;
+  findWorkspace(() => (challenge = meta.verifySubscription(req.query)));
   return challenge ? res.status(200).send(challenge) : res.sendStatus(403);
 });
 
 webhooks.post('/meta', (req, res) => {
-  if (!meta.verifySignature(req.rawBody, req.get('x-hub-signature-256'))) return res.sendStatus(401);
+  if (!findWorkspace(() => meta.verifySignature(req.rawBody, req.get('x-hub-signature-256')))) return res.sendStatus(401);
   res.sendStatus(200); // Meta kräver snabbt svar – bearbeta asynkront
-  meta.handleWebhook(req.body).catch((e) => console.error('[meta]', e));
+  const owners = listWorkspaces().filter((ws) => withWorkspace(ws.id, () => meta.ownsWebhook(req.body)));
+  if (!owners.length) console.warn('[meta] webhook för en sida som inte är kopplad i någon arbetsyta');
+  for (const ws of owners) withWorkspace(ws.id, () => meta.handleWebhook(req.body)).catch((e) => console.error('[meta]', e));
 });
+
+// Formulär- och e-postadresser innehåller integrationens token; förfrågan körs i arbetsytan som äger den.
+const workspaceOfToken = (type) => (req, res, next) => {
+  const ws = findWorkspace(() => !!get('SELECT 1 FROM integrations WHERE token = ? AND type = ?', req.params.token, type));
+  if (!ws) return res.sendStatus(404);
+  withWorkspace(ws, next);
+};
 
 const byToken = (type, token) => {
   const row = get('SELECT * FROM integrations WHERE token = ? AND type = ? AND enabled = 1', token, type);
   return row ? { ...row, cfg: decrypt(row.config) } : null;
 };
 
-webhooks.post('/email/:token', (req, res) => {
+webhooks.post('/email/:token', workspaceOfToken('email'), (req, res) => {
   const integ = byToken('email', req.params.token);
   if (!integ) return res.sendStatus(404);
   const r = ingestInboundEmail(integ, req.body || {});
@@ -154,8 +165,7 @@ webhooks.options('/form/:token', (req, res) => {
   res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type' }).sendStatus(204);
 });
 
-webhooks.post('/form/:token', (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
+webhooks.post('/form/:token', (req, res, next) => { res.set('Access-Control-Allow-Origin', '*'); next(); }, workspaceOfToken('webform'), (req, res) => {
   const integ = byToken('webform', req.params.token);
   if (!integ) return res.sendStatus(404);
   const { _gotcha, _source, ...fields } = req.body || {};

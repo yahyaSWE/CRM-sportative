@@ -86,6 +86,10 @@ const EN = {
   'Kopplingen har gått ut – koppla Google Kalender igen': 'The connection has expired – connect Google Calendar again',
   'Google är inte konfigurerat ännu': 'Google is not configured yet',
   'Förfrågan har gått ut. Starta kopplingen igen från Claude.': 'The request has expired. Start the connection again from Claude.',
+  'Arbetsytan finns inte': 'The workspace does not exist',
+  'Ange ett namn på arbetsytan': 'Enter a name for the workspace',
+  'Du har inte tillgång till någon arbetsyta': 'You do not have access to any workspace',
+  'Kontot finns även i en arbetsyta du inte administrerar. Personen ändrar själv namn, e-post och lösenord.': 'The account also belongs to a workspace you do not administer. The person changes their own name, email and password.',
 };
 
 // Meddelanden med inbakade värden ({0}) matchas som mönster; det inbakade värdet översätts också om det går.

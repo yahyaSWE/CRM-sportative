@@ -1,6 +1,7 @@
 // Skapar roller, demoanvändare och exempeldata. Kör `npm run seed` för att återställa.
 import { pathToFileURL } from 'node:url';
-import { db, run, get, tx } from './db.js';
+import { currentDb, run, get, tx, central, withWorkspace, listWorkspaces, createWorkspace } from './db.js';
+import { findAccount, getAccount, createAccount, addMember } from './accounts.js';
 import { hashPassword, PERMISSION_KEYS, encrypt, randomToken } from './security.js';
 import { migrateCompanies } from './services/companies.js';
 import { PROD } from './config.js';
@@ -61,11 +62,16 @@ export function ensureRoles() {
 export function seed({ reset = false } = {}) {
   if (PROD) throw new Error('Demodata skapas inte i produktion');
   tx(() => {
-    if (reset) for (const t of ['notifications', 'ingest_log', 'quotes', 'deal_items', 'products', 'meetings', 'google_accounts', 'prospects', 'prospect_searches', 'activities', 'deals', 'leads', 'companies', 'automation_rules', 'integrations', 'audit_log', 'settings', 'users', 'roles']) db.exec(`DELETE FROM ${t}`);
+    if (reset) for (const t of ['notifications', 'ingest_log', 'quotes', 'deal_items', 'products', 'meetings', 'google_accounts', 'prospects', 'prospect_searches', 'activities', 'deals', 'leads', 'companies', 'automation_rules', 'integrations', 'audit_log', 'settings', 'users', 'roles']) currentDb().exec(`DELETE FROM ${t}`);
     const roleIds = ensureRoles();
+    // Demokontona skapas i kontodatabasen (eller återanvänds) och blir medlemmar i arbetsytan.
     const pw = hashPassword(DEMO_PASSWORD);
-    const userIds = USERS.map(([name, email, role, color]) =>
-      Number(run('INSERT INTO users (name, email, password_hash, role_id, color) VALUES (?,?,?,?,?)', name, email, pw, roleIds[role], color).lastInsertRowid));
+    const userIds = USERS.map(([name, email, role, color]) => {
+      const account = findAccount(email) || getAccount(createAccount({ name, email, passwordHash: pw, color }));
+      central.run('UPDATE users SET password_hash = ?, active = 1 WHERE id = ?', pw, account.id);
+      addMember(account, roleIds[role]);
+      return account.id;
+    });
     const sellers = [userIds[1], userIds[2], userIds[3]];
 
     // Integrationer (utan riktiga inloggningsuppgifter – fylls i under Integrationer)
@@ -142,7 +148,7 @@ export function seed({ reset = false } = {}) {
     // Företag: leads med samma företagsnamn blir kontaktpersoner på samma företag.
     migrateCompanies();
     const orgNrs = ['556677-8899', '559012-3457', '556123-4567', '556987-6543', '559201-4428'];
-    db.prepare('SELECT id FROM companies ORDER BY id LIMIT 5').all().forEach((c, i) => run('UPDATE companies SET org_nr = ? WHERE id = ?', orgNrs[i], c.id));
+    currentDb().prepare('SELECT id FROM companies ORDER BY id LIMIT 5').all().forEach((c, i) => run('UPDATE companies SET org_nr = ? WHERE id = ?', orgNrs[i], c.id));
 
     // Produktkatalog och produktrader på affärerna (affärens värde = summan av raderna).
     const PRODUCTS = [
@@ -154,7 +160,7 @@ export function seed({ reset = false } = {}) {
     ];
     const productIds = PRODUCTS.map(([name, sku, desc, unit, price, rec]) =>
       Number(run('INSERT INTO products (name, sku, description, unit, price, recurring) VALUES (?,?,?,?,?,?)', name, sku, desc, unit, price, rec).lastInsertRowid));
-    for (const d of db.prepare("SELECT id FROM deals WHERE stage NOT IN ('lost')").all()) {
+    for (const d of currentDb().prepare("SELECT id FROM deals WHERE stage NOT IN ('lost')").all()) {
       const lines = [[0, 1, 0], [1 + Math.floor(rand() * 2), 5 + Math.floor(rand() * 20), rand() < 0.3 ? 10 : 0], ...(rand() < 0.5 ? [[3, 4 + Math.floor(rand() * 16), 0]] : [])];
       lines.forEach(([pi, qty, disc], pos) => {
         const [name, , desc, unit, price, rec] = PRODUCTS[pi];
@@ -166,7 +172,7 @@ export function seed({ reset = false } = {}) {
 
     // Demomöten: öppna affärer får möten den här och nästa vecka (och några passerade som väntar på utfall).
     const MEETING_TYPES = ['Demo', 'Behovsanalys', 'Offertgenomgång', 'Uppstartsmöte', 'Avtalsgenomgång'];
-    const openDeals = db.prepare("SELECT d.*, l.email, l.first_name, l.last_name FROM deals d JOIN leads l ON l.id = d.lead_id WHERE d.stage IN ('contact','proposal','negotiation')").all();
+    const openDeals = currentDb().prepare("SELECT d.*, l.email, l.first_name, l.last_name FROM deals d JOIN leads l ON l.id = d.lead_id WHERE d.stage IN ('contact','proposal','negotiation')").all();
     openDeals.forEach((d, i) => {
       const day = new Date(); day.setUTCDate(day.getUTCDate() + (i % 12) - 3);
       if ([0, 6].includes(day.getUTCDay())) day.setUTCDate(day.getUTCDate() + 2);
@@ -189,6 +195,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     console.error('Avbrutet: npm run seed raderar all data och skapar demokonton. Det är spärrat när NODE_ENV=production.');
     process.exit(1);
   }
-  seed({ reset: process.argv.includes('--reset') || !!get('SELECT 1 FROM users LIMIT 1') });
+  // Demodatan läggs i första arbetsytan (som skapas om den saknas).
+  const ws = listWorkspaces()[0]?.id ?? createWorkspace('LeadFlow Demo');
+  withWorkspace(ws, () => seed({ reset: process.argv.includes('--reset') || !!get('SELECT 1 FROM users LIMIT 1') }));
   console.log(`Klart. Logga in med admin@leadflow.se / ${DEMO_PASSWORD}`);
 }

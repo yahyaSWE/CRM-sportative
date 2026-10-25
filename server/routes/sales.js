@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { all, get, run, audit } from '../db.js';
+import { all, get, run, audit, findWorkspace, withWorkspace } from '../db.js';
 import { can, readSession } from '../security.js';
 import { requirePerm, parseCookies, COOKIE } from '../middleware.js';
 import { broadcast } from '../events.js';
@@ -153,6 +153,13 @@ export default r;
 // ---------- Publikt: kundens offertsida (hemlig länk, ingen inloggning) ----------
 export const publicQuotes = Router();
 const wrap = (fn) => (req, res) => { try { res.json(fn(req)); } catch (e) { res.status(e.status || 500).json({ error: e.message }); } };
+
+// Offertlänken innehåller bara offertens token; förfrågan körs i arbetsytan där offerten finns.
+publicQuotes.use('/quotes/:token', (req, res, next) => {
+  const ws = findWorkspace(() => !!get('SELECT 1 FROM quotes WHERE token = ?', req.params.token));
+  if (!ws) return res.status(404).json({ error: 'Offerten finns inte eller har tagits bort' });
+  withWorkspace(ws, next);
+});
 
 publicQuotes.get('/quotes/:token', (req, res) => {
   // Inloggade användare (t.ex. säljaren som förhandsgranskar) räknas inte som att kunden öppnat offerten.

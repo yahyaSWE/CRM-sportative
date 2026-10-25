@@ -14,7 +14,10 @@ function UserModal({ user, roles, onClose, onSaved }) {
   const save = async () => {
     try {
       if (user.id) await api.patch(`/users/${user.id}`, { ...f, password: f.password || undefined });
-      else await api.post('/users', f);
+      else {
+        const r = await api.post('/users', f);
+        if (r.existing) { toast(tr("Personen hade redan ett konto och har lagts till i arbetsytan med sitt befintliga lösenord")); return onSaved(); }
+      }
       toast(user.id ? tr("Användaren uppdaterades") : tr("Användaren skapades")); onSaved();
     } catch (e) { toast(e.message, 'error'); }
   };
@@ -28,7 +31,7 @@ function UserModal({ user, roles, onClose, onSaved }) {
           <Select value={f.role_id} onChange={(e) => setF({ ...f, role_id: Number(e.target.value) })}>{roles.map((r) => <option key={r.id} value={r.id}>{tr(r.name)}</option>)}</Select>
         </Field>
         {f.role_id && <p className="-mt-2 text-xs text-slate-500">{roles.find((r) => r.id === f.role_id)?.description}</p>}
-        <Field label={user.id ? tr("Nytt lösenord (lämna tomt för att behålla)") : tr("Tillfälligt lösenord")} hint={tr("Minst 8 tecken. Användaren kan byta det under Inställningar.")}>
+        <Field label={user.id ? tr("Nytt lösenord (lämna tomt för att behålla)") : tr("Tillfälligt lösenord")} hint={user.id ? tr("Minst 8 tecken. Användaren kan byta det under Inställningar.") : tr("Minst 8 tecken. Har personen redan ett konto i en annan arbetsyta behövs inget lösenord – kontot läggs till med sitt befintliga.")}>
           <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" />
         </Field>
       </div>

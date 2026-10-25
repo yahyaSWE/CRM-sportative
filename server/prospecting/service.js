@@ -1,5 +1,5 @@
 // Prospektering: hitta företag (Google Places) → berika (hemsida + Bolagsverket) → granska → importera som leads.
-import { all, get, run, parseJSON, audit } from '../db.js';
+import { all, get, run, parseJSON, audit, onWorkspaceOpen, currentWorkspaceId } from '../db.js';
 import { encrypt, decrypt } from '../security.js';
 import { broadcast } from '../events.js';
 import { ingestLead, notify } from '../services/leads.js';
@@ -10,8 +10,10 @@ import { lookupOrganisation, validOrgNr, formatOrgNr } from './bolagsverket.js';
 const CONFIG_KEY = 'prospecting:config';
 
 // Arbete som avbröts av en omstart tas upp igen.
-run("UPDATE prospects SET enrich_status = 'pending' WHERE enrich_status = 'running'");
-run("UPDATE prospect_searches SET status = 'idle' WHERE status = 'running'");
+onWorkspaceOpen(() => {
+  run("UPDATE prospects SET enrich_status = 'pending' WHERE enrich_status = 'running'");
+  run("UPDATE prospect_searches SET status = 'idle' WHERE status = 'running'");
+});
 export const RETENTION_DAYS = 30;
 
 export function getConfig() {
@@ -62,10 +64,11 @@ function passesFilters(p, f) {
 const running = new Set();
 
 export async function runSearch(searchId, { notifyUserId } = {}) {
-  if (running.has(searchId)) return { skipped: true };
+  const key = `${currentWorkspaceId()}:${searchId}`;
+  if (running.has(key)) return { skipped: true };
   const s = hydrateSearch(get('SELECT * FROM prospect_searches WHERE id = ?', searchId));
   if (!s) throw new Error('Sökningen finns inte');
-  running.add(searchId);
+  running.add(key);
   run("UPDATE prospect_searches SET status = 'running', last_error = NULL WHERE id = ?", s.id);
   broadcast('prospects', { searchId: s.id, status: 'running' });
   try {
@@ -91,12 +94,13 @@ export async function runSearch(searchId, { notifyUserId } = {}) {
     broadcast('prospects', { searchId: s.id, status: 'error' });
     throw e;
   } finally {
-    running.delete(searchId);
+    running.delete(key);
   }
 }
 
 // ---------- Berikning i bakgrunden ----------
-let active = 0;
+// Pågående berikningar per arbetsyta.
+const active = new Map();
 const CONCURRENCY = 3;
 
 function demoEnrich(p) {
@@ -142,14 +146,15 @@ async function enrichOne(p) {
 }
 
 export function processQueue() {
-  while (active < CONCURRENCY) {
+  const ws = currentWorkspaceId();
+  while ((active.get(ws) || 0) < CONCURRENCY) {
     const p = get(`SELECT * FROM prospects WHERE enrich_status = 'pending' ORDER BY id LIMIT 1`);
     if (!p) return;
     run("UPDATE prospects SET enrich_status = 'running' WHERE id = ?", p.id);
-    active++;
+    active.set(ws, (active.get(ws) || 0) + 1);
     enrichOne(p)
       .catch((e) => run("UPDATE prospects SET enrich_status = 'done', enrich_note = ? WHERE id = ?", String(e.message).slice(0, 300), p.id))
-      .finally(() => { active--; processQueue(); });
+      .finally(() => { active.set(ws, active.get(ws) - 1); processQueue(); });
   }
 }
 

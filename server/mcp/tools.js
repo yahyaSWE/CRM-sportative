@@ -6,6 +6,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { COOKIE } from '../middleware.js';
 import { signSession, loadUser, can } from '../security.js';
 import { APP_URL } from '../config.js';
+import { central } from '../db.js';
 
 const TZ = process.env.DEFAULT_TIMEZONE || 'Europe/Stockholm';
 let apiBase = null;
@@ -14,7 +15,7 @@ export const setApiPort = (port) => { apiBase = `http://127.0.0.1:${port}/api`; 
 class ToolError extends Error {}
 
 async function api(auth, method, path, body) {
-  const cookie = `${COOKIE}=${encodeURIComponent(signSession(auth.extra.userId, 1 / 96, { via: 'claude', cid: auth.clientId }))}`;
+  const cookie = `${COOKIE}=${encodeURIComponent(signSession(auth.extra.userId, 1 / 96, { via: 'claude', cid: auth.clientId, ws: auth.extra.workspaceId }))}`;
   const res = await fetch(apiBase + path, {
     method,
     headers: { cookie, ...(body !== undefined && { 'content-type': 'application/json' }) },
@@ -127,8 +128,8 @@ export function buildServer(auth) {
   const writes = can(user, 'leads.edit_own') || can(user, 'leads.edit_all');
 
   // ---------- Läsa ----------
-  tool('whoami', { title: 'Vem är jag', description: 'Visar den inloggade användaren, rollen och vad den får göra i LeadFlow.', inputSchema: {}, annotations: READ }, async () =>
-    ok({ name: user.name, email: user.email, role: user.role, permissions: user.permissions, can_edit: writes, app: APP_URL }));
+  tool('whoami', { title: 'Vem är jag', description: 'Visar den inloggade användaren, arbetsytan (bolaget) kopplingen gäller, rollen och vad den får göra i LeadFlow.', inputSchema: {}, annotations: READ }, async () =>
+    ok({ name: user.name, email: user.email, role: user.role, workspace: central.get('SELECT name FROM workspaces WHERE id = ?', auth.extra.workspaceId)?.name, permissions: user.permissions, can_edit: writes, app: APP_URL }));
 
   tool('search', {
     title: 'Sök i CRM:et',
