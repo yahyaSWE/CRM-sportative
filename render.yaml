@@ -18,6 +18,10 @@ services:
         value: "22"
       - key: DATA_DIR
         value: /var/data
+      # Besökare → Cloudflare → Render → appen: klientens IP är två steg bort i X-Forwarded-For.
+      # Uppmätt 2026-10-25 med /api/health?ip=1.
+      - key: TRUST_PROXY
+        value: "2"
       # Krypteringsnyckel – genereras en gång av Render. Ändra den aldrig efteråt.
       - key: APP_SECRET
         generateValue: true

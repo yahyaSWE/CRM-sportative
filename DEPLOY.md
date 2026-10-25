@@ -22,6 +22,7 @@ Blueprinten ställer in:
 | `NODE_ENV` | `production` |
 | `NODE_VERSION` | `22` (krävs för den inbyggda SQLite-databasen) |
 | `DATA_DIR` | `/var/data` |
+| `TRUST_PROXY` | `2` (Cloudflare + Renders proxy ligger framför appen) |
 | `APP_SECRET` | genereras automatiskt av Render |
 | Health check | `/api/health` |
 | Automatisk driftsättning | vid varje push till GitHub |
@@ -52,7 +53,7 @@ Tjänsten → *Settings → Custom Domains* → lägg till t.ex. `crm.dittforeta
 
 ## 5. Kontrollera klient-IP (rekommenderas)
 
-Kundens IP-adress används i spärren mot lösenordsgissning och i signaturbeviset på offerter. Render dokumenterar inte hur många proxysteg som ligger framför appen, så kontrollera en gång:
+Kundens IP-adress används i spärren mot lösenordsgissning och i signaturbeviset på offerter. Render dokumenterar inte hur många proxysteg som ligger framför appen. Uppmätt 2026-10-25 var kedjan besökare → Cloudflare → Render, därför sätter `render.yaml` `TRUST_PROXY=2`. Kontrollera efter större förändringar hos Render:
 
 1. Öppna `https://<din-adress>/api/health?ip=1` i webbläsaren.
 2. Jämför `ip` med din egen IP-adress (sök "vad är min ip").
