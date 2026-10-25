@@ -1100,4 +1100,7 @@ export default {
   "skapade mall": "created template",
   "ändrade mall": "changed template",
   "raderade mall": "deleted template",
+  "Byt namn på {name}": "Rename {name}",
+  "Byt namn på arbetsytan": "Rename the workspace",
+  "Namnet visas i menyn för alla i arbetsytan. Bolagsnamnet på offerter ändrar du under Produkter & offerter.": "The name is shown in the menu for everyone in the workspace. You change the company name on quotes under Products & quotes.",
 };

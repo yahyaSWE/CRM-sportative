@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { Check, ChevronsUpDown, Pencil, Plus } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp } from '../lib/app.jsx';
 import { Button, Field, Input, Modal, cx, useToast } from './ui.jsx';
@@ -14,6 +14,7 @@ export default function WorkspaceSwitcher() {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const ref = useRef(null);
@@ -40,6 +41,12 @@ export default function WorkspaceSwitcher() {
     try { await api.post('/workspaces', { name }); window.location.assign('/'); }
     catch (err) { toast(err.message, 'error'); setBusy(false); }
   };
+  const rename = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try { await api.patch('/workspaces/current', { name }); window.location.reload(); }
+    catch (err) { toast(err.message, 'error'); setBusy(false); }
+  };
 
   return (
     <div ref={ref} className="relative px-3 pb-2">
@@ -62,12 +69,24 @@ export default function WorkspaceSwitcher() {
             </button>
           ))}
           {canCreate && (
-            <button onClick={() => { setOpen(false); setCreating(true); }} className="flex w-full items-center gap-2.5 border-t border-slate-100 px-3 py-2 text-left text-sm font-medium text-brand-700 hover:bg-brand-50">
+            <button onClick={() => { setOpen(false); setName(workspace.name); setRenaming(true); }} className="flex w-full items-center gap-2.5 border-t border-slate-100 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
+              <Pencil className="size-4 text-slate-400" />{tr('Byt namn på {name}', { name: workspace.name })}
+            </button>
+          )}
+          {canCreate && (
+            <button onClick={() => { setOpen(false); setName(''); setCreating(true); }} className="flex w-full items-center gap-2.5 border-t border-slate-100 px-3 py-2 text-left text-sm font-medium text-brand-700 hover:bg-brand-50">
               <Plus className="size-4" />{tr('Ny arbetsyta')}
             </button>
           )}
         </div>
       )}
+      <Modal open={renaming} onClose={() => setRenaming(false)} title={tr('Byt namn på arbetsytan')}
+        description={tr('Namnet visas i menyn för alla i arbetsytan. Bolagsnamnet på offerter ändrar du under Produkter & offerter.')}
+        footer={<><Button variant="secondary" onClick={() => setRenaming(false)}>{tr('Avbryt')}</Button><Button type="submit" form="rename-workspace" loading={busy} disabled={!name.trim() || name.trim() === workspace.name}>{tr('Spara')}</Button></>}>
+        <form id="rename-workspace" onSubmit={rename}>
+          <Field label={tr('Bolagets eller arbetsytans namn')}><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        </form>
+      </Modal>
       <Modal open={creating} onClose={() => setCreating(false)} title={tr('Ny arbetsyta')}
         description={tr('En arbetsyta är ett eget bolag med egna kunder, leads, affärer, produkter, integrationer och användare. Du blir administratör och kan bjuda in andra under Team & behörigheter.')}
         footer={<><Button variant="secondary" onClick={() => setCreating(false)}>{tr('Avbryt')}</Button><Button type="submit" form="new-workspace" loading={busy} disabled={!name.trim()}>{tr('Skapa arbetsyta')}</Button></>}>
