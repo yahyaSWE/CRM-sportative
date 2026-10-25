@@ -10,28 +10,29 @@ import { Avatar, cx } from './ui.jsx';
 import { timeAgo } from '../lib/meta.jsx';
 import LeadForm from './LeadForm.jsx';
 import GlobalSearch from './GlobalSearch.jsx';
+import { tr, translateStored } from '../lib/i18n.js';
 
 const NAV = [
   { group: 'Försäljning', items: [
-    { to: '/', label: 'Min dag', icon: Sun, end: true },
-    { to: '/leads', label: 'Leads', icon: Users },
-    { to: '/companies', label: 'Företag', icon: Building2 },
-    { to: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
-    { to: '/calendar', label: 'Kalender', icon: CalendarDays },
-    { to: '/tasks', label: 'Uppgifter', icon: CheckSquare },
-    { to: '/overview', label: 'Översikt', icon: LayoutDashboard },
+    { to: '/', label: tr("Min dag"), icon: Sun, end: true },
+    { to: '/leads', label: tr("Leads"), icon: Users },
+    { to: '/companies', label: tr("Företag"), icon: Building2 },
+    { to: '/pipeline', label: tr("Pipeline"), icon: KanbanSquare },
+    { to: '/calendar', label: tr("Kalender"), icon: CalendarDays },
+    { to: '/tasks', label: tr("Uppgifter"), icon: CheckSquare },
+    { to: '/overview', label: tr("Översikt"), icon: LayoutDashboard },
   ] },
   { group: 'Leadinsamling', items: [
-    { to: '/integrations', label: 'Integrationer', icon: Plug, perm: 'integrations.manage' },
-    { to: '/inflow', label: 'Lead-inflöde', icon: Radio, perm: 'integrations.manage' },
-    { to: '/prospecting', label: 'Prospektering', icon: Crosshair, perm: 'prospecting.use' },
-    { to: '/automations', label: 'Automatisering', icon: Zap },
+    { to: '/integrations', label: tr("Integrationer"), icon: Plug, perm: 'integrations.manage' },
+    { to: '/inflow', label: tr("Lead-inflöde"), icon: Radio, perm: 'integrations.manage' },
+    { to: '/prospecting', label: tr("Prospektering"), icon: Crosshair, perm: 'prospecting.use' },
+    { to: '/automations', label: tr("Automatisering"), icon: Zap },
   ] },
   { group: 'Administration', items: [
-    { to: '/products', label: 'Produkter & offerter', icon: Package },
-    { to: '/team', label: 'Team & behörigheter', icon: Shield },
-    { to: '/audit', label: 'Aktivitetslogg', icon: ScrollText, perm: 'audit.view' },
-    { to: '/settings', label: 'Inställningar', icon: Settings },
+    { to: '/products', label: tr("Produkter & offerter"), icon: Package },
+    { to: '/team', label: tr("Team & behörigheter"), icon: Shield },
+    { to: '/audit', label: tr("Aktivitetslogg"), icon: ScrollText, perm: 'audit.view' },
+    { to: '/settings', label: tr("Inställningar"), icon: Settings },
   ] },
 ];
 
@@ -43,7 +44,7 @@ function Sidebar({ onNavigate }) {
         <div className="grid place-items-center size-8 rounded-lg bg-gradient-to-br from-brand-500 to-violet-500 shadow-lg shadow-brand-600/30">
           <svg viewBox="0 0 32 32" className="size-5"><path d="M7 22l6-7 4 3 8-9" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
-        <span className="text-[15px] font-semibold text-white tracking-tight">LeadFlow</span>
+        <span className="text-[15px] font-semibold text-white tracking-tight">{tr("LeadFlow")}</span>
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-6 scroll-thin">
         {NAV.map((g) => {
@@ -51,7 +52,7 @@ function Sidebar({ onNavigate }) {
           if (!items.length) return null;
           return (
             <div key={g.group}>
-              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{g.group}</p>
+              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{tr(g.group)}</p>
               {items.map(({ to, label, icon: Icon, end }) => (
                 <NavLink key={to} to={to} end={end} onClick={onNavigate}
                   className={({ isActive }) => cx('group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
@@ -75,9 +76,9 @@ function LiveIndicator() {
     <div className="m-3 rounded-xl bg-white/5 p-3.5">
       <div className="flex items-center gap-2 text-xs font-medium text-slate-200">
         <span className="relative flex size-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex size-2 rounded-full bg-emerald-400" /></span>
-        Automatisk insamling aktiv
+        {tr("Automatisk insamling aktiv")}
       </div>
-      <p className="mt-1 text-xs text-slate-500">{count ? `${count} nya leads sedan du loggade in` : 'Nya leads visas i realtid'}</p>
+      <p className="mt-1 text-xs text-slate-500">{count ? tr("{0} nya leads sedan du loggade in", { 0: count }) : tr("Nya leads visas i realtid")}</p>
     </div>
   );
 }
@@ -103,12 +104,12 @@ function Notifications() {
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-40 mt-2 w-80 card shadow-xl animate-fade-in">
-            <p className="px-4 py-3 text-sm font-semibold border-b border-slate-100">Notiser</p>
+            <p className="px-4 py-3 text-sm font-semibold border-b border-slate-100">{tr("Notiser")}</p>
             <div className="max-h-96 overflow-y-auto scroll-thin">
-              {!data.items.length && <p className="px-4 py-6 text-sm text-center text-slate-500">Inga notiser ännu</p>}
+              {!data.items.length && <p className="px-4 py-6 text-sm text-center text-slate-500">{tr("Inga notiser ännu")}</p>}
               {data.items.map((n) => (
                 <button key={n.id} onClick={() => { setOpen(false); n.link && nav(n.link); }} className="block w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50">
-                  <p className="text-sm text-slate-700">{n.text}</p>
+                  <p className="text-sm text-slate-700">{translateStored(n.text)}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
                 </button>
               ))}
@@ -130,7 +131,7 @@ function UserMenu() {
         <Avatar name={user.name} color={user.color} />
         <span className="hidden md:block text-left">
           <span className="block text-sm font-medium text-slate-800 leading-tight">{user.name}</span>
-          <span className="block text-xs text-slate-500 leading-tight">{user.role}</span>
+          <span className="block text-xs text-slate-500 leading-tight">{tr(user.role)}</span>
         </span>
         <ChevronDown className="size-4 text-slate-400" />
       </button>
@@ -139,8 +140,8 @@ function UserMenu() {
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-40 mt-2 w-56 card shadow-xl py-1 animate-fade-in">
             <div className="px-4 py-2.5 border-b border-slate-100"><p className="text-sm font-medium truncate">{user.name}</p><p className="text-xs text-slate-500 truncate">{user.email}</p></div>
-            <button onClick={() => { setOpen(false); nav('/settings'); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><Settings className="size-4" />Inställningar</button>
-            <button onClick={logout} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50"><LogOut className="size-4" />Logga ut</button>
+            <button onClick={() => { setOpen(false); nav('/settings'); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><Settings className="size-4" />{tr("Inställningar")}</button>
+            <button onClick={logout} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50"><LogOut className="size-4" />{tr("Logga ut")}</button>
           </div>
         </>
       )}
@@ -172,7 +173,7 @@ export default function Layout() {
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {can('leads.edit_own') && (
               <button onClick={() => setNewLead(true)} className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700">
-                <Plus className="size-4" />Ny lead
+                <Plus className="size-4" />{tr("Ny lead")}
               </button>
             )}
             <Notifications />

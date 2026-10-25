@@ -8,6 +8,7 @@ import { ActivityComposer, Timeline } from './Activity.jsx';
 import MeetingModal from './MeetingModal.jsx';
 import LeadMeetings from './LeadMeetings.jsx';
 import { STATUSES, STAGES, leadName, timeAgo, sek, toSqlDate } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
 export function EditableField({ icon: Icon, value, placeholder, onSave, disabled, href }) {
   const [edit, setEdit] = useState(false);
@@ -42,13 +43,13 @@ function CompanyField({ lead, disabled, onPatch }) {
   if (edit) {
     return (
       <div className="py-1.5">
-        <input autoFocus className="input !py-1" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sök eller skriv nytt företag…"
+        <input autoFocus className="input !py-1" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Sök eller skriv nytt företag…")}
           onKeyDown={(e) => { if (e.key === 'Escape') setEdit(false); if (e.key === 'Enter' && q.trim()) pick(hits[0] && hits[0].name.toLowerCase() === q.trim().toLowerCase() ? { company_id: hits[0].id } : { company: q.trim() }); }} />
         <div className="mt-1 card py-1 shadow-lg">
           {hits.map((h) => <button key={h.id} onClick={() => pick({ company_id: h.id })} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">{h.name}<span className="text-xs text-slate-400"> {h.city}</span></button>)}
-          {q.trim().length > 1 && !hits.some((h) => h.name.toLowerCase() === q.trim().toLowerCase()) && <button onClick={() => pick({ company: q.trim() })} className="block w-full px-3 py-1.5 text-left text-sm text-brand-600 hover:bg-slate-50">+ Nytt företag "{q.trim()}"</button>}
-          {lead.company_id && <button onClick={() => pick({ company_id: null })} className="block w-full px-3 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-50">Ta bort koppling till företag</button>}
-          <button onClick={() => setEdit(false)} className="block w-full px-3 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-50">Avbryt</button>
+          {q.trim().length > 1 && !hits.some((h) => h.name.toLowerCase() === q.trim().toLowerCase()) && <button onClick={() => pick({ company: q.trim() })} className="block w-full px-3 py-1.5 text-left text-sm text-brand-600 hover:bg-slate-50">{tr("+ Nytt företag \"")}{q.trim()}"</button>}
+          {lead.company_id && <button onClick={() => pick({ company_id: null })} className="block w-full px-3 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-50">{tr("Ta bort koppling till företag")}</button>}
+          <button onClick={() => setEdit(false)} className="block w-full px-3 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-50">{tr("Avbryt")}</button>
         </div>
       </div>
     );
@@ -58,8 +59,8 @@ function CompanyField({ lead, disabled, onPatch }) {
       <Building2 className="size-4 text-slate-400 shrink-0" />
       {lead.company_id
         ? <Link to={`/companies/${lead.company_id}`} className="flex-1 truncate text-sm font-medium text-brand-600 hover:underline">{lead.company}</Link>
-        : <span className="flex-1 text-sm text-slate-400">{lead.company || 'Inget företag'}</span>}
-      {!disabled && <button onClick={() => setEdit(true)} className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 hover:text-slate-600">Ändra</button>}
+        : <span className="flex-1 text-sm text-slate-400">{lead.company || tr("Inget företag")}</span>}
+      {!disabled && <button onClick={() => setEdit(true)} className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 hover:text-slate-600">{tr("Ändra")}</button>}
     </div>
   );
 }
@@ -99,7 +100,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
     catch (err) { toast(err.message, 'error'); throw err; }
   };
   const openConvert = () => {
-    setDeal({ title: `${lead.company || leadName(lead)} – affär`, value: '', expected_close: '', withTask: true, taskText: 'Boka första mötet', taskDue: tomorrowAt10() });
+    setDeal({ title: tr("{0} – affär", { 0: lead.company || leadName(lead) }), value: '', expected_close: '', withTask: true, taskText: tr("Boka första mötet"), taskDue: tomorrowAt10() });
     setConvert(true);
   };
   const doConvert = async () => {
@@ -108,12 +109,12 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
         title: deal.title, value: deal.value, expected_close: deal.expected_close,
         task: deal.withTask && deal.taskText.trim() ? { content: deal.taskText, due_at: toSqlDate(deal.taskDue) } : null,
       });
-      toast('Affären finns nu i pipelinen', 'success', { title: 'Konverterad' });
+      toast(tr("Affären finns nu i pipelinen"), 'success', { title: tr("Konverterad") });
       setConvert(false); load(); onChanged?.();
     } catch (e) { toast(e.message, 'error'); }
   };
   const remove = async () => {
-    try { await api.del(`/leads/${id}`); toast('Lead raderad'); onChanged?.(); onClose(); } catch (e) { toast(e.message, 'error'); }
+    try { await api.del(`/leads/${id}`); toast(tr("Lead raderad")); onChanged?.(); onClose(); } catch (e) { toast(e.message, 'error'); }
   };
   const toggleTask = async (a) => { await api.patch(`/activities/${a.id}`, { done: !a.done }); load(); };
 
@@ -122,8 +123,8 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
   const openDeals = lead?.deals.filter((d) => !['won', 'lost'].includes(d.stage)) || [];
   // Bokas mötet från leadet kopplas det också till kontaktens senaste öppna affär.
   const meetingPreset = lead && {
-    lead_id: lead.id, deal_id: openDeals[0]?.id, owner_id: openDeals[0]?.owner_id || lead.owner_id, title: `Möte – ${leadName(lead)}`, attendees: lead.email ? [lead.email] : [],
-    context: `Med ${leadName(lead)}${openDeals[0] ? ` · ${openDeals[0].title}` : ''}`,
+    lead_id: lead.id, deal_id: openDeals[0]?.id, owner_id: openDeals[0]?.owner_id || lead.owner_id, title: tr("Möte – {0}", { 0: leadName(lead) }), attendees: lead.email ? [lead.email] : [],
+    context: tr("Med {0}{1}", { 0: leadName(lead), 1: openDeals[0] ? ` · ${openDeals[0].title}` : '' }),
   };
 
   return (
@@ -139,20 +140,20 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-lg font-semibold text-slate-900 truncate">{leadName(lead)}</h2>
-                  <p className="text-sm text-slate-500 truncate">{[lead.title, lead.company].filter(Boolean).join(' på ') || 'Inget företag angivet'}</p>
+                  <p className="text-sm text-slate-500 truncate">{[lead.title, lead.company].filter(Boolean).join(' på ') || tr("Inget företag angivet")}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <StatusBadge status={lead.status} />
-                    {lead.tags.includes('Kund') && <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">Kund</span>}
-                    <span className="text-xs text-slate-400">Poäng {lead.score} · Inkom {timeAgo(lead.created_at)}</span>
+                    {lead.tags.includes('Kund') && <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">{tr("Kund")}</span>}
+                    <span className="text-xs text-slate-400">{tr("Poäng")} {lead.score} {tr("· Inkom")} {timeAgo(lead.created_at)}</span>
                   </div>
                 </div>
                 <button onClick={onClose} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"><X className="size-5" /></button>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {lead.phone && <a href={`tel:${lead.phone}`}><Button size="sm" variant="secondary" icon={Phone}>Ring</Button></a>}
-                {lead.email && <a href={`mailto:${lead.email}`}><Button size="sm" variant="secondary" icon={Mail}>Mejla</Button></a>}
-                {editable && <Button size="sm" variant="secondary" icon={CalendarPlus} onClick={() => setBook(true)}>Boka möte</Button>}
-                {editable && <Button size="sm" variant="soft" icon={ArrowRightLeft} onClick={openConvert}>{lead.deals.length ? 'Ny affär' : 'Konvertera till affär'}</Button>}
+                {lead.phone && <a href={`tel:${lead.phone}`}><Button size="sm" variant="secondary" icon={Phone}>{tr("Ring")}</Button></a>}
+                {lead.email && <a href={`mailto:${lead.email}`}><Button size="sm" variant="secondary" icon={Mail}>{tr("Mejla")}</Button></a>}
+                {editable && <Button size="sm" variant="secondary" icon={CalendarPlus} onClick={() => setBook(true)}>{tr("Boka möte")}</Button>}
+                {editable && <Button size="sm" variant="soft" icon={ArrowRightLeft} onClick={openConvert}>{lead.deals.length ? tr("Ny affär") : tr("Konvertera till affär")}</Button>}
                 {can('leads.delete') && <Button size="sm" variant="ghost" icon={Trash2} className="ml-auto !text-rose-600" onClick={() => setDel(true)} />}
               </div>
               {openDeals.length > 0 && (
@@ -177,48 +178,48 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 {editable && <div className="mb-6"><ActivityComposer onSubmit={addActivity} /></div>}
                 {lead.message && (
                   <div className="mb-6 rounded-xl bg-slate-50 p-4">
-                    <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-1.5"><MessageSquare className="size-3.5" />Meddelande från leadet</p>
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-1.5"><MessageSquare className="size-3.5" />{tr("Meddelande från leadet")}</p>
                     <p className="text-sm text-slate-700 whitespace-pre-wrap">{lead.message}</p>
                   </div>
                 )}
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Tidslinje</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje")}</h3>
                 <Timeline activities={lead.activities} onToggleTask={toggleTask} />
               </div>
 
               <aside className="px-5 py-5 space-y-6 bg-slate-50/50">
                 <div>
-                  <p className="label">Status</p>
+                  <p className="label">{tr("Status")}</p>
                   <Select value={lead.status} disabled={!editable} onChange={(e) => patch({ status: e.target.value })}>
                     {Object.entries(STATUSES).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
                   </Select>
                 </div>
                 <div>
-                  <p className="label">Ansvarig</p>
+                  <p className="label">{tr("Ansvarig")}</p>
                   {ownerSelectable ? (
                     <Select value={lead.owner_id ?? ''} onChange={(e) => patch({ owner_id: e.target.value ? Number(e.target.value) : null })}>
-                      <option value="">Otilldelad</option>
+                      <option value="">{tr("Otilldelad")}</option>
                       {(can('leads.assign') ? team : team.filter((u) => u.id === user.id)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </Select>
                   ) : (
-                    <div className="flex items-center gap-2 text-sm">{lead.owner_name ? <><Avatar name={lead.owner_name} color={lead.owner_color} size="xs" />{lead.owner_name}</> : 'Otilldelad'}</div>
+                    <div className="flex items-center gap-2 text-sm">{lead.owner_name ? <><Avatar name={lead.owner_name} color={lead.owner_color} size="xs" />{lead.owner_name}</> : tr("Otilldelad")}</div>
                   )}
-                  {!lead.owner_id && editable && !can('leads.assign') && <Button size="sm" variant="soft" className="mt-2 w-full" onClick={() => patch({ owner_id: user.id })}>Ta detta lead</Button>}
+                  {!lead.owner_id && editable && !can('leads.assign') && <Button size="sm" variant="soft" className="mt-2 w-full" onClick={() => patch({ owner_id: user.id })}>{tr("Ta detta lead")}</Button>}
                 </div>
                 <LeadMeetings leadId={lead.id} preset={meetingPreset} canBook={editable} onChanged={load} />
                 <div>
-                  <p className="label">Kontaktuppgifter</p>
-                  <EditableField icon={Mail} value={lead.email} placeholder="Lägg till e-post" href={lead.email && `mailto:${lead.email}`} disabled={!editable} onSave={(v) => patch({ email: v })} />
-                  <EditableField icon={Phone} value={lead.phone} placeholder="Lägg till telefon" href={lead.phone && `tel:${lead.phone}`} disabled={!editable} onSave={(v) => patch({ phone: v })} />
+                  <p className="label">{tr("Kontaktuppgifter")}</p>
+                  <EditableField icon={Mail} value={lead.email} placeholder={tr("Lägg till e-post")} href={lead.email && `mailto:${lead.email}`} disabled={!editable} onSave={(v) => patch({ email: v })} />
+                  <EditableField icon={Phone} value={lead.phone} placeholder={tr("Lägg till telefon")} href={lead.phone && `tel:${lead.phone}`} disabled={!editable} onSave={(v) => patch({ phone: v })} />
                   <CompanyField lead={lead} disabled={!editable} onPatch={patch} />
-                  <EditableField icon={Briefcase} value={lead.title} placeholder="Titel" disabled={!editable} onSave={(v) => patch({ title: v })} />
-                  <EditableField icon={MapPin} value={lead.city} placeholder="Ort" disabled={!editable} onSave={(v) => patch({ city: v })} />
+                  <EditableField icon={Briefcase} value={lead.title} placeholder={tr("Titel")} disabled={!editable} onSave={(v) => patch({ title: v })} />
+                  <EditableField icon={MapPin} value={lead.city} placeholder={tr("Ort")} disabled={!editable} onSave={(v) => patch({ city: v })} />
                 </div>
                 <div>
-                  <p className="label">Källa</p>
+                  <p className="label">{tr("Källa")}</p>
                   <SourceBadge source={lead.source} detail={lead.source_detail} />
                 </div>
                 <div>
-                  <p className="label">Taggar</p>
+                  <p className="label">{tr("Taggar")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {lead.tags.map((t) => (
                       <span key={t} className="inline-flex items-center gap-1 rounded-md bg-white border border-slate-200 px-2 py-0.5 text-xs text-slate-700">
@@ -227,24 +228,24 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                     ))}
                     {editable && (
                       <form onSubmit={(e) => { e.preventDefault(); if (newTag.trim() && !lead.tags.includes(newTag.trim())) patch({ tags: [...lead.tags, newTag.trim()] }); setNewTag(''); }}>
-                        <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="+ tagg" className="w-16 focus:w-24 transition-all bg-transparent text-xs outline-none py-0.5 placeholder:text-slate-400" />
+                        <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder={tr("+ tagg")} className="w-16 focus:w-24 transition-all bg-transparent text-xs outline-none py-0.5 placeholder:text-slate-400" />
                       </form>
                     )}
                   </div>
                 </div>
                 {Object.keys(lead.fields).length > 0 && (
                   <div>
-                    <p className="label">Formulärsvar</p>
+                    <p className="label">{tr("Formulärsvar")}</p>
                     <dl className="space-y-2">{Object.entries(lead.fields).map(([k, v]) => <div key={k}><dt className="text-[11px] text-slate-400">{k.replace(/_/g, ' ')}</dt><dd className="text-sm text-slate-700 break-words">{v}</dd></div>)}</dl>
                   </div>
                 )}
                 {lead.deals.length > openDeals.length && (
                   <div>
-                    <p className="label">Avslutade affärer</p>
+                    <p className="label">{tr("Avslutade affärer")}</p>
                     {lead.deals.filter((d) => ['won', 'lost'].includes(d.stage)).map((d) => (
                       <Link key={d.id} to={`/pipeline/${d.id}`} className="card p-3 mb-2 block hover:border-slate-300">
                         <p className="text-sm font-medium text-slate-800 truncate">{d.title}</p>
-                        <p className={`text-xs ${d.stage === 'won' ? 'text-emerald-600' : 'text-rose-600'}`}>{sek(d.value)} · {d.stage === 'won' ? 'Vunnen' : `Förlorad${d.lost_reason ? ` – ${d.lost_reason}` : ''}`}</p>
+                        <p className={`text-xs ${d.stage === 'won' ? 'text-emerald-600' : 'text-rose-600'}`}>{sek(d.value)} · {d.stage === 'won' ? tr("Vunnen") : tr("Förlorad{0}", { 0: d.lost_reason ? ` – ${tr(d.lost_reason)}` : '' })}</p>
                       </Link>
                     ))}
                   </div>
@@ -255,19 +256,19 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
         )}
       </div>
 
-      <Modal open={convert} onClose={() => setConvert(false)} title={lead?.deals.length ? 'Ny affär' : 'Konvertera till affär'}
-        description="Affären hamnar i pipelinens första steg. All historik följer med."
-        footer={<><Button variant="secondary" onClick={() => setConvert(false)}>Avbryt</Button><Button icon={Check} onClick={doConvert}>Skapa affär</Button></>}>
+      <Modal open={convert} onClose={() => setConvert(false)} title={lead?.deals.length ? tr("Ny affär") : tr("Konvertera till affär")}
+        description={tr("Affären hamnar i pipelinens första steg. All historik följer med.")}
+        footer={<><Button variant="secondary" onClick={() => setConvert(false)}>{tr("Avbryt")}</Button><Button icon={Check} onClick={doConvert}>{tr("Skapa affär")}</Button></>}>
         <div className="space-y-4">
-          <Field label="Affärens namn"><Input value={deal.title || ''} onChange={(e) => setDeal({ ...deal, title: e.target.value })} /></Field>
+          <Field label={tr("Affärens namn")}><Input value={deal.title || ''} onChange={(e) => setDeal({ ...deal, title: e.target.value })} /></Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Värde (kr)"><Input type="number" value={deal.value || ''} onChange={(e) => setDeal({ ...deal, value: e.target.value })} placeholder="0" /></Field>
-            <Field label="Förväntat avslut"><Input type="date" value={deal.expected_close || ''} onChange={(e) => setDeal({ ...deal, expected_close: e.target.value })} /></Field>
+            <Field label={tr("Värde (kr)")}><Input type="number" value={deal.value || ''} onChange={(e) => setDeal({ ...deal, value: e.target.value })} placeholder="0" /></Field>
+            <Field label={tr("Förväntat avslut")}><Input type="date" value={deal.expected_close || ''} onChange={(e) => setDeal({ ...deal, expected_close: e.target.value })} /></Field>
           </div>
           <div className="rounded-xl border border-slate-200 p-4 space-y-3">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-800">
               <input type="checkbox" checked={!!deal.withTask} onChange={(e) => setDeal({ ...deal, withTask: e.target.checked })} className="accent-brand-600" />
-              Skapa första uppgiften
+              {tr("Skapa första uppgiften")}
             </label>
             {deal.withTask && (
               <div className="grid grid-cols-[1fr_auto] gap-2">
@@ -275,12 +276,12 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 <input type="datetime-local" className="input" value={deal.taskDue} onChange={(e) => setDeal({ ...deal, taskDue: e.target.value })} />
               </div>
             )}
-            <p className="text-xs text-slate-500">Så blir affären aldrig liggande utan ett nästa steg.</p>
+            <p className="text-xs text-slate-500">{tr("Så blir affären aldrig liggande utan ett nästa steg.")}</p>
           </div>
         </div>
       </Modal>
       <MeetingModal open={book} onClose={() => setBook(false)} preset={meetingPreset || {}} onSaved={load} />
-      <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title="Radera lead?" text="Leadet och all dess historik raderas permanent." />
+      <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title={tr("Radera lead?")} text={tr("Leadet och all dess historik raderas permanent.")} />
     </div>
   );
 }

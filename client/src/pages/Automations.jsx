@@ -4,23 +4,24 @@ import { api } from '../api.js';
 import { useApp, useFetch } from '../lib/app.jsx';
 import { Button, Card, PageHeader, Modal, Field, Input, Select, Toggle, Empty, Spinner, Avatar, useToast, Confirm } from '../components/ui.jsx';
 import { SOURCES, STATUSES } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
 const FIELDS = [
-  ['source', 'Källa'], ['source_detail', 'Kampanj / formulär'], ['company', 'Företag'], ['email', 'E-post'], ['city', 'Ort'],
-  ['message', 'Meddelande'], ['title', 'Titel'], ['score', 'Poäng'], ['phone', 'Telefon'],
+  ['source', tr("Källa")], ['source_detail', tr("Kampanj / formulär")], ['company', tr("Företag")], ['email', tr("E-post")], ['city', tr("Ort")],
+  ['message', tr("Meddelande")], ['title', tr("Titel")], ['score', tr("Poäng")], ['phone', tr("Telefon")],
 ];
 const OPS = [
-  ['equals', 'är'], ['not_equals', 'är inte'], ['contains', 'innehåller'], ['not_contains', 'innehåller inte'],
-  ['is_not_empty', 'är ifyllt'], ['is_empty', 'är tomt'], ['gt', 'är större än'], ['lt', 'är mindre än'],
+  ['equals', tr("är")], ['not_equals', tr("är inte")], ['contains', tr("innehåller")], ['not_contains', tr("innehåller inte")],
+  ['is_not_empty', tr("är ifyllt")], ['is_empty', tr("är tomt")], ['gt', tr("är större än")], ['lt', tr("är mindre än")],
 ];
 const ACTIONS = [
-  ['round_robin', 'Fördela rättvist mellan'], ['assign_user', 'Tilldela'], ['add_tag', 'Lägg till tagg'],
-  ['set_status', 'Sätt status'], ['add_score', 'Justera poäng'], ['create_task', 'Skapa uppgift'],
+  ['round_robin', tr("Fördela rättvist mellan")], ['assign_user', tr("Tilldela")], ['add_tag', tr("Lägg till tagg")],
+  ['set_status', tr("Sätt status")], ['add_score', tr("Justera poäng")], ['create_task', tr("Skapa uppgift")],
 ];
 const noValue = (op) => op === 'is_empty' || op === 'is_not_empty';
 
 function describe(rule, team) {
-  const userName = (id) => team.find((u) => u.id === Number(id))?.name || 'okänd';
+  const userName = (id) => team.find((u) => u.id === Number(id))?.name || tr("okänd");
   const conds = rule.conditions.map((c) => {
     const f = FIELDS.find((x) => x[0] === c.field)?.[1] || c.field;
     const op = OPS.find((x) => x[0] === c.op)?.[1];
@@ -28,11 +29,11 @@ function describe(rule, team) {
     return `${f} ${op}${noValue(c.op) ? '' : ` "${v}"`}`;
   });
   const acts = rule.actions.map((a) => {
-    if (a.type === 'round_robin') return { text: 'Fördela mellan', users: a.users };
-    if (a.type === 'assign_user') return { text: `Tilldela ${userName(a.value)}` };
-    if (a.type === 'add_tag') return { text: `Tagga "${a.value}"` };
-    if (a.type === 'set_status') return { text: `Status → ${STATUSES[a.value]?.label}` };
-    if (a.type === 'add_score') return { text: `Poäng ${a.value > 0 ? '+' : ''}${a.value}` };
+    if (a.type === 'round_robin') return { text: tr("Fördela mellan"), users: a.users };
+    if (a.type === 'assign_user') return { text: tr("Tilldela {0}", { 0: userName(a.value) }) };
+    if (a.type === 'add_tag') return { text: tr("Tagga \"{0}\"", { 0: a.value }) };
+    if (a.type === 'set_status') return { text: tr("Status → {0}", { 0: STATUSES[a.value]?.label }) };
+    if (a.type === 'add_score') return { text: tr("Poäng {0}{1}", { 0: a.value > 0 ? '+' : '', 1: a.value }) };
     if (a.type === 'create_task') return { text: `Uppgift: "${a.value}" inom ${a.hours || 24} h` };
     return { text: a.type };
   });
@@ -44,12 +45,12 @@ function RuleEditor({ rule, setRule, team }) {
   const rm = (key, i) => setRule({ ...rule, [key]: rule[key].filter((_, j) => j !== i) });
   return (
     <div className="space-y-6">
-      <Field label="Regelns namn"><Input value={rule.name} onChange={(e) => setRule({ ...rule, name: e.target.value })} placeholder="t.ex. Facebook-leads till säljteamet" autoFocus /></Field>
+      <Field label={tr("Regelns namn")}><Input value={rule.name} onChange={(e) => setRule({ ...rule, name: e.target.value })} placeholder={tr("t.ex. Facebook-leads till säljteamet")} autoFocus /></Field>
       <div>
         <div className="flex items-center gap-2 mb-2 text-sm">
-          <span className="font-medium text-slate-800">När ett nytt lead kommer in och</span>
-          <Select className="!w-auto !py-1" value={rule.match} onChange={(e) => setRule({ ...rule, match: e.target.value })}><option value="all">alla</option><option value="any">något</option></Select>
-          <span className="font-medium text-slate-800">villkor stämmer:</span>
+          <span className="font-medium text-slate-800">{tr("När ett nytt lead kommer in och")}</span>
+          <Select className="!w-auto !py-1" value={rule.match} onChange={(e) => setRule({ ...rule, match: e.target.value })}><option value="all">{tr("alla")}</option><option value="any">{tr("något")}</option></Select>
+          <span className="font-medium text-slate-800">{tr("villkor stämmer:")}</span>
         </div>
         <div className="space-y-2">
           {rule.conditions.map((c, i) => (
@@ -57,17 +58,17 @@ function RuleEditor({ rule, setRule, team }) {
               <Select className="!w-40" value={c.field} onChange={(e) => upd('conditions', i, { field: e.target.value, value: '' })}>{FIELDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
               <Select className="!w-40" value={c.op} onChange={(e) => upd('conditions', i, { op: e.target.value })}>{OPS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
               {!noValue(c.op) && (c.field === 'source' ? (
-                <Select value={c.value} onChange={(e) => upd('conditions', i, { value: e.target.value })}><option value="">Välj…</option>{Object.entries(SOURCES).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}</Select>
+                <Select value={c.value} onChange={(e) => upd('conditions', i, { value: e.target.value })}><option value="">{tr("Välj…")}</option>{Object.entries(SOURCES).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}</Select>
               ) : <Input value={c.value} onChange={(e) => upd('conditions', i, { value: e.target.value })} />)}
               <button onClick={() => rm('conditions', i)} className="p-1.5 text-slate-400 hover:text-rose-500"><X className="size-4" /></button>
             </div>
           ))}
-          {!rule.conditions.length && <p className="text-xs text-slate-500">Inga villkor – regeln körs för alla nya leads.</p>}
-          <Button size="sm" variant="ghost" icon={Plus} onClick={() => setRule({ ...rule, conditions: [...rule.conditions, { field: 'source', op: 'equals', value: '' }] })}>Lägg till villkor</Button>
+          {!rule.conditions.length && <p className="text-xs text-slate-500">{tr("Inga villkor – regeln körs för alla nya leads.")}</p>}
+          <Button size="sm" variant="ghost" icon={Plus} onClick={() => setRule({ ...rule, conditions: [...rule.conditions, { field: 'source', op: 'equals', value: '' }] })}>{tr("Lägg till villkor")}</Button>
         </div>
       </div>
       <div>
-        <p className="text-sm font-medium text-slate-800 mb-2">…gör då följande:</p>
+        <p className="text-sm font-medium text-slate-800 mb-2">{tr("…gör då följande:")}</p>
         <div className="space-y-2">
           {rule.actions.map((a, i) => (
             <div key={i} className="flex gap-2 items-start rounded-lg border border-slate-200 p-2">
@@ -82,16 +83,16 @@ function RuleEditor({ rule, setRule, team }) {
                     })}
                   </div>
                 )}
-                {a.type === 'assign_user' && <Select value={a.value} onChange={(e) => upd('actions', i, { value: Number(e.target.value) })}><option value="">Välj person…</option>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>}
-                {a.type === 'set_status' && <Select value={a.value} onChange={(e) => upd('actions', i, { value: e.target.value })}><option value="">Välj…</option>{Object.entries(STATUSES).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}</Select>}
-                {a.type === 'add_tag' && <Input value={a.value} onChange={(e) => upd('actions', i, { value: e.target.value })} placeholder="t.ex. Het" />}
-                {a.type === 'add_score' && <Input type="number" value={a.value} onChange={(e) => upd('actions', i, { value: Number(e.target.value) })} placeholder="+10 eller -10" />}
-                {a.type === 'create_task' && <div className="flex gap-2"><Input value={a.value} onChange={(e) => upd('actions', i, { value: e.target.value })} placeholder="Ring upp leadet" /><Input type="number" className="input !w-24" value={a.hours || 24} onChange={(e) => upd('actions', i, { hours: Number(e.target.value) })} title="Inom antal timmar" /></div>}
+                {a.type === 'assign_user' && <Select value={a.value} onChange={(e) => upd('actions', i, { value: Number(e.target.value) })}><option value="">{tr("Välj person…")}</option>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>}
+                {a.type === 'set_status' && <Select value={a.value} onChange={(e) => upd('actions', i, { value: e.target.value })}><option value="">{tr("Välj…")}</option>{Object.entries(STATUSES).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}</Select>}
+                {a.type === 'add_tag' && <Input value={a.value} onChange={(e) => upd('actions', i, { value: e.target.value })} placeholder={tr("t.ex. Het")} />}
+                {a.type === 'add_score' && <Input type="number" value={a.value} onChange={(e) => upd('actions', i, { value: Number(e.target.value) })} placeholder={tr("+10 eller -10")} />}
+                {a.type === 'create_task' && <div className="flex gap-2"><Input value={a.value} onChange={(e) => upd('actions', i, { value: e.target.value })} placeholder={tr("Ring upp leadet")} /><Input type="number" className="input !w-24" value={a.hours || 24} onChange={(e) => upd('actions', i, { hours: Number(e.target.value) })} title={tr("Inom antal timmar")} /></div>}
               </div>
               <button onClick={() => rm('actions', i)} className="p-1.5 text-slate-400 hover:text-rose-500"><X className="size-4" /></button>
             </div>
           ))}
-          <Button size="sm" variant="ghost" icon={Plus} onClick={() => setRule({ ...rule, actions: [...rule.actions, { type: 'add_tag', value: '' }] })}>Lägg till åtgärd</Button>
+          <Button size="sm" variant="ghost" icon={Plus} onClick={() => setRule({ ...rule, actions: [...rule.actions, { type: 'add_tag', value: '' }] })}>{tr("Lägg till åtgärd")}</Button>
         </div>
       </div>
     </div>
@@ -109,16 +110,16 @@ export default function Automations() {
   const save = async () => {
     try {
       if (rule.id) await api.patch(`/automations/${rule.id}`, rule); else await api.post('/automations', rule);
-      setRule(null); reload(); toast('Regeln sparades');
+      setRule(null); reload(); toast(tr("Regeln sparades"));
     } catch (e) { toast(e.message, 'error'); }
   };
   const toggle = async (r) => { await api.patch(`/automations/${r.id}`, { enabled: !r.enabled }); reload(); };
 
   return (
     <div className="max-w-4xl">
-      <PageHeader title="Automatisering" subtitle="Regler som körs direkt när ett lead kommer in – fördela, tagga, poängsätt och skapa uppföljningar automatiskt."
-        actions={manage && <Button icon={Plus} onClick={() => setRule({ name: '', match: 'all', conditions: [{ field: 'source', op: 'equals', value: 'facebook' }], actions: [{ type: 'round_robin', users: [] }], enabled: true })}>Ny regel</Button>} />
-      {!data ? <Spinner /> : !data.length ? <Card><Empty icon={Zap} title="Inga regler än" text="Skapa en regel för att automatiskt fördela leads till rätt säljare." /></Card> : (
+      <PageHeader title={tr("Automatisering")} subtitle={tr("Regler som körs direkt när ett lead kommer in – fördela, tagga, poängsätt och skapa uppföljningar automatiskt.")}
+        actions={manage && <Button icon={Plus} onClick={() => setRule({ name: '', match: 'all', conditions: [{ field: 'source', op: 'equals', value: 'facebook' }], actions: [{ type: 'round_robin', users: [] }], enabled: true })}>{tr("Ny regel")}</Button>} />
+      {!data ? <Spinner /> : !data.length ? <Card><Empty icon={Zap} title={tr("Inga regler än")} text={tr("Skapa en regel för att automatiskt fördela leads till rätt säljare.")} /></Card> : (
         <div className="space-y-3">
           {data.map((r, idx) => {
             const d = describe(r, team);
@@ -127,10 +128,10 @@ export default function Automations() {
                 <div className="flex items-start gap-4">
                   <span className="grid place-items-center size-9 rounded-lg bg-amber-50 text-amber-600 shrink-0 text-sm font-semibold">{idx + 1}</span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2"><h3 className="font-semibold text-slate-900">{r.name}</h3><span className="text-xs text-slate-400">körts {r.runs} gånger</span></div>
+                    <div className="flex items-center gap-2"><h3 className="font-semibold text-slate-900">{r.name}</h3><span className="text-xs text-slate-400">{tr("körts")} {r.runs} {tr("gånger")}</span></div>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                      <span className="text-slate-500">Om</span>
-                      {d.conds.length ? d.conds.map((c, i) => <span key={i} className="flex items-center gap-2">{i > 0 && <span className="text-slate-400">{r.match === 'any' ? 'eller' : 'och'}</span>}<span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">{c}</span></span>) : <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">alla nya leads</span>}
+                      <span className="text-slate-500">{tr("Om")}</span>
+                      {d.conds.length ? d.conds.map((c, i) => <span key={i} className="flex items-center gap-2">{i > 0 && <span className="text-slate-400">{r.match === 'any' ? 'eller' : 'och'}</span>}<span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">{c}</span></span>) : <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">{tr("alla nya leads")}</span>}
                       <ArrowRight className="size-3.5 text-slate-400" />
                       {d.acts.map((a, i) => (
                         <span key={i} className="inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2 py-1 text-brand-700">{a.text}
@@ -148,14 +149,14 @@ export default function Automations() {
               </Card>
             );
           })}
-          <p className="text-xs text-slate-500 px-1">Reglerna körs uppifrån och ned. Om flera regler tilldelar ansvarig gäller den sista som matchar.</p>
+          <p className="text-xs text-slate-500 px-1">{tr("Reglerna körs uppifrån och ned. Om flera regler tilldelar ansvarig gäller den sista som matchar.")}</p>
         </div>
       )}
-      <Modal open={!!rule} onClose={() => setRule(null)} wide title={rule?.id ? 'Redigera regel' : 'Ny automatiseringsregel'}
-        footer={<><Button variant="secondary" onClick={() => setRule(null)}>Avbryt</Button><Button onClick={save}>Spara regel</Button></>}>
+      <Modal open={!!rule} onClose={() => setRule(null)} wide title={rule?.id ? tr("Redigera regel") : tr("Ny automatiseringsregel")}
+        footer={<><Button variant="secondary" onClick={() => setRule(null)}>{tr("Avbryt")}</Button><Button onClick={save}>{tr("Spara regel")}</Button></>}>
         {rule && <RuleEditor rule={rule} setRule={setRule} team={team} />}
       </Modal>
-      <Confirm open={!!del} onClose={() => setDel(null)} title="Radera regel?" text={`"${del?.name}" tas bort.`} onConfirm={async () => { await api.del(`/automations/${del.id}`); setDel(null); reload(); }} />
+      <Confirm open={!!del} onClose={() => setDel(null)} title={tr("Radera regel?")} text={tr("\"{0}\" tas bort.", { 0: del?.name })} onConfirm={async () => { await api.del(`/automations/${del.id}`); setDel(null); reload(); }} />
     </div>
   );
 }

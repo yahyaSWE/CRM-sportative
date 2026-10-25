@@ -288,6 +288,7 @@ function addColumn(table, column, def) {
 addColumn('deals', 'lost_reason', 'TEXT');
 addColumn('deals', 'stage_changed_at', 'TEXT');
 addColumn('users', 'ical_token', 'TEXT');
+addColumn('users', 'language', "TEXT NOT NULL DEFAULT 'sv'");
 addColumn('leads', 'company_id', 'INTEGER REFERENCES companies(id) ON DELETE SET NULL');
 addColumn('deals', 'company_id', 'INTEGER REFERENCES companies(id) ON DELETE SET NULL');
 addColumn('activities', 'company_id', 'INTEGER REFERENCES companies(id) ON DELETE CASCADE');

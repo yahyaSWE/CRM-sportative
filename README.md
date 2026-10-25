@@ -64,6 +64,16 @@ Gemensamt mönster som LeadFlow följer: **alla kanaler matas in i en och samma 
 
 Signaturen är en enkel elektronisk underskrift. För avancerad underskrift med BankID behöver en tjänst som Scrive, Oneflow eller Signicat kopplas in. Kunden kan skriva ut eller spara offerten som PDF via webbläsaren.
 
+## Språk
+
+Varje användare väljer **svenska eller engelska** under *Inställningar → Språk*. Valet sparas på kontot och gäller på alla enheter. Innan inloggning går språket att välja uppe till höger på inloggningssidan.
+
+- Gränssnittet, datum och belopp, serverns felmeddelanden, tidslinjens systemhändelser och notiser visas på valt språk.
+- Det användarna själva skriver (anteckningar, uppgifter, företagsnamn) och data från kanalerna visas som det skrevs.
+- Kundens offertsida är på svenska oavsett säljarens språk.
+
+För utvecklare: texterna i koden är svenska och fungerar som nycklar – omslut nya texter med `tr("…")` (från `client/src/lib/i18n.js`) och lägg till översättningen i `client/src/lib/i18n.en.js`. I utvecklingsläge varnar konsolen för texter som saknar engelsk översättning.
+
 ## Från lead till affär
 
 1. **Lead** (personen/förfrågan) kommer in automatiskt och kvalificeras: Ny → Kontaktad → Kvalificerad.

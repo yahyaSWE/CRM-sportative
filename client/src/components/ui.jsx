@@ -1,6 +1,7 @@
 import { useEffect, useState, createContext, useContext, useCallback } from 'react';
 import { X, Loader2, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { SOURCES, STATUSES } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
 export const cx = (...c) => c.filter(Boolean).join(' ');
 
@@ -196,10 +197,10 @@ export function ToastProvider({ children }) {
   );
 }
 
-export function Confirm({ open, onClose, onConfirm, title, text, confirmText = 'Radera', loading }) {
+export function Confirm({ open, onClose, onConfirm, title, text, confirmText = tr("Radera"), loading }) {
   return (
     <Modal open={open} onClose={onClose} title={title}
-      footer={<><Button variant="secondary" onClick={onClose}>Avbryt</Button><Button variant="danger" loading={loading} onClick={onConfirm}>{confirmText}</Button></>}>
+      footer={<><Button variant="secondary" onClick={onClose}>{tr("Avbryt")}</Button><Button variant="danger" loading={loading} onClick={onConfirm}>{confirmText}</Button></>}>
       <p className="text-sm text-slate-600">{text}</p>
     </Modal>
   );

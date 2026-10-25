@@ -6,6 +6,7 @@ import { useApp, useFetch, useLive } from '../lib/app.jsx';
 import { api } from '../api.js';
 import { Card, PageHeader, Tabs, SourceBadge, StatusBadge, Avatar, Spinner, Empty, cx } from '../components/ui.jsx';
 import { SOURCES, STAGES, leadName, sek, num, pct, timeAgo, dueLabel } from '../lib/meta.jsx';
+import { tr, locale } from '../lib/i18n.js';
 
 function Kpi({ label, value, sub, icon: Icon, trend, accent }) {
   return (
@@ -32,7 +33,7 @@ const ChartTip = ({ active, payload, label }) => {
   const total = payload.reduce((s, p) => s + (p.value || 0), 0);
   return (
     <div className="card px-3 py-2 shadow-lg text-xs">
-      <p className="font-medium text-slate-900 mb-1">{label} · {total} leads</p>
+      <p className="font-medium text-slate-900 mb-1">{label} · {total} {tr("leads")}</p>
       {payload.filter((p) => p.value).map((p) => (
         <p key={p.dataKey} className="flex items-center gap-2 text-slate-600"><span className="size-2 rounded-full" style={{ background: p.color }} />{SOURCES[p.dataKey]?.label}: {p.value}</p>
       ))}
@@ -52,17 +53,17 @@ function LostReasons({ rows, days }) {
   return (
     <Card className="p-5">
       <div className="flex items-baseline justify-between mb-4">
-        <div><h3 className="font-semibold text-slate-900">Varför förlorar vi affärer?</h3><p className="text-xs text-slate-500">{total} förlorade affärer senaste {days} dagarna, per orsak och kanal</p></div>
-        <span className="text-sm text-slate-500">{sek(list.reduce((s, r) => s + r.v, 0))} förlorat</span>
+        <div><h3 className="font-semibold text-slate-900">{tr("Varför förlorar vi affärer?")}</h3><p className="text-xs text-slate-500">{total} {tr("förlorade affärer senaste")} {days} {tr("dagarna, per orsak och kanal")}</p></div>
+        <span className="text-sm text-slate-500">{sek(list.reduce((s, r) => s + r.v, 0))} {tr("förlorat")}</span>
       </div>
       <div className="space-y-3">
         {list.map((r) => (
           <div key={r.reason} className="grid grid-cols-[140px_1fr_auto] items-center gap-4">
-            <span className="text-sm text-slate-700 truncate">{r.reason}</span>
+            <span className="text-sm text-slate-700 truncate">{tr(r.reason)}</span>
             <div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full rounded-full bg-rose-400" style={{ width: `${(r.n / max) * 100}%` }} /></div>
             <span className="flex items-center gap-2 text-xs text-slate-500">
               {Object.entries(r.sources).sort((a, b) => b[1] - a[1]).map(([s, n]) => <span key={s} className="inline-flex items-center gap-1" title={SOURCES[s]?.label}><SourceBadge source={s} compact />{n}</span>)}
-              <span className="w-10 text-right font-medium text-slate-700 tabular-nums">{r.n} st</span>
+              <span className="w-10 text-right font-medium text-slate-700 tabular-nums">{r.n} {tr("st")}</span>
             </span>
           </div>
         ))}
@@ -82,7 +83,7 @@ export default function Dashboard() {
     const map = {};
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
-      map[d] = { day: d, label: new Date(d).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }), ...Object.fromEntries(Object.keys(SOURCES).map((s) => [s, 0])) };
+      map[d] = { day: d, label: new Date(d).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }), ...Object.fromEntries(Object.keys(SOURCES).map((s) => [s, 0])) };
     }
     for (const r of data.perDay) if (map[r.day]) map[r.day][r.source] = r.n;
     return Object.values(map);
@@ -93,25 +94,25 @@ export default function Dashboard() {
   const trend = k.prevLeads ? (k.newLeads - k.prevLeads) / k.prevLeads : null;
   const sourceKeys = Object.keys(SOURCES).filter((s) => data.perDay.some((r) => r.source === s));
   const hour = new Date().getHours();
-  const greeting = hour < 10 ? 'God morgon' : hour < 17 ? 'Hej' : 'God kväll';
+  const greeting = hour < 10 ? tr("God morgon") : hour < 17 ? tr("Hej") : tr("God kväll");
 
   return (
     <div className="space-y-6">
       <PageHeader title={`${greeting}, ${user.name.split(' ')[0]}`}
-        subtitle={data.team ? 'Så här går det för teamet.' : 'Så här går det för dig.'}
+        subtitle={data.team ? tr("Så här går det för teamet.") : tr("Så här går det för dig.")}
         actions={<Tabs value={days} onChange={setDays} tabs={[{ value: 7, label: '7 dagar' }, { value: 30, label: '30 dagar' }, { value: 90, label: '90 dagar' }]} />} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="Nya leads" value={num(k.newLeads)} sub={`${k.today} idag`} trend={trend} icon={Users} accent="bg-brand-50 text-brand-600" />
-        <Kpi label="Konverteringsgrad" value={pct(k.conversionRate)} sub={`Vinstgrad affärer ${pct(k.winRate)}`} icon={Target} accent="bg-emerald-50 text-emerald-600" />
-        <Kpi label="Pipelinevärde" value={sek(k.pipelineValue)} sub={`${k.openDeals} öppna affärer · ${sek(k.wonValue)} vunnet`} icon={Wallet} accent="bg-violet-50 text-violet-600" />
-        <Kpi label="Svarstid" value={k.responseHours != null ? `${k.responseHours < 1 ? Math.round(k.responseHours * 60) + ' min' : k.responseHours.toFixed(1) + ' h'}` : '–'} sub="snitt till första kontakt" icon={Clock} accent="bg-amber-50 text-amber-600" />
+        <Kpi label={tr("Nya leads")} value={num(k.newLeads)} sub={`${k.today} idag`} trend={trend} icon={Users} accent="bg-brand-50 text-brand-600" />
+        <Kpi label={tr("Konverteringsgrad")} value={pct(k.conversionRate)} sub={tr("Vinstgrad affärer {0}", { 0: pct(k.winRate) })} icon={Target} accent="bg-emerald-50 text-emerald-600" />
+        <Kpi label={tr("Pipelinevärde")} value={sek(k.pipelineValue)} sub={tr("{0} öppna affärer · {1} vunnet", { 0: k.openDeals, 1: sek(k.wonValue) })} icon={Wallet} accent="bg-violet-50 text-violet-600" />
+        <Kpi label={tr("Svarstid")} value={k.responseHours != null ? `${k.responseHours < 1 ? Math.round(k.responseHours * 60) + ' min' : k.responseHours.toFixed(1) + ' h'}` : '–'} sub="snitt till första kontakt" icon={Clock} accent="bg-amber-50 text-amber-600" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="p-5 xl:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <div><h3 className="font-semibold text-slate-900">Inkommande leads per kanal</h3><p className="text-xs text-slate-500">Automatiskt insamlade och manuellt skapade</p></div>
+            <div><h3 className="font-semibold text-slate-900">{tr("Inkommande leads per kanal")}</h3><p className="text-xs text-slate-500">{tr("Automatiskt insamlade och manuellt skapade")}</p></div>
             <div className="hidden sm:flex flex-wrap gap-3">{sourceKeys.map((s) => <span key={s} className="flex items-center gap-1.5 text-xs text-slate-600"><span className="size-2 rounded-full" style={{ background: SOURCES[s].color }} />{SOURCES[s].label}</span>)}</div>
           </div>
           <div className="h-72">
@@ -131,8 +132,8 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-5">
-          <h3 className="font-semibold text-slate-900">Leadkällor</h3>
-          <p className="text-xs text-slate-500 mb-2">Andel och konvertering per kanal</p>
+          <h3 className="font-semibold text-slate-900">{tr("Leadkällor")}</h3>
+          <p className="text-xs text-slate-500 mb-2">{tr("Andel och konvertering per kanal")}</p>
           <div className="h-44">
             <ResponsiveContainer>
               <PieChart>
@@ -150,7 +151,7 @@ export default function Dashboard() {
                 <div key={s.source} className="flex items-center gap-3 text-sm">
                   <SourceBadge source={s.source} compact />
                   <span className="flex-1 text-slate-700">{SOURCES[s.source]?.label}</span>
-                  <span className="text-xs text-slate-400">{pct(s.n ? s.converted / s.n : 0)} konv.</span>
+                  <span className="text-xs text-slate-400">{pct(s.n ? s.converted / s.n : 0)} {tr("konv.")}</span>
                   <span className="w-12 text-right font-medium tabular-nums">{Math.round((s.n / total) * 100)} %</span>
                 </div>
               );
@@ -162,11 +163,11 @@ export default function Dashboard() {
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <div><h3 className="font-semibold text-slate-900">Senaste leads</h3>
-              {k.unassigned > 0 && <p className="text-xs text-amber-600">{k.unassigned} nya leads väntar på att tilldelas</p>}</div>
-            <Link to="/leads" className="text-sm font-medium text-brand-600 hover:text-brand-700 inline-flex items-center gap-1">Visa alla<ArrowRight className="size-4" /></Link>
+            <div><h3 className="font-semibold text-slate-900">{tr("Senaste leads")}</h3>
+              {k.unassigned > 0 && <p className="text-xs text-amber-600">{k.unassigned} {tr("nya leads väntar på att tilldelas")}</p>}</div>
+            <Link to="/leads" className="text-sm font-medium text-brand-600 hover:text-brand-700 inline-flex items-center gap-1">{tr("Visa alla")}<ArrowRight className="size-4" /></Link>
           </div>
-          {!data.recent.length ? <Empty icon={Inbox} title="Inga leads än" text="Koppla in en kanal under Integrationer så hämtas leads automatiskt." /> : (
+          {!data.recent.length ? <Empty icon={Inbox} title={tr("Inga leads än")} text={tr("Koppla in en kanal under Integrationer så hämtas leads automatiskt.")} /> : (
             <div className="divide-y divide-slate-100">
               {data.recent.map((l) => (
                 <Link key={l.id} to={`/leads/${l.id}`} className="flex items-center gap-4 px-5 py-3 hover:bg-slate-50/80">
@@ -177,7 +178,7 @@ export default function Dashboard() {
                   </div>
                   <StatusBadge status={l.status} />
                   <span className="hidden sm:block w-24 text-right text-xs text-slate-400">{timeAgo(l.created_at)}</span>
-                  {l.owner_name ? <Avatar name={l.owner_name} color={l.owner_color} size="sm" /> : <span className="size-7 rounded-full border border-dashed border-slate-300" title="Otilldelad" />}
+                  {l.owner_name ? <Avatar name={l.owner_name} color={l.owner_color} size="sm" /> : <span className="size-7 rounded-full border border-dashed border-slate-300" title={tr("Otilldelad")} />}
                 </Link>
               ))}
             </div>
@@ -186,8 +187,8 @@ export default function Dashboard() {
 
         <div className="space-y-4">
           <Card className="p-5">
-            <div className="flex items-center justify-between mb-3"><h3 className="font-semibold text-slate-900">Mina uppgifter</h3><Link to="/tasks" className="text-xs font-medium text-brand-600">Alla</Link></div>
-            {!data.tasks.length ? <p className="text-sm text-slate-500 py-4 text-center">Inga öppna uppgifter 🎉</p> : (
+            <div className="flex items-center justify-between mb-3"><h3 className="font-semibold text-slate-900">{tr("Mina uppgifter")}</h3><Link to="/tasks" className="text-xs font-medium text-brand-600">{tr("Alla")}</Link></div>
+            {!data.tasks.length ? <p className="text-sm text-slate-500 py-4 text-center">{tr("Inga öppna uppgifter 🎉")}</p> : (
               <ul className="space-y-1">
                 {data.tasks.map((t) => {
                   const due = dueLabel(t.due_at);
@@ -205,7 +206,7 @@ export default function Dashboard() {
             )}
           </Card>
           <Card className="p-5">
-            <h3 className="font-semibold text-slate-900 mb-3">Pipeline</h3>
+            <h3 className="font-semibold text-slate-900 mb-3">{tr("Pipeline")}</h3>
             <div className="h-40">
               <ResponsiveContainer>
                 <BarChart data={STAGES.filter((s) => s.key !== 'lost').map((s) => ({ ...s, v: data.stages.find((x) => x.stage === s.key)?.v || 0 }))} margin={{ left: -10, right: 0 }}>
@@ -224,9 +225,9 @@ export default function Dashboard() {
 
       {data.team && data.leaderboard.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-semibold text-slate-900">Topplista</h3><p className="text-xs text-slate-500">Senaste {days} dagarna</p></div>
+          <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-semibold text-slate-900">{tr("Topplista")}</h3><p className="text-xs text-slate-500">{tr("Senaste")} {days} {tr("dagarna")}</p></div>
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-xs text-slate-500"><th className="px-5 py-2 font-medium">Säljare</th><th className="px-5 py-2 font-medium text-right">Nya leads</th><th className="px-5 py-2 font-medium text-right">Vunna affärer</th><th className="px-5 py-2 font-medium text-right">Intäkt</th></tr></thead>
+            <thead><tr className="text-left text-xs text-slate-500"><th className="px-5 py-2 font-medium">{tr("Säljare")}</th><th className="px-5 py-2 font-medium text-right">{tr("Nya leads")}</th><th className="px-5 py-2 font-medium text-right">{tr("Vunna affärer")}</th><th className="px-5 py-2 font-medium text-right">{tr("Intäkt")}</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
               {data.leaderboard.map((u, i) => (
                 <tr key={u.id}>

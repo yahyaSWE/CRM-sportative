@@ -5,6 +5,7 @@ import DealDrawer from './DealDrawer.jsx';
 import CompanyDrawer from './CompanyDrawer.jsx';
 import { cx } from './ui.jsx';
 import { dueLabel, timeAgo } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
 // Öppnar lead- och affärspaneler direkt på sidan man står på, i stället för att byta sida.
 export function useRecordDrawers(onChanged) {
@@ -36,12 +37,12 @@ export function NextStepCell({ step, lastContact, status }) {
           <span className="truncate">{step.content}</span>
         </p>
       ) : active && status !== 'new' ? (
-        <p className="flex items-center gap-1.5 text-amber-600"><AlertTriangle className="size-3.5" />Inget nästa steg</p>
+        <p className="flex items-center gap-1.5 text-amber-600"><AlertTriangle className="size-3.5" />{tr("Inget nästa steg")}</p>
       ) : <p className="text-slate-300">—</p>}
       <p className="mt-0.5 text-slate-400 truncate">
-        {step && <span className={dueLabel(step.due_at).cls}>{dueLabel(step.due_at).text.replace(' · försenad', '')}</span>}
+        {step && <span className={dueLabel(step.due_at).cls}>{dueLabel(step.due_at).short}</span>}
         {step && lastContact && ' · '}
-        {lastContact ? `kontakt ${timeAgo(lastContact)}` : !step && status && status !== 'new' ? 'ingen kontakt loggad' : ''}
+        {lastContact ? tr('kontakt {0}', { 0: timeAgo(lastContact) }) : !step && status && status !== 'new' ? tr("ingen kontakt loggad") : ''}
       </p>
     </div>
   );

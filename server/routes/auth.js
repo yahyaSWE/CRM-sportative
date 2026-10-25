@@ -31,8 +31,10 @@ r.post('/setup', (req, res) => {
   if (!name.trim() || !/.+@.+\..+/.test(email)) return res.status(400).json({ error: 'Ange namn och e-post' });
   if (password.length < 10) return res.status(400).json({ error: 'Lösenordet måste vara minst 10 tecken' });
   const [adminRole] = ensureRoles();
-  const ins = run('INSERT INTO users (name, email, password_hash, role_id, color) VALUES (?,?,?,?,?)',
-    name.trim(), email.trim().toLowerCase(), hashPassword(password), adminRole, '#6366f1');
+  // Första kontot får det språk som valts på inloggningssidan.
+  const language = ['sv', 'en'].includes(req.body?.language) ? req.body.language : 'sv';
+  const ins = run('INSERT INTO users (name, email, password_hash, role_id, color, language) VALUES (?,?,?,?,?,?)',
+    name.trim(), email.trim().toLowerCase(), hashPassword(password), adminRole, '#6366f1', language);
   const id = Number(ins.lastInsertRowid);
   audit(id, 'user.setup', 'user', id);
   setSession(req, res, id);
@@ -64,6 +66,17 @@ r.post('/logout', (req, res) => {
 });
 
 r.get('/me', authenticate, (req, res) => res.json({ user: req.user, permissions: PERMISSIONS }));
+
+// Profilinställningar: valt språk sparas på användaren och följer med på alla enheter.
+export const LANGUAGES = ['sv', 'en'];
+r.patch('/profile', authenticate, (req, res) => {
+  const { language } = req.body || {};
+  if (language !== undefined) {
+    if (!LANGUAGES.includes(language)) return res.status(400).json({ error: 'Okänt språk' });
+    run('UPDATE users SET language = ? WHERE id = ?', language, req.user.id);
+  }
+  res.json({ user: loadUser(req.user.id) });
+});
 
 r.post('/password', authenticate, (req, res) => {
   const { current, next } = req.body || {};

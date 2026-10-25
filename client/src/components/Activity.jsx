@@ -3,14 +3,15 @@ import { Link } from 'react-router-dom';
 import { Mail, StickyNote, PhoneCall, CalendarClock, CheckSquare, Sparkles, Circle, CheckCircle2, Briefcase } from 'lucide-react';
 import { Button, cx } from './ui.jsx';
 import { timeAgo, formatDateTime, dueLabel, toSqlDate } from '../lib/meta.jsx';
+import { tr, translateStored } from '../lib/i18n.js';
 
 export const ACT = {
-  note: { label: 'Anteckning', icon: StickyNote, cls: 'bg-amber-50 text-amber-600' },
-  call: { label: 'Samtal', icon: PhoneCall, cls: 'bg-emerald-50 text-emerald-600' },
-  email: { label: 'E-post', icon: Mail, cls: 'bg-sky-50 text-sky-600' },
-  meeting: { label: 'Möte', icon: CalendarClock, cls: 'bg-violet-50 text-violet-600' },
-  task: { label: 'Uppgift', icon: CheckSquare, cls: 'bg-brand-50 text-brand-600' },
-  system: { label: 'System', icon: Sparkles, cls: 'bg-slate-100 text-slate-500' },
+  note: { label: tr("Anteckning"), icon: StickyNote, cls: 'bg-amber-50 text-amber-600' },
+  call: { label: tr("Samtal"), icon: PhoneCall, cls: 'bg-emerald-50 text-emerald-600' },
+  email: { label: tr("E-post"), icon: Mail, cls: 'bg-sky-50 text-sky-600' },
+  meeting: { label: tr("Möte"), icon: CalendarClock, cls: 'bg-violet-50 text-violet-600' },
+  task: { label: tr("Uppgift"), icon: CheckSquare, cls: 'bg-brand-50 text-brand-600' },
+  system: { label: tr("System"), icon: Sparkles, cls: 'bg-slate-100 text-slate-500' },
 };
 
 // Skrivfält för anteckningar, samtal, möten och uppgifter. `onSubmit` får { type, content, due_at }.
@@ -37,12 +38,12 @@ export function ActivityComposer({ onSubmit, hint }) {
         })}
       </div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
-        placeholder={type === 'task' ? 'Vad behöver göras?' : type === 'call' ? 'Vad pratade ni om?' : type === 'meeting' ? 'Vad kom ni fram till?' : 'Skriv en anteckning…'}
+        placeholder={type === 'task' ? tr("Vad behöver göras?") : type === 'call' ? tr("Vad pratade ni om?") : type === 'meeting' ? tr("Vad kom ni fram till?") : tr("Skriv en anteckning…")}
         className="w-full resize-none text-sm outline-none placeholder:text-slate-400 px-1" />
       <div className="flex items-center justify-end gap-2">
         {hint && <span className="mr-auto text-[11px] text-slate-400">{hint}</span>}
         {type === 'task' && <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className="input !w-auto !py-1 text-xs" />}
-        <Button size="sm" type="submit" loading={saving} disabled={!text.trim()}>Spara</Button>
+        <Button size="sm" type="submit" loading={saving} disabled={!text.trim()}>{tr("Spara")}</Button>
       </div>
     </form>
   );
@@ -50,7 +51,7 @@ export function ActivityComposer({ onSubmit, hint }) {
 
 // Gemensam tidslinje för lead och affär. Aktiviteter från en affär märks med affärens namn.
 export function Timeline({ activities, onToggleTask, currentDealId, showContact }) {
-  if (!activities.length) return <p className="text-sm text-slate-400">Ingen historik än.</p>;
+  if (!activities.length) return <p className="text-sm text-slate-400">{tr("Ingen historik än.")}</p>;
   return (
     <ol className="relative space-y-5 before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-px before:bg-slate-200">
       {activities.map((a) => {
@@ -62,14 +63,14 @@ export function Timeline({ activities, onToggleTask, currentDealId, showContact 
             <span className={cx('relative z-10 grid place-items-center size-8 rounded-full ring-4 ring-white shrink-0', m.cls)}><I className="size-4" /></span>
             <div className="min-w-0 flex-1 pt-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-                <span className="font-medium text-slate-700">{a.user_name || 'LeadFlow'}</span><span>·</span><span>{m.label}</span><span>·</span>
+                <span className="font-medium text-slate-700">{a.user_name || tr("LeadFlow")}</span><span>·</span><span>{m.label}</span><span>·</span>
                 <span title={formatDateTime(a.created_at)}>{timeAgo(a.created_at)}</span>
                 {a.deal_id && a.deal_id !== currentDealId && a.deal_title && (
                   <Link to={`/pipeline/${a.deal_id}`} className="inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-px text-[11px] font-medium text-violet-700 hover:bg-violet-100">
                     <Briefcase className="size-3" />{a.deal_title}
                   </Link>
                 )}
-                {currentDealId && !a.deal_id && <span className="rounded bg-slate-100 px-1.5 py-px text-[11px] text-slate-500">Från leadet</span>}
+                {currentDealId && !a.deal_id && <span className="rounded bg-slate-100 px-1.5 py-px text-[11px] text-slate-500">{tr("Från leadet")}</span>}
                 {showContact && a.lead_id && (a.contact_first_name || a.contact_last_name) && (
                   <Link to={`/leads/${a.lead_id}`} className="rounded bg-slate-100 px-1.5 py-px text-[11px] text-slate-600 hover:bg-slate-200">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(' ')}</Link>
                 )}
@@ -79,7 +80,7 @@ export function Timeline({ activities, onToggleTask, currentDealId, showContact 
                   {a.done ? <CheckCircle2 className="size-4 text-emerald-500 mt-0.5" /> : <Circle className="size-4 text-slate-300 mt-0.5 hover:text-emerald-500" />}
                   <span className={cx('text-sm', a.done ? 'line-through text-slate-400' : 'text-slate-700')}>{a.content}{due && <span className={cx('ml-2 text-xs', due.cls)}>{due.text}</span>}</span>
                 </button>
-              ) : <p className={cx('mt-1 text-sm whitespace-pre-wrap', a.type === 'system' ? 'text-slate-500' : 'text-slate-700')}>{a.content}</p>}
+              ) : <p className={cx('mt-1 text-sm whitespace-pre-wrap', a.type === 'system' ? 'text-slate-500' : 'text-slate-700')}>{['system', 'meeting'].includes(a.type) ? translateStored(a.content) : a.content}</p>}
             </div>
           </li>
         );

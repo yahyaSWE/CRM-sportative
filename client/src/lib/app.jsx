@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { api } from '../api.js';
 import { useToast } from '../components/ui.jsx';
 import { SOURCES, leadName } from './meta.jsx';
+import { applyLanguage } from './i18n.js';
+import { tr } from './i18n.js';
 
 const AppCtx = createContext(null);
 export const useApp = () => useContext(AppCtx);
@@ -26,6 +28,8 @@ export function AppProvider({ children }) {
   const load = useCallback(async () => {
     try {
       const me = await api.get('/auth/me');
+      // Användarens sparade språk gäller på alla enheter; laddar om sidan om det skiljer sig.
+      if (applyLanguage(me.user.language)) return;
       setState({ loading: false, user: me.user, permissions: me.permissions });
       setTeam(await api.get('/users'));
     } catch {
@@ -50,7 +54,7 @@ export function AppProvider({ children }) {
       // Egna importer från prospektering behöver ingen notis per lead – importen visar en sammanfattning.
       if (type === 'lead' && data.type === 'created' && data.lead.source !== 'prospecting') {
         const src = SOURCES[data.lead.source]?.label || data.lead.source;
-        toast(`${leadName(data.lead)} via ${src}`, 'info', { title: 'Ny lead inkommen' });
+        toast(`${leadName(data.lead)} via ${src}`, 'info', { title: tr("Ny lead inkommen") });
       }
       if (type === 'notification') bus.dispatchEvent(new CustomEvent('notifications', { detail: data }));
     };

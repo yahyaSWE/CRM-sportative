@@ -6,6 +6,7 @@ import { Card, PageHeader, SourceBadge, StatusBadge, Avatar, Empty, Spinner } fr
 import { useRecordDrawers } from '../components/Records.jsx';
 import { SEARCH_HINT } from '../components/GlobalSearch.jsx';
 import { leadName, sek, STAGES } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
 function Section({ icon: Icon, title, count, children }) {
   if (!count) return null;
@@ -41,27 +42,27 @@ export default function SearchResults() {
   const total = res ? res.counts.companies + res.counts.leads + res.counts.deals : 0;
   return (
     <div className="max-w-4xl space-y-5">
-      <PageHeader title="Sök" subtitle={SEARCH_HINT} />
+      <PageHeader title={tr("Sök")} subtitle={SEARCH_HINT} />
       <form onSubmit={(e) => { e.preventDefault(); setSp({ q: input.trim() }); }} className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-slate-400" />
-        <input autoFocus value={input} onChange={(e) => setInput(e.target.value)} className="input !py-3 !pl-11 text-base" placeholder="Sök kund, lead eller affär…" />
+        <input autoFocus value={input} onChange={(e) => setInput(e.target.value)} className="input !py-3 !pl-11 text-base" placeholder={tr("Sök kund, lead eller affär…")} />
       </form>
       {q.length >= 2 && !res && <Spinner />}
-      {res && !total && <Card><Empty icon={Search} title={`Inga träffar på "${q}"`} text="Prova en del av namnet, ett telefonnummer eller företagets ort." /></Card>}
+      {res && !total && <Card><Empty icon={Search} title={tr("Inga träffar på \"{0}\"", { 0: q })} text={tr("Prova en del av namnet, ett telefonnummer eller företagets ort.")} /></Card>}
       {res && (
         <>
-          <Section icon={Building2} title="Företag" count={res.counts.companies}>
+          <Section icon={Building2} title={tr("Företag")} count={res.counts.companies}>
             {res.companies.map((c) => (
               <button key={c.id} onClick={() => openCompany(c.id)} className="flex w-full items-center gap-4 px-5 py-3 text-left hover:bg-slate-50">
                 <span className={`grid place-items-center size-7 rounded-md ${c.is_customer ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>{c.is_customer ? <Star className="size-4" /> : <Building2 className="size-4" />}</span>
                 <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-slate-800 truncate">{c.name}</span>
                   <span className="block text-xs text-slate-500 truncate">{[c.org_nr, c.city, `${c.contact_count} kontakter`].filter(Boolean).join(" · ")}</span></span>
-                {c.is_customer ? <span className="text-xs font-medium text-emerald-600">Kund</span> : null}
+                {c.is_customer ? <span className="text-xs font-medium text-emerald-600">{tr("Kund")}</span> : null}
               </button>
             ))}
           </Section>
-          <Section icon={Users} title="Kontakter" count={res.counts.leads}>{res.leads.map((l) => <LeadRow key={l.id} l={l} />)}</Section>
-          <Section icon={Briefcase} title="Affärer" count={res.counts.deals}>
+          <Section icon={Users} title={tr("Kontakter")} count={res.counts.leads}>{res.leads.map((l) => <LeadRow key={l.id} l={l} />)}</Section>
+          <Section icon={Briefcase} title={tr("Affärer")} count={res.counts.deals}>
             {res.deals.map((d) => {
               const st = STAGES.find((s) => s.key === d.stage);
               return (

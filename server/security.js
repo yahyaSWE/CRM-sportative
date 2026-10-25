@@ -97,7 +97,7 @@ export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
 }
 
 export function loadUser(userId) {
-  const u = get(`SELECT u.id, u.name, u.email, u.active, u.color, u.role_id, r.name AS role, r.permissions
+  const u = get(`SELECT u.id, u.name, u.email, u.active, u.color, u.language, u.role_id, r.name AS role, r.permissions
                  FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?`, userId);
   if (!u || !u.active) return null;
   u.permissions = JSON.parse(u.permissions || '[]');

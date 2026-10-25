@@ -4,8 +4,9 @@ import { Search, Briefcase, Star, ArrowRight, Building2 } from 'lucide-react';
 import { api } from '../api.js';
 import { SourceBadge, cx } from './ui.jsx';
 import { leadName, sek, STAGES } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
-export const SEARCH_HINT = 'Namn, företag, telefon, e-post, ort, org.nr eller tagg';
+export const SEARCH_HINT = tr("Namn, företag, telefon, e-post, ort, org.nr eller tagg");
 
 // Sökfältet i toppen: grupperade träffar (kunder, leads, affärer), piltangenter och Enter för alla resultat.
 export default function GlobalSearch() {
@@ -49,15 +50,15 @@ export default function GlobalSearch() {
     <div className="relative w-full max-w-lg">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
       <input ref={ref} value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
-        onKeyDown={onKeyDown} placeholder="Sök kund, lead eller affär…"
+        onKeyDown={onKeyDown} placeholder={tr("Sök kund, lead eller affär…")}
         className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-14 text-sm outline-none focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-100" />
       <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 text-[10px] font-medium text-slate-400">Ctrl K</kbd>
       {open && q.trim().length < 2 && (
-        <div className="absolute z-40 mt-2 w-full card shadow-xl px-4 py-3 text-xs text-slate-500 animate-fade-in">Sök på {SEARCH_HINT.toLowerCase()}.</div>
+        <div className="absolute z-40 mt-2 w-full card shadow-xl px-4 py-3 text-xs text-slate-500 animate-fade-in">{tr("Sök på")} {SEARCH_HINT.toLowerCase()}.</div>
       )}
       {open && res && (
         <div className="absolute z-40 mt-2 w-full card shadow-xl py-2 animate-fade-in max-h-[70vh] overflow-y-auto scroll-thin">
-          {!items.length && <p className="px-4 py-3 text-sm text-slate-500">Inga träffar på "{q}"</p>}
+          {!items.length && <p className="px-4 py-3 text-sm text-slate-500">{tr("Inga träffar på \"")}{q}"</p>}
           {items.map((it, i) => {
             const header = it.group !== lastGroup;
             lastGroup = it.group;
@@ -66,7 +67,7 @@ export default function GlobalSearch() {
             const stage = it.kind === 'deal' && STAGES.find((s) => s.key === x.stage);
             return (
               <div key={`${it.kind}-${x.id}`}>
-                {header && <p className="flex justify-between px-4 pt-2 pb-1 text-[11px] font-semibold uppercase text-slate-400"><span>{it.group}</span><span className="font-normal normal-case">{n} st</span></p>}
+                {header && <p className="flex justify-between px-4 pt-2 pb-1 text-[11px] font-semibold uppercase text-slate-400"><span>{tr(it.group)}</span><span className="font-normal normal-case">{n} {tr("st")}</span></p>}
                 <button onMouseDown={() => go(it.path)} onMouseEnter={() => setActive(i)}
                   className={cx('flex w-full items-center gap-3 px-4 py-2 text-left', active === i ? 'bg-brand-50' : 'hover:bg-slate-50')}>
                   {it.kind === 'deal'
@@ -90,7 +91,7 @@ export default function GlobalSearch() {
           {total > 0 && (
             <button onMouseDown={showAll} onMouseEnter={() => setActive(items.length)}
               className={cx('mt-1 flex w-full items-center justify-between border-t border-slate-100 px-4 py-2.5 text-sm font-medium text-brand-600', active === items.length ? 'bg-brand-50' : 'hover:bg-slate-50')}>
-              Visa alla {total} resultat<span className="flex items-center gap-1 text-xs text-slate-400">Enter<ArrowRight className="size-3.5" /></span>
+              {tr("Visa alla")} {total} {tr("resultat")}<span className="flex items-center gap-1 text-xs text-slate-400">{tr("Enter")}<ArrowRight className="size-3.5" /></span>
             </button>
           )}
         </div>

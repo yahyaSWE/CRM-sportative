@@ -20,6 +20,7 @@ import { scheduledTick as prospectingTick } from './prospecting/service.js';
 import { seed, ensureRoles } from './seed.js';
 import { PROD, ADMIN_EMAIL, TRUST_PROXY } from './config.js';
 import { dailyBackup } from './backup.js';
+import { translateErrors } from './i18n.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -32,6 +33,9 @@ app.use((req, res, next) => {
   if (PROD) res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
+
+// Felmeddelanden översätts till användarens språk (svenska eller engelska).
+app.use(translateErrors);
 
 // Rå body sparas för verifiering av Metas webhook-signatur.
 app.use(express.json({ limit: '2mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));

@@ -6,9 +6,10 @@ import { useApp, useFetch, useLive } from '../lib/app.jsx';
 import { Button, Card, PageHeader, Tabs, Select, Modal, Field, Input, Spinner, useToast, cx } from '../components/ui.jsx';
 import MeetingModal, { parseUtc, toUtcSql, fmtTime } from '../components/MeetingModal.jsx';
 import { timeAgo } from '../lib/meta.jsx';
+import { tr, locale } from '../lib/i18n.js';
 
 const DAY_START = 7, DAY_END = 20, HOUR_PX = 56;
-const WEEKDAYS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön'];
+const WEEKDAYS = [tr("Mån"), tr("Tis"), tr("Ons"), tr("Tor"), tr("Fre"), tr("Lör"), tr("Sön")];
 
 const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
@@ -76,7 +77,7 @@ function WeekView({ days, meetings, teamView, onOpen, onCreate }) {
                 {hours.map((h) => (
                   <div key={h} style={{ height: HOUR_PX }} className="border-t border-slate-100">
                     {[0, 30].map((min) => (
-                      <button key={min} aria-label="Boka möte" onClick={() => { const t = new Date(d); t.setHours(h, min, 0, 0); onCreate(t); }}
+                      <button key={min} aria-label={tr("Boka möte")} onClick={() => { const t = new Date(d); t.setHours(h, min, 0, 0); onCreate(t); }}
                         className="block w-full h-1/2 hover:bg-brand-50/60" />
                     ))}
                   </div>
@@ -133,7 +134,7 @@ function MonthView({ cursor, meetings, teamView, onOpen, onCreate }) {
                   </button>
                 );
               })}
-              {list.length > 3 && <p className="px-1 text-[11px] text-slate-500">+{list.length - 3} till</p>}
+              {list.length > 3 && <p className="px-1 text-[11px] text-slate-500">+{list.length - 3} {tr("till")}</p>}
             </div>
           );
         })}
@@ -147,25 +148,25 @@ function GoogleConfigModal({ open, onClose, status, onSaved }) {
   const [f, setF] = useState({ clientId: '', clientSecret: '' });
   useEffect(() => { if (open && status) setF({ clientId: status.clientId || '', clientSecret: status.clientSecret || '' }); }, [open]);
   const save = async () => {
-    try { await api.patch('/calendar/google/config', f); toast('Google-inställningarna sparades'); onSaved(); onClose(); }
+    try { await api.patch('/calendar/google/config', f); toast(tr("Google-inställningarna sparades")); onSaved(); onClose(); }
     catch (e) { toast(e.message, 'error'); }
   };
   return (
-    <Modal open={open} onClose={onClose} wide title="Koppla Google Kalender för teamet" description="Görs en gång av en administratör. Därefter kopplar varje säljare sitt eget konto med ett klick."
-      footer={<><Button variant="secondary" onClick={onClose}>Avbryt</Button><Button onClick={save}>Spara</Button></>}>
+    <Modal open={open} onClose={onClose} wide title={tr("Koppla Google Kalender för teamet")} description={tr("Görs en gång av en administratör. Därefter kopplar varje säljare sitt eget konto med ett klick.")}
+      footer={<><Button variant="secondary" onClick={onClose}>{tr("Avbryt")}</Button><Button onClick={save}>{tr("Spara")}</Button></>}>
       <div className="space-y-5">
         <ol className="space-y-2.5 text-sm text-slate-600 list-decimal pl-5">
-          <li>Öppna <a className="text-brand-600 underline" href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noreferrer">Google Cloud Console</a> (gärna samma projekt som Places-nyckeln) och aktivera <b>Google Calendar API</b>.</li>
-          <li>Under <b>OAuth-medgivandeskärm</b>: välj <i>Intern</i> om ni har Google Workspace, annars <i>Extern</i> och lägg till säljarna som testanvändare.</li>
-          <li>Under <b>Inloggningsuppgifter → Skapa → OAuth-klient-id</b>: välj <i>Webbapplikation</i> och lägg till omdirigerings-URI:n nedan.</li>
-          <li>Klistra in klient-id och klienthemlighet här.</li>
+          <li>{tr("Öppna")} <a className="text-brand-600 underline" href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noreferrer">{tr("Google Cloud Console")}</a> {tr("(gärna samma projekt som Places-nyckeln) och aktivera")} <b>{tr("Google Calendar API")}</b>.</li>
+          <li>{tr("Under")} <b>{tr("OAuth-medgivandeskärm")}</b>{tr(": välj")} <i>{tr("Intern")}</i> {tr("om ni har Google Workspace, annars")} <i>{tr("Extern")}</i> {tr("och lägg till säljarna som testanvändare.")}</li>
+          <li>{tr("Under")} <b>{tr("Inloggningsuppgifter → Skapa → OAuth-klient-id")}</b>{tr(": välj")} <i>{tr("Webbapplikation")}</i> {tr("och lägg till omdirigerings-URI:n nedan.")}</li>
+          <li>{tr("Klistra in klient-id och klienthemlighet här.")}</li>
         </ol>
-        <Field label="Omdirigerings-URI att registrera hos Google" hint={status?.redirectUri?.includes('localhost') ? 'Byt till er riktiga adress (PUBLIC_URL) när appen körs i produktion.' : undefined}>
+        <Field label={tr("Omdirigerings-URI att registrera hos Google")} hint={status?.redirectUri?.includes('localhost') ? tr("Byt till er riktiga adress (PUBLIC_URL) när appen körs i produktion.") : undefined}>
           <Input readOnly value={status?.redirectUri || ''} onFocus={(e) => e.target.select()} className="font-mono text-xs" />
         </Field>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Klient-id"><Input value={f.clientId} onChange={(e) => setF({ ...f, clientId: e.target.value })} placeholder="…apps.googleusercontent.com" /></Field>
-          <Field label="Klienthemlighet"><Input type="password" value={f.clientSecret} onChange={(e) => setF({ ...f, clientSecret: e.target.value })} /></Field>
+          <Field label={tr("Klient-id")}><Input value={f.clientId} onChange={(e) => setF({ ...f, clientId: e.target.value })} placeholder={tr("…apps.googleusercontent.com")} /></Field>
+          <Field label={tr("Klienthemlighet")}><Input type="password" value={f.clientSecret} onChange={(e) => setF({ ...f, clientSecret: e.target.value })} /></Field>
         </div>
       </div>
     </Modal>
@@ -182,46 +183,46 @@ function SyncPanel({ status, reloadStatus, onSynced }) {
   const g = status.google;
   const sync = async () => {
     setBusy(true);
-    try { const r = await api.post('/calendar/google/sync'); toast(r.created || r.updated ? `${r.created} nya och ${r.updated} ändrade möten från Google` : 'Allt är redan synkat', 'success'); onSynced(); reloadStatus(); }
+    try { const r = await api.post('/calendar/google/sync'); toast(r.created || r.updated ? tr("{0} nya och {1} ändrade möten från Google", { 0: r.created, 1: r.updated }) : tr("Allt är redan synkat"), 'success'); onSynced(); reloadStatus(); }
     catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
   };
-  const disconnect = async () => { await api.post('/calendar/google/disconnect'); toast('Google Kalender kopplades bort'); reloadStatus(); };
-  const regenerate = async () => { await api.post('/calendar/ical/regenerate'); toast('Ny länk skapad – den gamla slutar fungera'); reloadStatus(); };
+  const disconnect = async () => { await api.post('/calendar/google/disconnect'); toast(tr("Google Kalender kopplades bort")); reloadStatus(); };
+  const regenerate = async () => { await api.post('/calendar/ical/regenerate'); toast(tr("Ny länk skapad – den gamla slutar fungera")); reloadStatus(); };
   return (
     <div className="space-y-4">
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-2">
           <svg viewBox="0 0 24 24" className="size-5"><rect x="3" y="4" width="18" height="17" rx="3" fill="#fff" stroke="#4285F4" strokeWidth="2" /><path d="M3 9h18" stroke="#4285F4" strokeWidth="2" /><text x="12" y="18.5" textAnchor="middle" fontSize="8" fontWeight="700" fill="#4285F4">31</text></svg>
-          <h3 className="font-semibold text-slate-900">Google Kalender</h3>
-          {can('integrations.manage') && <button onClick={() => setConfig(true)} className="ml-auto text-slate-400 hover:text-slate-700" title="Inställningar för teamet"><Settings2 className="size-4" /></button>}
+          <h3 className="font-semibold text-slate-900">{tr("Google Kalender")}</h3>
+          {can('integrations.manage') && <button onClick={() => setConfig(true)} className="ml-auto text-slate-400 hover:text-slate-700" title={tr("Inställningar för teamet")}><Settings2 className="size-4" /></button>}
         </div>
         {!status.googleConfigured ? (
-          <p className="text-sm text-slate-600">{can('integrations.manage') ? <>Inte uppsatt ännu. <button onClick={() => setConfig(true)} className="text-brand-600 underline">Lägg in Google-uppgifterna</button> så kan alla koppla sin kalender.</> : 'En administratör behöver koppla Google först. Använd iCal-länken nedan så länge.'}</p>
+          <p className="text-sm text-slate-600">{can('integrations.manage') ? <>{tr("Inte uppsatt ännu.")} <button onClick={() => setConfig(true)} className="text-brand-600 underline">{tr("Lägg in Google-uppgifterna")}</button> {tr("så kan alla koppla sin kalender.")}</> : tr("En administratör behöver koppla Google först. Använd iCal-länken nedan så länge.")}</p>
         ) : g ? (
           <div className="space-y-3">
-            <p className="flex items-center gap-1.5 text-sm text-emerald-700"><CheckCircle2 className="size-4" />Kopplad till {g.email}</p>
-            <p className="text-xs text-slate-500">Möten synkas åt båda hållen varje minut. {g.last_sync_at && `Senast ${timeAgo(g.last_sync_at)}.`}</p>
+            <p className="flex items-center gap-1.5 text-sm text-emerald-700"><CheckCircle2 className="size-4" />{tr("Kopplad till")} {g.email}</p>
+            <p className="text-xs text-slate-500">{tr("Möten synkas åt båda hållen varje minut.")} {g.last_sync_at && tr("Senast {0}.", { 0: timeAgo(g.last_sync_at) })}</p>
             {g.last_error && <p className="flex items-start gap-1.5 text-xs text-rose-600"><AlertTriangle className="size-3.5 mt-px shrink-0" />{g.last_error}</p>}
             <div className="flex gap-2">
-              <Button size="sm" variant="secondary" icon={RefreshCw} loading={busy} onClick={sync}>Synka nu</Button>
-              <Button size="sm" variant="ghost" icon={Unlink} onClick={disconnect}>Koppla bort</Button>
+              <Button size="sm" variant="secondary" icon={RefreshCw} loading={busy} onClick={sync}>{tr("Synka nu")}</Button>
+              <Button size="sm" variant="ghost" icon={Unlink} onClick={disconnect}>{tr("Koppla bort")}</Button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">Möten du bokar här hamnar i Google, och möten du bokar i Google syns här och kopplas till rätt kund.</p>
-            <a href="/api/calendar/google/connect"><Button icon={Link2} className="w-full">Koppla Google Kalender</Button></a>
+            <p className="text-sm text-slate-600">{tr("Möten du bokar här hamnar i Google, och möten du bokar i Google syns här och kopplas till rätt kund.")}</p>
+            <a href="/api/calendar/google/connect"><Button icon={Link2} className="w-full">{tr("Koppla Google Kalender")}</Button></a>
           </div>
         )}
       </Card>
       <Card className="p-5">
-        <h3 className="font-semibold text-slate-900">Prenumerera (iCal)</h3>
-        <p className="mt-1 text-xs text-slate-500">Reserv för Outlook, Apple Kalender eller Google utan koppling. Bara läsning – kalenderappen hämtar ändringar med fördröjning.</p>
+        <h3 className="font-semibold text-slate-900">{tr("Prenumerera (iCal)")}</h3>
+        <p className="mt-1 text-xs text-slate-500">{tr("Reserv för Outlook, Apple Kalender eller Google utan koppling. Bara läsning – kalenderappen hämtar ändringar med fördröjning.")}</p>
         <div className="mt-3 flex gap-2">
           <input readOnly value={status.icalUrl} className="input font-mono text-[11px] bg-slate-50" onFocus={(e) => e.target.select()} />
           <Button variant="secondary" icon={copied ? Check : Copy} onClick={() => { navigator.clipboard.writeText(status.icalUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); }} />
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Google Kalender: Andra kalendrar → + → Från webbadress. Länken är personlig. <button onClick={regenerate} className="underline hover:text-slate-600">Skapa ny länk</button></p>
+        <p className="mt-2 text-[11px] text-slate-400">{tr("Google Kalender: Andra kalendrar → + → Från webbadress. Länken är personlig.")} <button onClick={regenerate} className="underline hover:text-slate-600">{tr("Skapa ny länk")}</button></p>
       </Card>
       <GoogleConfigModal open={config} onClose={() => setConfig(false)} status={status} onSaved={reloadStatus} />
     </div>
@@ -249,42 +250,42 @@ export default function Calendar() {
 
   useEffect(() => {
     const g = sp.get('google');
-    if (g === 'connected') toast('Google Kalender är kopplad – dina möten synkas nu', 'success');
-    if (g === 'error') toast(`Kunde inte koppla Google: ${sp.get('reason') || 'okänt fel'}`, 'error');
+    if (g === 'connected') toast(tr("Google Kalender är kopplad – dina möten synkas nu"), 'success');
+    if (g === 'error') toast(tr("Kunde inte koppla Google: {0}", { 0: sp.get('reason') || 'okänt fel' }), 'error');
     if (sp.get('meeting')) setModal({ meetingId: Number(sp.get('meeting')) });
     if (g || sp.get('meeting')) setSp({}, { replace: true });
   }, []);
 
   const step = (n) => setCursor((c) => (view === 'week' ? addDays(c, 7 * n) : new Date(c.getFullYear(), c.getMonth() + n, 1)));
   const title = view === 'week'
-    ? `${range.days[0].toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })} – ${range.days[6].toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })} · v. ${isoWeek(range.days[0])}`
-    : cursor.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
+    ? `${range.days[0].toLocaleDateString(locale(), { day: 'numeric', month: 'short' })} – ${range.days[6].toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })} · ${tr('v.')} ${isoWeek(range.days[0])}`
+    : cursor.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
   const teamView = owner === 'all';
   const refresh = () => { reload(); pending.reload(); };
   const upcoming = (meetings || []).filter((m) => m.status === 'scheduled' && parseUtc(m.start_at) > new Date()).length;
 
   return (
     <div>
-      <PageHeader title="Kalender" subtitle={meetings ? `${upcoming} kommande möten i vyn` : ' '}
+      <PageHeader title={tr("Kalender")} subtitle={meetings ? tr("{0} kommande möten i vyn", { 0: upcoming }) : ' '}
         actions={<>
           {can('leads.view_all') && (
             <Select value={owner} onChange={(e) => setOwner(e.target.value)} className="!w-auto">
-              <option value="me">Min kalender</option><option value="all">Hela teamet</option>
+              <option value="me">{tr("Min kalender")}</option><option value="all">{tr("Hela teamet")}</option>
               {team.filter((u) => u.id !== user.id).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </Select>
           )}
-          {can('leads.edit_own') && <Button icon={Plus} onClick={() => setModal({ preset: {} })}>Boka möte</Button>}
+          {can('leads.edit_own') && <Button icon={Plus} onClick={() => setModal({ preset: {} })}>{tr("Boka möte")}</Button>}
         </>} />
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
         <Card className="overflow-hidden min-w-0">
           <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-200">
-            <Button size="sm" variant="secondary" onClick={() => setCursor(new Date())}>Idag</Button>
+            <Button size="sm" variant="secondary" onClick={() => setCursor(new Date())}>{tr("Idag")}</Button>
             <div className="flex">
               <button onClick={() => step(-1)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"><ChevronLeft className="size-5" /></button>
               <button onClick={() => step(1)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"><ChevronRight className="size-5" /></button>
             </div>
             <h2 className="text-base font-semibold text-slate-900 capitalize">{title}</h2>
-            <div className="ml-auto"><Tabs value={view} onChange={setView} tabs={[{ value: 'week', label: 'Vecka' }, { value: 'month', label: 'Månad' }]} /></div>
+            <div className="ml-auto"><Tabs value={view} onChange={setView} tabs={[{ value: 'week', label: tr("Vecka") }, { value: 'month', label: tr("Månad") }]} /></div>
           </div>
           {!meetings ? <div className="py-24 grid place-items-center"><Spinner /></div>
             : view === 'week'
@@ -294,14 +295,14 @@ export default function Calendar() {
         <aside className="space-y-4">
           {pending.data?.length > 0 && (
             <Card className="p-5 border-amber-200">
-              <h3 className="flex items-center gap-2 font-semibold text-slate-900"><CalendarClock className="size-4 text-amber-500" />Väntar på utfall</h3>
-              <p className="text-xs text-slate-500 mb-3">Logga hur det gick och boka nästa steg.</p>
+              <h3 className="flex items-center gap-2 font-semibold text-slate-900"><CalendarClock className="size-4 text-amber-500" />{tr("Väntar på utfall")}</h3>
+              <p className="text-xs text-slate-500 mb-3">{tr("Logga hur det gick och boka nästa steg.")}</p>
               <ul className="space-y-1">
                 {pending.data.slice(0, 6).map((m) => (
                   <li key={m.id}>
                     <button onClick={() => setModal({ meetingId: m.id })} className="w-full rounded-lg px-2 py-1.5 -mx-2 text-left hover:bg-slate-50">
                       <p className="text-sm font-medium text-slate-800 truncate">{m.title}</p>
-                      <p className="text-xs text-slate-500">{parseUtc(m.start_at).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })} {fmtTime(m.start_at)}{m.video_url && <Video className="inline size-3 ml-1" />}</p>
+                      <p className="text-xs text-slate-500">{parseUtc(m.start_at).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' })} {fmtTime(m.start_at)}{m.video_url && <Video className="inline size-3 ml-1" />}</p>
                     </button>
                   </li>
                 ))}

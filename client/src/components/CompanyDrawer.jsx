@@ -8,6 +8,7 @@ import { ActivityComposer, Timeline } from './Activity.jsx';
 import { EditableField } from './LeadDrawer.jsx';
 import { STAGES, sek, formatDate, leadName } from '../lib/meta.jsx';
 import { NextStepCell } from './Records.jsx';
+import { tr } from '../lib/i18n.js';
 
 function NewContact({ companyId, onSaved, onCancel }) {
   const toast = useToast();
@@ -15,19 +16,19 @@ function NewContact({ companyId, onSaved, onCancel }) {
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const save = async (e) => {
     e.preventDefault();
-    try { await api.post('/leads', { ...f, company_id: companyId, source: 'manual' }); toast('Kontakten lades till'); onSaved(); }
+    try { await api.post('/leads', { ...f, company_id: companyId, source: 'manual' }); toast(tr("Kontakten lades till")); onSaved(); }
     catch (err) { toast(err.message, 'error'); }
   };
   return (
     <form onSubmit={save} className="card p-3 space-y-2 animate-fade-in">
       <div className="grid grid-cols-2 gap-2">
-        <Input placeholder="Förnamn" value={f.first_name} onChange={set('first_name')} autoFocus />
-        <Input placeholder="Efternamn" value={f.last_name} onChange={set('last_name')} />
-        <Input placeholder="Roll, t.ex. Inköpschef" value={f.title} onChange={set('title')} className="col-span-2" />
-        <Input placeholder="E-post" type="email" value={f.email} onChange={set('email')} />
-        <Input placeholder="Telefon" value={f.phone} onChange={set('phone')} />
+        <Input placeholder={tr("Förnamn")} value={f.first_name} onChange={set('first_name')} autoFocus />
+        <Input placeholder={tr("Efternamn")} value={f.last_name} onChange={set('last_name')} />
+        <Input placeholder={tr("Roll, t.ex. Inköpschef")} value={f.title} onChange={set('title')} className="col-span-2" />
+        <Input placeholder={tr("E-post")} type="email" value={f.email} onChange={set('email')} />
+        <Input placeholder={tr("Telefon")} value={f.phone} onChange={set('phone')} />
       </div>
-      <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" type="button" onClick={onCancel}>Avbryt</Button><Button size="sm" type="submit">Lägg till</Button></div>
+      <div className="flex justify-end gap-2"><Button size="sm" variant="ghost" type="button" onClick={onCancel}>{tr("Avbryt")}</Button><Button size="sm" type="submit">{tr("Lägg till")}</Button></div>
     </form>
   );
 }
@@ -58,21 +59,21 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
   const toggleTask = async (a) => { await api.patch(`/activities/${a.id}`, { done: !a.done }); load(); };
   const fetchBolagsverket = async () => {
     setBusy(true);
-    try { const org = await api.post(`/companies/${id}/bolagsverket`); toast(`${org.name || c.name}: ${[org.form, org.city].filter(Boolean).join(', ')}`, 'success', { title: 'Hämtat från Bolagsverket' }); load(); }
+    try { const org = await api.post(`/companies/${id}/bolagsverket`); toast(`${org.name || c.name}: ${[org.form, org.city].filter(Boolean).join(', ')}`, 'success', { title: tr("Hämtat från Bolagsverket") }); load(); }
     catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
   };
   const createDeal = async () => {
     try {
       const d = await api.post('/deals', { title: newDeal.title, value: Number(newDeal.value) || 0, company_id: id, lead_id: newDeal.lead_id ? Number(newDeal.lead_id) : null });
-      toast('Affären skapades'); setNewDeal(null); load(); onChanged?.();
+      toast(tr("Affären skapades")); setNewDeal(null); load(); onChanged?.();
       return d;
     } catch (e) { toast(e.message, 'error'); }
   };
   const doMerge = async () => {
-    try { await api.post(`/companies/${id}/merge`, { from_id: merge.from_id }); toast('Företagen slogs ihop'); setMerge(null); load(); onChanged?.(); }
+    try { await api.post(`/companies/${id}/merge`, { from_id: merge.from_id }); toast(tr("Företagen slogs ihop")); setMerge(null); load(); onChanged?.(); }
     catch (e) { toast(e.message, 'error'); }
   };
-  const remove = async () => { await api.del(`/companies/${id}`); toast('Företaget togs bort'); onChanged?.(); onClose(); };
+  const remove = async () => { await api.del(`/companies/${id}`); toast(tr("Företaget togs bort")); onChanged?.(); onClose(); };
 
   const editable = c?.canEdit;
   const isCustomer = c?.won_count > 0;
@@ -91,15 +92,15 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-semibold text-slate-900 truncate">{c.name}</h2>
-                    {isCustomer ? <Badge className="bg-emerald-600 text-white ring-emerald-600"><Star className="size-3" />Kund</Badge> : <Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">Prospekt</Badge>}
+                    {isCustomer ? <Badge className="bg-emerald-600 text-white ring-emerald-600"><Star className="size-3" />{tr("Kund")}</Badge> : <Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">{tr("Prospekt")}</Badge>}
                   </div>
-                  <p className="text-sm text-slate-500 truncate">{[c.org_nr, c.city, c.industry].filter(Boolean).join(' · ') || 'Inga företagsuppgifter än'}</p>
+                  <p className="text-sm text-slate-500 truncate">{[c.org_nr, c.city, c.industry].filter(Boolean).join(' · ') || tr("Inga företagsuppgifter än")}</p>
                 </div>
                 <button onClick={onClose} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"><X className="size-5" /></button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[['Vunnet', sek(c.won_value), `${c.won_count} affärer`], ['Pågående', sek(c.open_value), `${c.open_count} öppna`],
-                  ['Kontaktpersoner', c.contact_count, c.hiddenContacts ? `${c.hiddenContacts} dolda för dig` : ''], ['Kund sedan', c.customer_since ? formatDate(c.customer_since) : '—', '']].map(([l, v, sub]) => (
+                {[[tr("Vunnet"), sek(c.won_value), tr("{0} affärer", { 0: c.won_count })], [tr("Pågående"), sek(c.open_value), tr("{0} öppna", { 0: c.open_count })],
+                  [tr("Kontaktpersoner"), c.contact_count, c.hiddenContacts ? tr("{0} dolda för dig", { 0: c.hiddenContacts }) : ''], [tr("Kund sedan"), c.customer_since ? formatDate(c.customer_since) : '—', '']].map(([l, v, sub]) => (
                   <div key={l} className="rounded-lg bg-slate-50 px-3 py-2"><p className="text-[11px] text-slate-500">{l}</p><p className="text-base font-semibold text-slate-900 tabular-nums">{v}</p>{sub && <p className="text-[11px] text-slate-400">{sub}</p>}</div>
                 ))}
               </div>
@@ -109,11 +110,11 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
               <div className="px-6 py-5 md:border-r border-slate-100 min-w-0 space-y-6">
                 <section>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Kontaktpersoner</h3>
-                    {editable && !adding && <Button size="sm" variant="ghost" icon={UserPlus} onClick={() => setAdding(true)}>Lägg till</Button>}
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Kontaktpersoner")}</h3>
+                    {editable && !adding && <Button size="sm" variant="ghost" icon={UserPlus} onClick={() => setAdding(true)}>{tr("Lägg till")}</Button>}
                   </div>
                   {adding && <div className="mb-3"><NewContact companyId={c.id} onCancel={() => setAdding(false)} onSaved={() => { setAdding(false); load(); }} /></div>}
-                  {!c.contacts.length ? <p className="text-sm text-slate-400">Inga kontaktpersoner än.</p> : (
+                  {!c.contacts.length ? <p className="text-sm text-slate-400">{tr("Inga kontaktpersoner än.")}</p> : (
                     <div className="card divide-y divide-slate-100">
                       {c.contacts.map((l) => (
                         <div key={l.id} className="flex items-center gap-3 px-3 py-2.5">
@@ -133,10 +134,10 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
 
                 <section>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Affärer</h3>
-                    {editable && <Button size="sm" variant="ghost" icon={Plus} onClick={() => setNewDeal({ title: `${c.name} – `, value: '', lead_id: c.contacts[0]?.id || '' })}>Ny affär</Button>}
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Affärer")}</h3>
+                    {editable && <Button size="sm" variant="ghost" icon={Plus} onClick={() => setNewDeal({ title: `${c.name} – `, value: '', lead_id: c.contacts[0]?.id || '' })}>{tr("Ny affär")}</Button>}
                   </div>
-                  {!c.deals.length ? <p className="text-sm text-slate-400">Inga affärer än.</p> : (
+                  {!c.deals.length ? <p className="text-sm text-slate-400">{tr("Inga affärer än.")}</p> : (
                     <div className="space-y-1.5">
                       {[...openDeals, ...closedDeals].map((d) => {
                         const st = STAGES.find((s) => s.key === d.stage);
@@ -155,37 +156,37 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
                 </section>
 
                 <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Tidslinje för hela företaget</h3>
-                  {editable && <div className="mb-5"><ActivityComposer onSubmit={addActivity} hint="Anteckning på företaget" /></div>}
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje för hela företaget")}</h3>
+                  {editable && <div className="mb-5"><ActivityComposer onSubmit={addActivity} hint={tr("Anteckning på företaget")} /></div>}
                   <Timeline activities={c.activities} onToggleTask={toggleTask} showContact />
                 </section>
               </div>
 
               <aside className="px-5 py-5 space-y-6 bg-slate-50/50">
                 <div>
-                  <p className="label">Ansvarig</p>
+                  <p className="label">{tr("Ansvarig")}</p>
                   {can('leads.assign') ? (
                     <Select value={c.owner_id || ''} onChange={(e) => patch({ owner_id: e.target.value ? Number(e.target.value) : null })}>
-                      <option value="">Ingen</option>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      <option value="">{tr("Ingen")}</option>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </Select>
                   ) : <p className="flex items-center gap-2 text-sm">{c.owner_name ? <><Avatar name={c.owner_name} color={c.owner_color} size="xs" />{c.owner_name}</> : '—'}</p>}
                 </div>
                 <div>
-                  <p className="label">Företagsuppgifter</p>
-                  <EditableField icon={Building2} value={c.name} placeholder="Namn" disabled={!editable} onSave={(v) => v.trim() && patch({ name: v })} />
-                  <EditableField icon={Hash} value={c.org_nr} placeholder="Organisationsnummer" disabled={!editable} onSave={(v) => patch({ org_nr: v })} />
-                  <EditableField icon={Globe} value={c.website} placeholder="Hemsida" href={c.website && (/^https?:/.test(c.website) ? c.website : `https://${c.website}`)} disabled={!editable} onSave={(v) => patch({ website: v })} />
-                  <EditableField icon={Phone} value={c.phone} placeholder="Växelnummer" href={c.phone && `tel:${c.phone}`} disabled={!editable} onSave={(v) => patch({ phone: v })} />
-                  <EditableField icon={Mail} value={c.email} placeholder="Allmän e-post" href={c.email && `mailto:${c.email}`} disabled={!editable} onSave={(v) => patch({ email: v })} />
-                  <EditableField icon={MapPin} value={c.address} placeholder="Adress" disabled={!editable} onSave={(v) => patch({ address: v })} />
-                  <EditableField icon={MapPin} value={c.city} placeholder="Ort" disabled={!editable} onSave={(v) => patch({ city: v })} />
-                  <EditableField icon={Factory} value={c.industry} placeholder="Bransch" disabled={!editable} onSave={(v) => patch({ industry: v })} />
-                  {c.bolagsverket && editable && c.org_nr && <Button size="sm" variant="secondary" icon={ShieldCheck} loading={busy} className="mt-2 w-full" onClick={fetchBolagsverket}>Hämta från Bolagsverket</Button>}
+                  <p className="label">{tr("Företagsuppgifter")}</p>
+                  <EditableField icon={Building2} value={c.name} placeholder={tr("Namn")} disabled={!editable} onSave={(v) => v.trim() && patch({ name: v })} />
+                  <EditableField icon={Hash} value={c.org_nr} placeholder={tr("Organisationsnummer")} disabled={!editable} onSave={(v) => patch({ org_nr: v })} />
+                  <EditableField icon={Globe} value={c.website} placeholder={tr("Hemsida")} href={c.website && (/^https?:/.test(c.website) ? c.website : `https://${c.website}`)} disabled={!editable} onSave={(v) => patch({ website: v })} />
+                  <EditableField icon={Phone} value={c.phone} placeholder={tr("Växelnummer")} href={c.phone && `tel:${c.phone}`} disabled={!editable} onSave={(v) => patch({ phone: v })} />
+                  <EditableField icon={Mail} value={c.email} placeholder={tr("Allmän e-post")} href={c.email && `mailto:${c.email}`} disabled={!editable} onSave={(v) => patch({ email: v })} />
+                  <EditableField icon={MapPin} value={c.address} placeholder={tr("Adress")} disabled={!editable} onSave={(v) => patch({ address: v })} />
+                  <EditableField icon={MapPin} value={c.city} placeholder={tr("Ort")} disabled={!editable} onSave={(v) => patch({ city: v })} />
+                  <EditableField icon={Factory} value={c.industry} placeholder={tr("Bransch")} disabled={!editable} onSave={(v) => patch({ industry: v })} />
+                  {c.bolagsverket && editable && c.org_nr && <Button size="sm" variant="secondary" icon={ShieldCheck} loading={busy} className="mt-2 w-full" onClick={fetchBolagsverket}>{tr("Hämta från Bolagsverket")}</Button>}
                 </div>
                 {(can('leads.edit_all') || can('leads.delete')) && (
                   <div className="space-y-1 border-t border-slate-200 pt-4">
-                    {can('leads.edit_all') && <Button size="sm" variant="ghost" icon={Merge} className="-ml-2" onClick={() => setMerge({ q: '', results: [], from_id: null })}>Slå ihop med annat företag</Button>}
-                    {can('leads.delete') && <Button size="sm" variant="ghost" icon={Trash2} className="-ml-2 !text-rose-600" onClick={() => setDel(true)}>Ta bort företaget</Button>}
+                    {can('leads.edit_all') && <Button size="sm" variant="ghost" icon={Merge} className="-ml-2" onClick={() => setMerge({ q: '', results: [], from_id: null })}>{tr("Slå ihop med annat företag")}</Button>}
+                    {can('leads.delete') && <Button size="sm" variant="ghost" icon={Trash2} className="-ml-2 !text-rose-600" onClick={() => setDel(true)}>{tr("Ta bort företaget")}</Button>}
                   </div>
                 )}
               </aside>
@@ -194,27 +195,27 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
         )}
       </div>
 
-      <Modal open={!!newDeal} onClose={() => setNewDeal(null)} title="Ny affär" description={c?.name}
-        footer={<><Button variant="secondary" onClick={() => setNewDeal(null)}>Avbryt</Button><Button onClick={createDeal}>Skapa affär</Button></>}>
+      <Modal open={!!newDeal} onClose={() => setNewDeal(null)} title={tr("Ny affär")} description={c?.name}
+        footer={<><Button variant="secondary" onClick={() => setNewDeal(null)}>{tr("Avbryt")}</Button><Button onClick={createDeal}>{tr("Skapa affär")}</Button></>}>
         {newDeal && (
           <div className="space-y-4">
-            <Field label="Namn"><Input value={newDeal.title} onChange={(e) => setNewDeal({ ...newDeal, title: e.target.value })} autoFocus /></Field>
+            <Field label={tr("Namn")}><Input value={newDeal.title} onChange={(e) => setNewDeal({ ...newDeal, title: e.target.value })} autoFocus /></Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Värde (kr)" hint="Eller lägg till produkter i affären"><Input type="number" value={newDeal.value} onChange={(e) => setNewDeal({ ...newDeal, value: e.target.value })} /></Field>
-              <Field label="Kontaktperson">
+              <Field label={tr("Värde (kr)")} hint={tr("Eller lägg till produkter i affären")}><Input type="number" value={newDeal.value} onChange={(e) => setNewDeal({ ...newDeal, value: e.target.value })} /></Field>
+              <Field label={tr("Kontaktperson")}>
                 <Select value={newDeal.lead_id} onChange={(e) => setNewDeal({ ...newDeal, lead_id: e.target.value })}>
-                  <option value="">Ingen</option>{c?.contacts.map((l) => <option key={l.id} value={l.id}>{leadName(l)}</option>)}
+                  <option value="">{tr("Ingen")}</option>{c?.contacts.map((l) => <option key={l.id} value={l.id}>{leadName(l)}</option>)}
                 </Select>
               </Field>
             </div>
           </div>
         )}
       </Modal>
-      <Modal open={!!merge} onClose={() => setMerge(null)} title={`Slå ihop med ${c?.name}`} description="Kontakter, affärer och historik flyttas hit. Det andra företaget tas bort."
-        footer={<><Button variant="secondary" onClick={() => setMerge(null)}>Avbryt</Button><Button disabled={!merge?.from_id} onClick={doMerge}>Slå ihop</Button></>}>
+      <Modal open={!!merge} onClose={() => setMerge(null)} title={tr("Slå ihop med {0}", { 0: c?.name })} description={tr("Kontakter, affärer och historik flyttas hit. Det andra företaget tas bort.")}
+        footer={<><Button variant="secondary" onClick={() => setMerge(null)}>{tr("Avbryt")}</Button><Button disabled={!merge?.from_id} onClick={doMerge}>{tr("Slå ihop")}</Button></>}>
         {merge && (
           <div className="space-y-3">
-            <Input placeholder="Sök företaget som ska slås ihop hit…" value={merge.q} autoFocus
+            <Input placeholder={tr("Sök företaget som ska slås ihop hit…")} value={merge.q} autoFocus
               onChange={async (e) => { const q = e.target.value; setMerge((m) => ({ ...m, q })); const results = q.length > 1 ? await api.get(`/companies-lookup?q=${encodeURIComponent(q)}`) : []; setMerge((m) => ({ ...m, results: results.filter((x) => x.id !== c.id) })); }} />
             <div className="space-y-1">
               {merge.results.map((x) => (
@@ -226,7 +227,7 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
           </div>
         )}
       </Modal>
-      <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title="Ta bort företaget?" text="Kontaktpersoner och affärer finns kvar men kopplas loss från företaget." confirmText="Ta bort" />
+      <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title={tr("Ta bort företaget?")} text={tr("Kontaktpersoner och affärer finns kvar men kopplas loss från företaget.")} confirmText={tr("Ta bort")} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useApp, useLive } from '../lib/app.jsx';
 import { Card, PageHeader, Avatar, Empty, Spinner, Tabs, Select, Button, Modal, Field, Input, useToast, cx } from '../components/ui.jsx';
 import CompanyDrawer from '../components/CompanyDrawer.jsx';
 import { sek, timeAgo } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
 export default function Companies() {
   const { id } = useParams();
@@ -27,7 +28,7 @@ export default function Companies() {
 
   const save = async () => {
     try { const r = await api.post('/companies', create); setCreate(null); load(); nav(`/companies/${r.id}${window.location.search}`); }
-    catch (e) { if (e.status === 409) toast('Företaget finns redan – öppnar det', 'info'); else toast(e.message, 'error'); }
+    catch (e) { if (e.status === 409) toast(tr("Företaget finns redan – öppnar det"), 'info'); else toast(e.message, 'error'); }
   };
   const Th = ({ col, children, className }) => (
     <th className={cx('px-4 py-3 font-medium', className)}>
@@ -39,31 +40,31 @@ export default function Companies() {
 
   return (
     <div>
-      <PageHeader title="Företag" subtitle="Alla organisationer med deras kontaktpersoner och affärer"
+      <PageHeader title={tr("Företag")} subtitle={tr("Alla organisationer med deras kontaktpersoner och affärer")}
         actions={<>
-          {can('leads.view_all') && <Select value={owner} onChange={(e) => setOwner(e.target.value)} className="!w-auto"><option value="">Alla företag</option><option value="me">Mina företag</option></Select>}
-          {can('leads.edit_own') && <Button icon={Plus} onClick={() => setCreate({ name: '', org_nr: '', website: '', city: '' })}>Nytt företag</Button>}
+          {can('leads.view_all') && <Select value={owner} onChange={(e) => setOwner(e.target.value)} className="!w-auto"><option value="">{tr("Alla företag")}</option><option value="me">{tr("Mina företag")}</option></Select>}
+          {can('leads.edit_own') && <Button icon={Plus} onClick={() => setCreate({ name: '', org_nr: '', website: '', city: '' })}>{tr("Nytt företag")}</Button>}
         </>} />
       <div className="mb-3">
         <Tabs value={view} onChange={(v) => setSp(v ? { view: v } : {}, { replace: true })} tabs={[
-          { value: '', label: 'Alla', count: c?.total }, { value: 'customers', label: 'Kunder', count: c?.customers },
-          { value: 'open', label: 'Med öppna affärer', count: c?.open }, { value: 'prospects', label: 'Prospekt', count: c?.prospects },
+          { value: '', label: tr("Alla"), count: c?.total }, { value: 'customers', label: tr("Kunder"), count: c?.customers },
+          { value: 'open', label: tr("Med öppna affärer"), count: c?.open }, { value: 'prospects', label: tr("Prospekt"), count: c?.prospects },
         ]} />
       </div>
       <Card className="overflow-hidden">
         <div className="p-3 border-b border-slate-100">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sök företag, org.nr, ort, bransch eller kontaktperson…" className="input pl-9" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Sök företag, org.nr, ort, bransch eller kontaktperson…")} className="input pl-9" />
           </div>
         </div>
         <div className="overflow-x-auto scroll-thin">
           {!data ? <div className="py-16 grid place-items-center"><Spinner /></div> : !data.rows.length ? (
-            <Empty icon={Building2} title={query ? 'Inga företag matchar' : 'Inga företag här'} text="Företag skapas automatiskt när leads med företagsnamn, org.nr eller företagsmejl kommer in." />
+            <Empty icon={Building2} title={query ? tr("Inga företag matchar") : tr("Inga företag här")} text={tr("Företag skapas automatiskt när leads med företagsnamn, org.nr eller företagsmejl kommer in.")} />
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80 text-left text-xs text-slate-500 border-b border-slate-100">
-                <tr><Th col="name">Företag</Th><Th col="contacts">Kontaktpersoner</Th><Th col="won_value" className="text-right">Vunnet</Th><Th col="open_value" className="text-right">Pågående</Th><Th col="last_contact_at">Senaste kontakt</Th><Th>Ansvarig</Th></tr>
+                <tr><Th col="name">{tr("Företag")}</Th><Th col="contacts">{tr("Kontaktpersoner")}</Th><Th col="won_value" className="text-right">{tr("Vunnet")}</Th><Th col="open_value" className="text-right">{tr("Pågående")}</Th><Th col="last_contact_at">{tr("Senaste kontakt")}</Th><Th>{tr("Ansvarig")}</Th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((co) => (
@@ -77,10 +78,10 @@ export default function Companies() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs"><p className="font-medium text-slate-700">{co.contact_count} st</p><p className="text-slate-500 truncate max-w-56">{co.contact_names}</p></td>
+                    <td className="px-4 py-3 text-xs"><p className="font-medium text-slate-700">{co.contact_count} {tr("st")}</p><p className="text-slate-500 truncate max-w-56">{co.contact_names}</p></td>
                     <td className="px-4 py-3 text-right tabular-nums">{co.won_value ? <span className="font-semibold">{sek(co.won_value)}</span> : <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{co.open_count ? <><p className="font-medium text-violet-700">{sek(co.open_value)}</p><p className="text-xs text-slate-400">{co.open_count} öppna</p></> : <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{co.last_contact_at ? timeAgo(co.last_contact_at) : 'Ingen kontakt loggad'}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{co.open_count ? <><p className="font-medium text-violet-700">{sek(co.open_value)}</p><p className="text-xs text-slate-400">{co.open_count} {tr("öppna")}</p></> : <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{co.last_contact_at ? timeAgo(co.last_contact_at) : tr("Ingen kontakt loggad")}</td>
                     <td className="px-4 py-3">{co.owner_name ? <span className="flex items-center gap-2"><Avatar name={co.owner_name} color={co.owner_color} size="xs" /><span className="text-xs text-slate-600">{co.owner_name.split(' ')[0]}</span></span> : <span className="text-slate-300">—</span>}</td>
                   </tr>
                 ))}
@@ -90,13 +91,13 @@ export default function Companies() {
         </div>
       </Card>
       {id && <CompanyDrawer id={Number(id)} onClose={() => nav(`/companies${window.location.search}`)} onChanged={load} />}
-      <Modal open={!!create} onClose={() => setCreate(null)} title="Nytt företag" footer={<><Button variant="secondary" onClick={() => setCreate(null)}>Avbryt</Button><Button onClick={save}>Skapa</Button></>}>
+      <Modal open={!!create} onClose={() => setCreate(null)} title={tr("Nytt företag")} footer={<><Button variant="secondary" onClick={() => setCreate(null)}>{tr("Avbryt")}</Button><Button onClick={save}>{tr("Skapa")}</Button></>}>
         {create && (
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Namn" className="col-span-2"><Input value={create.name} onChange={(e) => setCreate({ ...create, name: e.target.value })} autoFocus /></Field>
-            <Field label="Organisationsnummer"><Input value={create.org_nr} onChange={(e) => setCreate({ ...create, org_nr: e.target.value })} placeholder="556xxx-xxxx" /></Field>
-            <Field label="Ort"><Input value={create.city} onChange={(e) => setCreate({ ...create, city: e.target.value })} /></Field>
-            <Field label="Hemsida" className="col-span-2"><Input value={create.website} onChange={(e) => setCreate({ ...create, website: e.target.value })} placeholder="foretaget.se" /></Field>
+            <Field label={tr("Namn")} className="col-span-2"><Input value={create.name} onChange={(e) => setCreate({ ...create, name: e.target.value })} autoFocus /></Field>
+            <Field label={tr("Organisationsnummer")}><Input value={create.org_nr} onChange={(e) => setCreate({ ...create, org_nr: e.target.value })} placeholder={tr("556xxx-xxxx")} /></Field>
+            <Field label={tr("Ort")}><Input value={create.city} onChange={(e) => setCreate({ ...create, city: e.target.value })} /></Field>
+            <Field label={tr("Hemsida")} className="col-span-2"><Input value={create.website} onChange={(e) => setCreate({ ...create, website: e.target.value })} placeholder={tr("foretaget.se")} /></Field>
           </div>
         )}
       </Modal>

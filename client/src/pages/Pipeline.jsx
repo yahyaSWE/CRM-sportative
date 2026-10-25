@@ -6,6 +6,7 @@ import { useApp, useFetch, useLive } from '../lib/app.jsx';
 import { Avatar, Button, PageHeader, Modal, Field, Input, Select, Spinner, SourceBadge, Tabs, useToast, cx } from '../components/ui.jsx';
 import DealDrawer, { LostReasonModal } from '../components/DealDrawer.jsx';
 import { STAGES, sek, formatDate, dueLabel, daysSince } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
 const STALE_DAYS = 14;
 
@@ -36,13 +37,13 @@ function DealCard({ d, dragging, onDragStart, onDragEnd, onOpen }) {
         <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
           {d.next_task ? (
             <p className={cx('flex items-center gap-1.5 text-xs min-w-0', overdue ? 'text-rose-600 font-medium' : 'text-slate-600')}>
-              <Clock className="size-3 shrink-0" /><span className="truncate">{d.next_task.content}</span><span className={cx('ml-auto whitespace-nowrap', due.cls)}>{due.text.replace(' · försenad', '')}</span>
+              <Clock className="size-3 shrink-0" /><span className="truncate">{d.next_task.content}</span><span className={cx('ml-auto whitespace-nowrap', due.cls)}>{due.short}</span>
             </p>
-          ) : <p className="flex items-center gap-1.5 text-xs text-amber-600"><AlertTriangle className="size-3" />Inget nästa steg</p>}
-          {inStage >= STALE_DAYS && <p className="text-[11px] text-amber-600">{inStage} dagar i steget</p>}
+          ) : <p className="flex items-center gap-1.5 text-xs text-amber-600"><AlertTriangle className="size-3" />{tr("Inget nästa steg")}</p>}
+          {inStage >= STALE_DAYS && <p className="text-[11px] text-amber-600">{inStage} {tr("dagar i steget")}</p>}
         </div>
       )}
-      {d.stage === 'lost' && d.lost_reason && <p className="mt-2 text-xs text-rose-600">{d.lost_reason}</p>}
+      {d.stage === 'lost' && d.lost_reason && <p className="mt-2 text-xs text-rose-600">{tr(d.lost_reason)}</p>}
     </div>
   );
 }
@@ -65,18 +66,18 @@ function DealList({ deals, stage, setStage, sort, setSort, onOpen }) {
     <div className="card flex-1 overflow-hidden flex flex-col min-h-0">
       <div className="flex flex-wrap items-center gap-3 p-3 border-b border-slate-100">
         <Tabs value={stage} onChange={setStage} tabs={[
-          { value: 'open', label: 'Öppna', count: deals.filter((d) => !['won', 'lost'].includes(d.stage)).length },
-          { value: 'won', label: 'Vunna', count: deals.filter((d) => d.stage === 'won').length },
-          { value: 'lost', label: 'Förlorade', count: deals.filter((d) => d.stage === 'lost').length },
-          { value: 'all', label: 'Alla', count: deals.length },
+          { value: 'open', label: tr("Öppna"), count: deals.filter((d) => !['won', 'lost'].includes(d.stage)).length },
+          { value: 'won', label: tr("Vunna"), count: deals.filter((d) => d.stage === 'won').length },
+          { value: 'lost', label: tr("Förlorade"), count: deals.filter((d) => d.stage === 'lost').length },
+          { value: 'all', label: tr("Alla"), count: deals.length },
         ]} />
-        <span className="ml-auto text-sm text-slate-500">{sorted.length} affärer · {sek(sorted.reduce((s, d) => s + d.value, 0))}</span>
+        <span className="ml-auto text-sm text-slate-500">{sorted.length} {tr("affärer ·")} {sek(sorted.reduce((s, d) => s + d.value, 0))}</span>
       </div>
       <div className="flex-1 overflow-auto scroll-thin">
-        {!sorted.length ? <p className="py-16 text-center text-sm text-slate-500">Inga affärer här</p> : (
+        {!sorted.length ? <p className="py-16 text-center text-sm text-slate-500">{tr("Inga affärer här")}</p> : (
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-slate-50 text-left text-xs text-slate-500 border-b border-slate-100">
-              <tr><Th col="title">Affär</Th><Th col="customer">Kund</Th><Th col="value" className="text-right">Värde</Th><Th col="stage">Steg</Th><Th col="next">Nästa steg</Th><Th col="expected_close">Förv. avslut</Th><Th col="owner">Ansvarig</Th></tr>
+              <tr><Th col="title">{tr("Affär")}</Th><Th col="customer">{tr("Kund")}</Th><Th col="value" className="text-right">{tr("Värde")}</Th><Th col="stage">{tr("Steg")}</Th><Th col="next">{tr("Nästa steg")}</Th><Th col="expected_close">{tr("Förv. avslut")}</Th><Th col="owner">{tr("Ansvarig")}</Th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {sorted.map((d) => {
@@ -88,11 +89,11 @@ function DealList({ deals, stage, setStage, sort, setSort, onOpen }) {
                     <td className="px-4 py-3 font-medium text-slate-800">{d.title}</td>
                     <td className="px-4 py-3"><p className="text-slate-700">{d.company || [d.first_name, d.last_name].filter(Boolean).join(' ') || '—'}</p>{d.company && d.first_name && <p className="text-xs text-slate-500">{d.first_name} {d.last_name}</p>}</td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums">{sek(d.value)}</td>
-                    <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 text-xs text-slate-700"><span className="size-2 rounded-full" style={{ background: st?.color }} />{st?.label}</span>{d.stage === 'lost' && d.lost_reason && <p className="text-[11px] text-rose-600">{d.lost_reason}</p>}</td>
+                    <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 text-xs text-slate-700"><span className="size-2 rounded-full" style={{ background: st?.color }} />{st?.label}</span>{d.stage === 'lost' && d.lost_reason && <p className="text-[11px] text-rose-600">{tr(d.lost_reason)}</p>}</td>
                     <td className="px-4 py-3 text-xs max-w-56">
-                      {closed ? <span className="text-slate-400">Avslutad {formatDate(d.closed_at, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                        : d.next_task ? <><p className="truncate text-slate-700">{d.next_task.content}</p><p className={due.cls}>{due.text.replace(' · försenad', '')}</p></>
-                          : <span className="inline-flex items-center gap-1 text-amber-600"><AlertTriangle className="size-3" />Inget nästa steg</span>}
+                      {closed ? <span className="text-slate-400">{tr("Avslutad")} {formatDate(d.closed_at, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        : d.next_task ? <><p className="truncate text-slate-700">{d.next_task.content}</p><p className={due.cls}>{due.short}</p></>
+                          : <span className="inline-flex items-center gap-1 text-amber-600"><AlertTriangle className="size-3" />{tr("Inget nästa steg")}</span>}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{d.expected_close ? formatDate(d.expected_close, { day: 'numeric', month: 'short' }) : '—'}</td>
                     <td className="px-4 py-3">{d.owner_name && <span className="flex items-center gap-2"><Avatar name={d.owner_name} color={d.owner_color} size="xs" /><span className="text-xs text-slate-600">{d.owner_name.split(' ')[0]}</span></span>}</td>
@@ -131,7 +132,7 @@ export default function Pipeline() {
     setData((ds) => ds.map((d) => (d.id === deal.id ? { ...d, stage, ...extra, stage_changed_at: new Date().toISOString() } : d)));
     try {
       await api.patch(`/deals/${deal.id}`, { stage, ...extra });
-      if (stage === 'won') toast(`${deal.title} är vunnen!`, 'success', { title: 'Grattis! 🎉' });
+      if (stage === 'won') toast(tr("{0} är vunnen!", { 0: deal.title }), 'success', { title: tr("Grattis! 🎉") });
     } catch (e) { toast(e.message, 'error'); }
     reload();
   };
@@ -157,17 +158,17 @@ export default function Pipeline() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <PageHeader title="Pipeline"
-        subtitle={<>{open.length} öppna affärer · {sek(open.reduce((s, d) => s + d.value, 0))} totalt · {sek(weighted)} viktat
-          {needsAction > 0 && <span className="text-amber-600"> · {needsAction} behöver ett nästa steg</span>}</>}
+      <PageHeader title={tr("Pipeline")}
+        subtitle={<>{open.length} {tr("öppna affärer ·")} {sek(open.reduce((s, d) => s + d.value, 0))} {tr("totalt ·")} {sek(weighted)} {tr("viktat")}
+          {needsAction > 0 && <span className="text-amber-600"> · {needsAction} {tr("behöver ett nästa steg")}</span>}</>}
         actions={<>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sök affär, kund, telefon…" className="input !w-60 pl-9" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr("Sök affär, kund, telefon…")} className="input !w-60 pl-9" />
           </div>
-          <Tabs value={mode} onChange={switchMode} tabs={[{ value: 'board', label: 'Tavla' }, { value: 'list', label: 'Lista' }]} />
-          {can('leads.view_all') && <Tabs value={scope} onChange={setScope} tabs={[{ value: 'all', label: 'Alla' }, { value: 'mine', label: 'Mina' }]} />}
-          {can('leads.edit_own') && <Button icon={Plus} onClick={() => setCreate({ title: '', value: '', stage: 'qualified', expected_close: '', owner_id: user.id })}>Ny affär</Button>}
+          <Tabs value={mode} onChange={switchMode} tabs={[{ value: 'board', label: tr("Tavla") }, { value: 'list', label: tr("Lista") }]} />
+          {can('leads.view_all') && <Tabs value={scope} onChange={setScope} tabs={[{ value: 'all', label: tr("Alla") }, { value: 'mine', label: tr("Mina") }]} />}
+          {can('leads.edit_own') && <Button icon={Plus} onClick={() => setCreate({ title: '', value: '', stage: 'qualified', expected_close: '', owner_id: user.id })}>{tr("Ny affär")}</Button>}
         </>} />
       {mode === 'list' ? (
         <DealList deals={visible} stage={listStage} setStage={setListStage} sort={listSort} setSort={setListSort} onOpen={(d) => nav(`/pipeline/${d.id}`)} />
@@ -188,10 +189,10 @@ export default function Pipeline() {
                 {list.map((d) => (
                   <DealCard key={d.id} d={d} dragging={drag?.id === d.id} onDragStart={() => setDrag(d)} onDragEnd={() => setDrag(null)} onOpen={() => nav(`/pipeline/${d.id}`)} />
                 ))}
-                {!list.length && <div className="rounded-lg border-2 border-dashed border-slate-200 py-8 text-center text-xs text-slate-400">{term ? 'Inga träffar' : 'Dra hit en affär'}</div>}
+                {!list.length && <div className="rounded-lg border-2 border-dashed border-slate-200 py-8 text-center text-xs text-slate-400">{term ? tr("Inga träffar") : tr("Dra hit en affär")}</div>}
                 {s.key === 'lost' && olderClosed > 0 && (
                   <button onClick={() => { switchMode('list'); setListStage('closed'); }} className="w-full rounded-lg py-2 text-xs text-slate-500 hover:bg-white hover:text-slate-700">
-                    {olderClosed} äldre avslutade · visa i listan
+                    {olderClosed} {tr("äldre avslutade · visa i listan")}
                   </button>
                 )}
               </div>
@@ -205,16 +206,16 @@ export default function Pipeline() {
       <LostReasonModal deal={lostDeal} onClose={() => setLostDeal(null)}
         onConfirm={(reason, note) => { const d = lostDeal; setLostDeal(null); move(d, 'lost', { lost_reason: reason, lost_note: note }); }} />
 
-      <Modal open={!!create} onClose={() => setCreate(null)} title="Ny affär" description="Tips: skapa affärer från ett lead så följer kontaktuppgifter och historik med."
-        footer={<><Button variant="secondary" onClick={() => setCreate(null)}>Avbryt</Button><Button onClick={save}>Skapa</Button></>}>
+      <Modal open={!!create} onClose={() => setCreate(null)} title={tr("Ny affär")} description={tr("Tips: skapa affärer från ett lead så följer kontaktuppgifter och historik med.")}
+        footer={<><Button variant="secondary" onClick={() => setCreate(null)}>{tr("Avbryt")}</Button><Button onClick={save}>{tr("Skapa")}</Button></>}>
         {create && (
           <div className="space-y-4">
-            <Field label="Namn"><Input value={create.title} onChange={(e) => setCreate({ ...create, title: e.target.value })} autoFocus /></Field>
+            <Field label={tr("Namn")}><Input value={create.title} onChange={(e) => setCreate({ ...create, title: e.target.value })} autoFocus /></Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Värde (kr)"><Input type="number" value={create.value} onChange={(e) => setCreate({ ...create, value: e.target.value })} /></Field>
-              <Field label="Steg"><Select value={create.stage} onChange={(e) => setCreate({ ...create, stage: e.target.value })}>{STAGES.filter((s) => !['won', 'lost'].includes(s.key)).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</Select></Field>
-              <Field label="Förväntat avslut"><Input type="date" value={create.expected_close} onChange={(e) => setCreate({ ...create, expected_close: e.target.value })} /></Field>
-              <Field label="Ansvarig"><Select value={create.owner_id} disabled={!can('leads.assign')} onChange={(e) => setCreate({ ...create, owner_id: Number(e.target.value) })}>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select></Field>
+              <Field label={tr("Värde (kr)")}><Input type="number" value={create.value} onChange={(e) => setCreate({ ...create, value: e.target.value })} /></Field>
+              <Field label={tr("Steg")}><Select value={create.stage} onChange={(e) => setCreate({ ...create, stage: e.target.value })}>{STAGES.filter((s) => !['won', 'lost'].includes(s.key)).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</Select></Field>
+              <Field label={tr("Förväntat avslut")}><Input type="date" value={create.expected_close} onChange={(e) => setCreate({ ...create, expected_close: e.target.value })} /></Field>
+              <Field label={tr("Ansvarig")}><Select value={create.owner_id} disabled={!can('leads.assign')} onChange={(e) => setCreate({ ...create, owner_id: Number(e.target.value) })}>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select></Field>
             </div>
           </div>
         )}

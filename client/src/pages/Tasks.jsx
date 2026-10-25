@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { useApp, useFetch } from '../lib/app.jsx';
 import { Card, PageHeader, Tabs, Empty, Spinner, Avatar, cx } from '../components/ui.jsx';
 import { dueLabel } from '../lib/meta.jsx';
+import { tr } from '../lib/i18n.js';
 
 export default function Tasks() {
   const { can } = useApp();
@@ -19,25 +20,25 @@ export default function Tasks() {
   for (const t of data || []) {
     const d = t.due_at ? new Date(t.due_at.replace(' ', 'T') + 'Z') : null;
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const key = t.done ? 'Klara' : !d ? 'Utan datum' : d < new Date() ? 'Försenade' : d < new Date(today.getTime() + 864e5) ? 'Idag' : d < new Date(today.getTime() + 7 * 864e5) ? 'Kommande vecka' : 'Senare';
+    const key = t.done ? tr("Klara") : !d ? tr("Utan datum") : d < new Date() ? tr("Försenade") : d < new Date(today.getTime() + 864e5) ? tr("Idag") : d < new Date(today.getTime() + 7 * 864e5) ? tr("Kommande vecka") : tr("Senare");
     (groups[key] ||= []).push(t);
   }
-  const order = ['Försenade', 'Idag', 'Kommande vecka', 'Senare', 'Utan datum', 'Klara'];
+  const order = [tr("Försenade"), tr("Idag"), tr("Kommande vecka"), tr("Senare"), tr("Utan datum"), tr("Klara")];
 
   return (
     <div className="max-w-4xl">
-      <PageHeader title="Uppgifter" subtitle="Uppföljningar och att-göra kopplade till dina leads"
+      <PageHeader title={tr("Uppgifter")} subtitle={tr("Uppföljningar och att-göra kopplade till dina leads")}
         actions={<>
-          {can('leads.view_all') && <Tabs value={scope} onChange={setScope} tabs={[{ value: 'mine', label: 'Mina' }, { value: 'all', label: 'Teamets' }]} />}
-          <Tabs value={done} onChange={setDone} tabs={[{ value: '0', label: 'Öppna' }, { value: '1', label: 'Klara' }]} />
+          {can('leads.view_all') && <Tabs value={scope} onChange={setScope} tabs={[{ value: 'mine', label: tr("Mina") }, { value: 'all', label: tr("Teamets") }]} />}
+          <Tabs value={done} onChange={setDone} tabs={[{ value: '0', label: tr("Öppna") }, { value: '1', label: tr("Klara") }]} />
         </>} />
       {!data ? <Spinner /> : !data.length ? (
-        <Card><Empty icon={CheckSquare} title={done === '1' ? 'Inga klara uppgifter' : 'Allt är gjort!'} text="Uppgifter skapas från ett lead eller automatiskt via automatiseringsregler." /></Card>
+        <Card><Empty icon={CheckSquare} title={done === '1' ? tr("Inga klara uppgifter") : tr("Allt är gjort!")} text={tr("Uppgifter skapas från ett lead eller automatiskt via automatiseringsregler.")} /></Card>
       ) : (
         <div className="space-y-6">
           {order.filter((k) => groups[k]).map((k) => (
             <div key={k}>
-              <h3 className={cx('text-xs font-semibold uppercase tracking-wide mb-2', k === 'Försenade' ? 'text-rose-600' : 'text-slate-400')}>{k} · {groups[k].length}</h3>
+              <h3 className={cx('text-xs font-semibold uppercase tracking-wide mb-2', k === tr("Försenade") ? 'text-rose-600' : 'text-slate-400')}>{k} · {groups[k].length}</h3>
               <Card className="divide-y divide-slate-100">
                 {groups[k].map((t) => {
                   const due = dueLabel(t.due_at);
