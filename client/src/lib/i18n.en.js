@@ -1177,4 +1177,8 @@ export default {
   "Uppsatt": "Set up",
   "Ej uppsatt": "Not set up",
   "leverantör/modell": "provider/model",
+  "Radera uppgiften?": "Delete the task?",
+  "Radera aktiviteten?": "Delete the activity?",
+  "tas bort från tidslinjen.": "will be removed from the timeline.",
+  "Aktiviteten raderades": "The activity was deleted",
 };

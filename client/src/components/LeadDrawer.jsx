@@ -134,7 +134,10 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
   const remove = async () => {
     try { await api.del(`/leads/${id}`); toast(tr("Lead raderad")); onChanged?.(); onClose(); } catch (e) { toast(e.message, 'error'); }
   };
-  const toggleTask = async (a) => { await api.patch(`/activities/${a.id}`, { done: !a.done }); load(); };
+  const toggleTask = async (a) => { await api.patch(`/activities/${a.id}`, { done: !a.done }); load(); onChanged?.(); };
+  const deleteActivity = async (a) => {
+    try { await api.del(`/activities/${a.id}`); toast(tr('Aktiviteten raderades')); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
+  };
 
   const editable = lead?.canEdit;
   const ownerSelectable = can('leads.assign') || (editable && !lead?.owner_id);
@@ -213,7 +216,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                   </div>
                 )}
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje")}</h3>
-                <Timeline activities={lead.activities} onToggleTask={toggleTask} />
+                <Timeline activities={lead.activities} onToggleTask={toggleTask} onDelete={deleteActivity} />
                 </>}
               </div>
 

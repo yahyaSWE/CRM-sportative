@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, StickyNote, PhoneCall, CalendarClock, CheckSquare, Sparkles, Circle, CheckCircle2, Briefcase } from 'lucide-react';
-import { Button, cx } from './ui.jsx';
+import { Mail, StickyNote, PhoneCall, CalendarClock, CheckSquare, Sparkles, Circle, CheckCircle2, Briefcase, Trash2 } from 'lucide-react';
+import { useApp } from '../lib/app.jsx';
+import { Button, Confirm, cx } from './ui.jsx';
 import { timeAgo, formatDateTime, dueLabel, toSqlDate } from '../lib/meta.jsx';
 import { tr, translateStored } from '../lib/i18n.js';
 
@@ -50,21 +51,33 @@ export function ActivityComposer({ onSubmit, hint }) {
 }
 
 // Gemensam tidslinje för lead och affär. Aktiviteter från en affär märks med affärens namn.
-export function Timeline({ activities, onToggleTask, currentDealId, showContact }) {
+// Egna anteckningar, samtal, mejl, möten och uppgifter kan raderas (säljchefer och admin kan radera allas);
+// systemhändelser som statusändringar ligger kvar.
+export function Timeline({ activities, onToggleTask, onDelete, currentDealId, showContact }) {
+  const { user, can } = useApp();
+  const [del, setDel] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   if (!activities.length) return <p className="text-sm text-slate-400">{tr("Ingen historik än.")}</p>;
+  const deletable = (a) => onDelete && a.type !== 'system' && (a.user_id === user?.id || can('leads.edit_all'));
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try { await onDelete(del); setDel(null); } finally { setDeleting(false); }
+  };
   return (
+    <>
     <ol className="relative space-y-5 before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-px before:bg-slate-200">
       {activities.map((a) => {
         const m = ACT[a.type] || ACT.system;
         const I = m.icon;
         const due = a.due_at && !a.done ? dueLabel(a.due_at) : null;
         return (
-          <li key={a.id} className="relative flex gap-3">
+          <li key={a.id} className="group relative flex gap-3">
             <span className={cx('relative z-10 grid place-items-center size-8 rounded-full ring-4 ring-white shrink-0', m.cls)}><I className="size-4" /></span>
             <div className="min-w-0 flex-1 pt-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 <span className="font-medium text-slate-700">{a.user_name || tr("LeadFlow")}</span><span>·</span><span>{m.label}</span><span>·</span>
                 <span title={formatDateTime(a.created_at)}>{timeAgo(a.created_at)}</span>
+                {deletable(a) && <button onClick={() => setDel(a)} title={tr("Radera")} className="ml-auto rounded p-0.5 text-slate-300 opacity-0 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 focus:opacity-100"><Trash2 className="size-3.5" /></button>}
                 {a.via === 'claude' && <span className="rounded bg-orange-50 px-1.5 py-px text-[11px] font-medium text-orange-700">{tr('via Claude')}</span>}
                 {a.deal_id && a.deal_id !== currentDealId && a.deal_title && (
                   <Link to={`/pipeline/${a.deal_id}`} className="inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-px text-[11px] font-medium text-violet-700 hover:bg-violet-100">
@@ -87,5 +100,9 @@ export function Timeline({ activities, onToggleTask, currentDealId, showContact 
         );
       })}
     </ol>
+    <Confirm open={!!del} onClose={() => setDel(null)} onConfirm={confirmDelete} loading={deleting}
+      title={del?.type === 'task' ? tr("Radera uppgiften?") : tr("Radera aktiviteten?")}
+      text={del && `"${String(del.content || '').slice(0, 120)}${String(del.content || '').length > 120 ? '…' : ''}" ${tr("tas bort från tidslinjen.")}`} />
+    </>
   );
 }

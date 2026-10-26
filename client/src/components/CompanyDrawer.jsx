@@ -58,6 +58,9 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
   };
   const addActivity = async (body) => { await api.post(`/companies/${id}/activities`, body); await load(); };
   const toggleTask = async (a) => { await api.patch(`/activities/${a.id}`, { done: !a.done }); load(); };
+  const deleteActivity = async (a) => {
+    try { await api.del(`/activities/${a.id}`); toast(tr('Aktiviteten raderades')); load(); } catch (e) { toast(e.message, 'error'); }
+  };
   const [enriching, setEnriching] = useState(false);
   const enrich = async () => {
     setEnriching(true);
@@ -169,7 +172,7 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
                 <section>
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje för hela företaget")}</h3>
                   {editable && <div className="mb-5"><ActivityComposer onSubmit={addActivity} hint={tr("Anteckning på företaget")} /></div>}
-                  <Timeline activities={c.activities} onToggleTask={toggleTask} showContact />
+                  <Timeline activities={c.activities} onToggleTask={toggleTask} onDelete={deleteActivity} showContact />
                 </section>
               </div>
 
