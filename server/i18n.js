@@ -90,6 +90,7 @@ const EN = {
   'Ange namn och text för mallen': 'Enter a name and text for the template',
   'Mallen finns inte': 'The template does not exist',
   'Ange ämne och text': 'Enter a subject and text',
+  'Välj minst en arbetsyta': 'Choose at least one workspace',
   'För många mejl på kort tid. Vänta en stund och försök igen.': 'Too many emails in a short time. Wait a while and try again.',
   'Koppla Gmail under Inställningar för att skicka e-post från appen': 'Connect Gmail under Settings to send email from the app',
   'Google-kopplingen saknar rätt att skicka e-post – koppla Gmail igen under Inställningar': 'The Google connection is missing permission to send email – connect Gmail again under Settings',

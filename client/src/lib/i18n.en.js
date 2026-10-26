@@ -1126,4 +1126,8 @@ export default {
   "Gmail API": "Gmail API",
   " (för att skicka e-post från appen).": " (to send email from the app).",
   "skickade mejl": "sent an email",
+  "Vilka arbetsytor ska kopplingen nå?": "Which workspaces should the connection reach?",
+  "Din roll får inte koppla AI-assistenter här": "Your role may not connect AI assistants here",
+  "standard": "default",
+  "Samma behörigheter som din roll i varje arbetsyta – inget mer": "The same permissions as your role in each workspace – nothing more",
 };

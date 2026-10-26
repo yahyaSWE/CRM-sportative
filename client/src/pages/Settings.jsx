@@ -87,7 +87,7 @@ function AiCard() {
           {items.map((c) => (
             <li key={c.id} className="flex items-center gap-3 px-4 py-3 text-sm">
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-slate-800">{c.client_name}<span className="font-normal text-slate-500"> · {c.workspace_name}{admin && c.user_id !== user.id && ` · ${c.user_name}`}</span></p>
+                <p className="font-medium text-slate-800">{c.client_name}<span className="font-normal text-slate-500"> · {c.workspace_names.join(', ')}{admin && c.user_id !== user.id && ` · ${c.user_name}`}</span></p>
                 <p className="text-xs text-slate-500">{tr('Kopplad {when}', { when: timeAgo(c.created_at) })}{c.last_used_at && ` · ${tr('senast använd {when}', { when: timeAgo(c.last_used_at) })}`}</p>
               </div>
               <Button size="sm" variant="secondary" icon={Unplug} onClick={() => remove(c)}>{tr('Koppla bort')}</Button>

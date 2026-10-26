@@ -30,6 +30,18 @@ export function AppProvider({ children }) {
       const me = await api.get('/auth/me');
       // Användarens sparade språk gäller på alla enheter; laddar om sidan om det skiljer sig.
       if (applyLanguage(me.user.language)) return;
+      // Länkar från t.ex. Claude kan ange arbetsyta (?ws=id): byt dit först och ladda om utan parametern.
+      const url = new URL(window.location.href);
+      const ws = Number(url.searchParams.get('ws'));
+      if (ws) {
+        url.searchParams.delete('ws');
+        if (ws !== me.workspace?.id && me.workspaces?.some((w) => w.id === ws)) {
+          await api.post('/workspaces/switch', { id: ws });
+          window.location.replace(url.href);
+          return;
+        }
+        window.history.replaceState(null, '', url.href);
+      }
       setState({ loading: false, user: me.user, permissions: me.permissions, workspace: me.workspace, workspaces: me.workspaces || [] });
       setTeam(await api.get('/users'));
     } catch {

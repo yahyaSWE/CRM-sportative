@@ -1,12 +1,14 @@
 // MCP-verktygen. Varje verktyg anropar appens vanliga API som den inloggade användaren, så samma behörigheter,
 // synlighet, automatiseringar, notiser och realtidsuppdateringar gäller som när säljaren klickar i appen.
-// Allt märks "via Claude" i aktivitetsloggen och tidslinjen.
+// Allt märks "via Claude" i aktivitetsloggen och tidslinjen. En koppling kan nå flera arbetsytor (bolag); varje
+// verktyg tar då ett valfritt "workspace" och körs i den arbetsytan.
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { COOKIE } from '../middleware.js';
 import { signSession, loadUser, can } from '../security.js';
 import { APP_URL } from '../config.js';
-import { central } from '../db.js';
+import { central, withWorkspace } from '../db.js';
 
 const TZ = process.env.DEFAULT_TIMEZONE || 'Europe/Stockholm';
 let apiBase = null;
@@ -14,8 +16,12 @@ export const setApiPort = (port) => { apiBase = `http://127.0.0.1:${port}/api`; 
 
 class ToolError extends Error {}
 
+// Arbetsytan för det pågående verktygsanropet: { ws, name, multi }.
+const toolCtx = new AsyncLocalStorage();
+
 async function api(auth, method, path, body) {
-  const cookie = `${COOKIE}=${encodeURIComponent(signSession(auth.extra.userId, 1 / 96, { via: 'claude', cid: auth.clientId, ws: auth.extra.workspaceId }))}`;
+  const ws = toolCtx.getStore()?.ws ?? auth.extra.workspaceId;
+  const cookie = `${COOKIE}=${encodeURIComponent(signSession(auth.extra.userId, 1 / 96, { via: 'claude', cid: auth.clientId, ws }))}`;
   const res = await fetch(apiBase + path, {
     method,
     headers: { cookie, ...(body !== undefined && { 'content-type': 'application/json' }) },
@@ -76,8 +82,17 @@ function clean(v) {
   return v;
 }
 
-const ok = (data, note) => ({ content: [{ type: 'text', text: (note ? `${note}\n\n` : '') + JSON.stringify(clean(data), null, 1) }] });
-const link = (path) => `${APP_URL}${path}`;
+// Med flera arbetsytor börjar varje svar med vilken arbetsyta det gäller.
+const ok = (data, note) => {
+  const ctx = toolCtx.getStore();
+  const head = ctx?.multi ? `Arbetsyta: ${ctx.name}\n` : '';
+  return { content: [{ type: 'text', text: head + (note ? `${note}\n\n` : (head ? '\n' : '')) + JSON.stringify(clean(data), null, 1) }] };
+};
+// Länkar öppnar rätt arbetsyta i appen (?ws=), även om användaren står i en annan.
+const link = (path) => {
+  const ctx = toolCtx.getStore();
+  return ctx?.multi ? `${APP_URL}${path}${path.includes('?') ? '&' : '?'}ws=${ctx.ws}` : `${APP_URL}${path}`;
+};
 
 const STAGES = { qualified: 'Kvalificerad', contact: 'Möte bokat', proposal: 'Offert skickad', negotiation: 'Förhandling', won: 'Vunnen', lost: 'Förlorad' };
 const LOST_REASONS = ['Pris', 'Valde en konkurrent', 'Ingen respons', 'Fel målgrupp', 'Fel tidpunkt', 'Annat'];
@@ -115,21 +130,57 @@ Begrepp: "lead" = kontaktperson (kan höra till ett företag), "affär" (deal) =
 Tider i svaren är lokal tid (${TZ}). Belopp är i kronor exkl. moms. Allt du skapar loggas som användaren "via Claude".
 Bekräfta med användaren innan du flyttar en affär till Vunnen/Förlorad, skapar en offert eller bokar möten med inbjudningar till kunden.`;
 
+const WORKSPACE_INSTRUCTIONS = (list, def) => `
+Kopplingen når flera arbetsytor (separata bolag med helt egna kunder, leads och affärer): ${list.map((w) => `"${w.name}"`).join(', ')}.
+Utan argumentet workspace används standardarbetsytan "${def.name}". Ange workspace (namn eller id) när användaren talar om ett annat bolag,
+och fråga om det är oklart vilket bolag som avses innan du skapar eller ändrar något. Id:n för leads, affärer m.m. gäller bara inom sin arbetsyta.
+Varje svar börjar med vilken arbetsyta det gäller. list_workspaces visar arbetsytorna och din roll i varje.`;
+
 export function buildServer(auth) {
-  const user = loadUser(auth.extra.userId);
-  const server = new McpServer({ name: 'leadflow-crm', title: 'LeadFlow CRM', version: '1.0.0' }, { instructions: INSTRUCTIONS });
-  const tool = (name, config, fn) => server.registerTool(name, config, async (args) => {
-    try { return await fn(args || {}); }
-    catch (e) {
+  const workspaces = (auth.extra.workspaces || [auth.extra.workspaceId]).map((id) => ({
+    id, name: central.get('SELECT name FROM workspaces WHERE id = ?', id)?.name || `Arbetsyta ${id}`,
+    user: withWorkspace(id, () => loadUser(auth.extra.userId)),
+  })).filter((w) => w.user);
+  const def = workspaces.find((w) => w.id === auth.extra.workspaceId) || workspaces[0];
+  const multi = workspaces.length > 1;
+  const user = def.user;
+  const server = new McpServer({ name: 'leadflow-crm', title: 'LeadFlow CRM', version: '1.1.0' }, { instructions: INSTRUCTIONS + (multi ? WORKSPACE_INSTRUCTIONS(workspaces, def) : '') });
+
+  function resolveWorkspace(arg) {
+    if (arg === undefined || arg === null || String(arg).trim() === '') return def;
+    const q = String(arg).trim().toLowerCase();
+    const hit = workspaces.find((w) => String(w.id) === q || w.name.toLowerCase() === q)
+      || (() => { const partial = workspaces.filter((w) => w.name.toLowerCase().includes(q)); return partial.length === 1 ? partial[0] : null; })();
+    if (!hit) throw new ToolError(`Okänd arbetsyta "${arg}". Kopplingen når: ${workspaces.map((w) => `${w.name} (id ${w.id})`).join(', ')}`);
+    return hit;
+  }
+
+  const tool = (name, config, fn) => server.registerTool(name, {
+    ...config,
+    inputSchema: multi ? { ...config.inputSchema, workspace: z.string().optional().describe(`Arbetsyta (bolag), namn eller id. Standard: ${def.name}`) } : config.inputSchema,
+  }, async (args) => {
+    try {
+      const { workspace, ...rest } = args || {};
+      const ws = resolveWorkspace(workspace);
+      return await toolCtx.run({ ws: ws.id, name: ws.name, multi, user: ws.user }, () => fn(rest));
+    } catch (e) {
       if (!(e instanceof ToolError)) console.error(`[mcp] ${name}`, e);
       return { isError: true, content: [{ type: 'text', text: e instanceof ToolError ? e.message : 'Ett oväntat fel inträffade' }] };
     }
   });
-  const writes = can(user, 'leads.edit_own') || can(user, 'leads.edit_all');
+  // Skrivverktygen finns om användaren får ändra i någon av arbetsytorna; varje anrop kontrolleras ändå av appen.
+  const canWrite = (u) => can(u, 'leads.edit_own') || can(u, 'leads.edit_all');
+  const writes = workspaces.some((w) => canWrite(w.user));
+
+  server.registerTool('list_workspaces', {
+    title: 'Arbetsytor',
+    description: 'Visar arbetsytorna (bolagen) som kopplingen når, din roll i varje och vilken som är standard.',
+    inputSchema: {}, annotations: READ,
+  }, async () => ok(workspaces.map((w) => ({ id: w.id, name: w.name, role: w.user.role, can_edit: canWrite(w.user), default: w.id === def.id || undefined }))));
 
   // ---------- Läsa ----------
   tool('whoami', { title: 'Vem är jag', description: 'Visar den inloggade användaren, arbetsytan (bolaget) kopplingen gäller, rollen och vad den får göra i LeadFlow.', inputSchema: {}, annotations: READ }, async () =>
-    ok({ name: user.name, email: user.email, role: user.role, workspace: central.get('SELECT name FROM workspaces WHERE id = ?', auth.extra.workspaceId)?.name, permissions: user.permissions, can_edit: writes, app: APP_URL }));
+    (() => { const c = toolCtx.getStore(); return ok({ name: c.user.name, email: c.user.email, workspace: c.name, role: c.user.role, permissions: c.user.permissions, can_edit: canWrite(c.user), workspaces: multi ? workspaces.map((w) => w.name) : undefined, app: APP_URL }); })());
 
   tool('search', {
     title: 'Sök i CRM:et',

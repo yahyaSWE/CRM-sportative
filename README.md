@@ -90,7 +90,7 @@ Har du flera bolag eller varumärken får varje bolag en egen **arbetsyta** med 
 - **Skapa:** samma meny → *Ny arbetsyta* (kräver att du hanterar användare). Du blir administratör i den nya arbetsytan.
 - **Bjuda in:** under *Team & behörigheter* i respektive arbetsyta. Har personen redan ett konto i en annan arbetsyta läggs kontot till med sitt befintliga lösenord – samma inloggning, men egen roll per arbetsyta. Att inaktivera någon gäller bara den arbetsytan.
 - **Konton:** namn, e-post, lösenord och språk hör till kontot. En administratör kan bara ändra dem för personer som enbart finns i arbetsytor där hen själv är administratör.
-- **Claude:** en koppling gäller den arbetsyta som var vald när du godkände den. Vill du nå två bolag från Claude kopplar du in en gång per arbetsyta.
+- **Claude:** en koppling kan nå flera arbetsytor – du kryssar i vilka när du godkänner den (se nedan).
 
 Tekniskt har varje arbetsyta en egen databasfil (`data/workspaces/ws-<id>.db`; den ursprungliga `crm.db` blir arbetsyta 1), och en gemensam `accounts.db` håller konton, medlemskap och AI-kopplingar. En befintlig installation flyttas över automatiskt vid första start.
 
@@ -198,6 +198,8 @@ LeadFlow har en inbyggd MCP-server, så att Claude (webben, skrivbordsappen, mob
 | Översikt och statistik, uppgifter, möten, produkter, teamet | Boka möten (synkas till Google Kalender), lägga till produkter och skapa offerter |
 
 Det finns inga verktyg för att radera.
+
+**Flera bolag:** har du flera arbetsytor kryssar du vid godkännandet i vilka kopplingen ska nå (förvalt: alla där din roll får koppla AI). Den arbetsyta du stod i blir standard. Varje verktyg tar då ett valfritt *workspace* (bolagets namn eller id), verktyget `list_workspaces` visar bolagen och din roll i varje, och varje svar börjar med vilket bolag det gäller. Säg t.ex. "visa pipelinen för Sportative" eller "jämför veckans nya leads i alla bolag". Länkar från Claude öppnar rätt arbetsyta i appen. En administratör som kopplar bort någon annans koppling tar bara bort sin egen arbetsyta ur den.
 
 **Säkerhet:** Inloggningen sker med OAuth 2.1 och PKCE; Claude får aldrig ditt lösenord. Claude har exakt samma behörigheter som din roll – en säljare med läsbehörighet får bara läsverktygen, och en säljare ser bara det den får se i appen. Allt som görs märks *via Claude* i tidslinjen och i aktivitetsloggen. Du kopplar bort under *Inställningar → Claude och AI-assistenter*, och administratörer ser och kan koppla bort allas kopplingar där. Rätten att koppla in styrs av behörigheten *Koppla Claude och andra AI-assistenter (MCP)* under Team & behörigheter. Åtkomsttoken gäller en timme och förnyas automatiskt; en koppling som inte används på 90 dagar måste godkännas igen.
 

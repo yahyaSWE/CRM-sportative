@@ -405,6 +405,10 @@ export const central = {
   run: (sql, ...p) => accountsDb.prepare(sql).run(...p),
   tx: (fn) => transaction(accountsDb, fn),
 };
+// En AI-koppling kan nå flera arbetsytor: workspaces är en JSON-lista, workspace_id är standardarbetsytan.
+for (const table of ['oauth_codes', 'oauth_tokens']) {
+  if (!accountsDb.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === 'workspaces')) accountsDb.exec(`ALTER TABLE ${table} ADD COLUMN workspaces TEXT`);
+}
 
 // En befintlig installation (en enda databas, crm.db) blir arbetsyta 1 och dess användare blir konton.
 if (!central.get('SELECT 1 FROM workspaces LIMIT 1') && fs.existsSync(path.join(DATA_DIR, 'crm.db'))) {
