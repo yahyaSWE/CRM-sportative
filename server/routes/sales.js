@@ -3,6 +3,7 @@ import { all, get, run, audit, findWorkspace, withWorkspace } from '../db.js';
 import { can, readSession } from '../security.js';
 import { requirePerm, parseCookies, COOKIE } from '../middleware.js';
 import { broadcast } from '../events.js';
+import { writeQuotePdf } from '../services/quotePdf.js';
 import {
   getProfile, saveProfile, dealItems, totals, lineTotal, syncDealValue, createQuote, markSent, presentQuote, publicView, signQuote, declineQuote,
 } from '../services/quotes.js';
@@ -46,8 +47,13 @@ r.delete('/products/:id', requirePerm('products.manage'), (req, res) => {
 // ---------- Säljarföretagets uppgifter på offerter ----------
 r.get('/sales/profile', (req, res) => res.json(getProfile()));
 r.patch('/sales/profile', requirePerm('products.manage'), (req, res) => {
-  const allowed = ['name', 'org_nr', 'address', 'email', 'phone', 'website', 'validity_days', 'terms'];
-  res.json(saveProfile(Object.fromEntries(Object.entries(req.body || {}).filter(([k]) => allowed.includes(k)))));
+  const allowed = ['name', 'org_nr', 'address', 'email', 'phone', 'website', 'validity_days', 'terms', 'logo', 'accent', 'footer'];
+  const b = Object.fromEntries(Object.entries(req.body || {}).filter(([k]) => allowed.includes(k)));
+  // Loggan sparas som PNG eller JPEG (gränssnittet konverterar andra format) och får vara högst ~450 kB.
+  if (b.logo && (!/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(b.logo) || b.logo.length > 600_000)) return res.status(400).json({ error: 'Loggan måste vara en PNG- eller JPG-bild på högst 450 kB' });
+  if (b.accent && !/^#[0-9a-f]{6}$/i.test(b.accent)) return res.status(400).json({ error: 'Ogiltig färg' });
+  if (b.footer) b.footer = String(b.footer).slice(0, 500);
+  res.json(saveProfile(b));
 });
 
 // ---------- Produktrader på affärer ----------
@@ -126,6 +132,22 @@ function loadQuote(req, res) {
   return loadDeal(req, res, true) ? q : null;
 }
 
+// Offerten som PDF, för att ladda ned och skicka manuellt.
+const pdfName = (q) => `Offert-${q.number}.pdf`;
+function sendPdf(res, q, disposition = 'attachment') {
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `${disposition}; filename="${pdfName(q)}"`, 'Cache-Control': 'private, no-store' });
+  writeQuotePdf(q, getProfile(), res);
+}
+
+r.get('/quotes/:id/pdf', (req, res) => {
+  const q = get('SELECT * FROM quotes WHERE id = ?', Number(req.params.id));
+  if (!q) return res.status(404).json({ error: 'Offerten finns inte' });
+  req.params.id = q.deal_id;
+  if (!loadDeal(req, res)) return;
+  audit(req.user.id, 'quote.pdf', 'quote', q.id);
+  sendPdf(res, q, req.query.inline ? 'inline' : 'attachment');
+});
+
 r.post('/quotes/:id/sent', (req, res) => {
   const q = loadQuote(req, res);
   if (!q) return;
@@ -166,6 +188,12 @@ publicQuotes.get('/quotes/:token', (req, res) => {
   const internal = readSession(parseCookies(req.headers.cookie)[COOKIE]);
   const v = publicView(req.params.token, { track: !internal && req.query.preview !== '1' });
   return v ? res.json(v) : res.status(404).json({ error: 'Offerten finns inte eller har tagits bort' });
+});
+// Kunden kan ladda ned offerten (räknas inte som en visning).
+publicQuotes.get('/quotes/:token/pdf', (req, res) => {
+  const q = get('SELECT * FROM quotes WHERE token = ?', req.params.token);
+  if (!q) return res.status(404).json({ error: 'Offerten finns inte eller har tagits bort' });
+  sendPdf(res, q);
 });
 publicQuotes.post('/quotes/:token/sign', wrap((req) => signQuote(req.params.token, req.body || {}, { ip: req.ip, agent: req.get('user-agent') })));
 publicQuotes.post('/quotes/:token/decline', wrap((req) => declineQuote(req.params.token, req.body?.reason)));

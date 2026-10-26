@@ -20,6 +20,7 @@
     "imapflow": "^2.9.1",
     "lucide-react": "^1.61.0",
     "mailparser": "^3.12.4",
+    "pdfkit": "^0.17.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.4",

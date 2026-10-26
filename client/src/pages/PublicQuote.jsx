@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Printer, CheckCircle2, XCircle, Clock, PenLine, Eraser, ShieldCheck, Loader2 } from 'lucide-react';
+import { Printer, CheckCircle2, XCircle, Clock, PenLine, Eraser, ShieldCheck, Loader2, Download } from 'lucide-react';
 import { RECURRING_SV } from '../components/DealProducts.jsx';
 
 const kr = (n) => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
@@ -88,10 +88,12 @@ export default function PublicQuote() {
         {q.status === 'declined' && <div className="rounded-xl bg-slate-700 px-5 py-4 text-white print:hidden"><p className="font-semibold">Offerten är avböjd</p><p className="text-sm text-slate-200">Tack för ditt svar. Vi hör gärna av oss igen om behoven ändras.</p></div>}
         {q.status === 'expired' && <div className="flex items-center gap-2 rounded-xl bg-amber-100 px-5 py-4 text-amber-900 print:hidden"><Clock className="size-5" />Offerten gällde till {date(q.valid_until)}. Kontakta {c.contact?.name || 'oss'} för en uppdaterad offert.</div>}
 
-        <article className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 print:shadow-none print:ring-0">
+        <article className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 print:shadow-none print:ring-0">
+          <div className="h-1.5" style={{ background: q.branding?.accent || '#4f46e5' }} />
           <header className="flex flex-wrap items-start justify-between gap-6 border-b border-slate-100 px-6 sm:px-10 py-8">
             <div>
-              <p className="text-xl font-semibold text-slate-900">{c.seller?.name}</p>
+              {q.branding?.logo && <img src={q.branding.logo} alt={c.seller?.name} className="mb-3 max-h-16 max-w-[220px] object-contain" />}
+              <p className={q.branding?.logo ? 'font-semibold text-slate-900' : 'text-xl font-semibold text-slate-900'}>{c.seller?.name}</p>
               <p className="mt-1 text-sm text-slate-500 whitespace-pre-line">{[c.seller?.address, c.seller?.org_nr && `Org.nr ${c.seller.org_nr}`, c.seller?.website].filter(Boolean).join('\n')}</p>
             </div>
             <div className="text-right">
@@ -164,6 +166,7 @@ export default function PublicQuote() {
               <p className="mt-2 text-[11px] text-slate-400 break-all">Kontrollsumma {q.content_hash}</p>
             </div>
           )}
+          {q.branding?.footer && <p className="border-t border-slate-100 px-6 sm:px-10 py-4 text-xs text-slate-500">{q.branding.footer}</p>}
         </article>
 
         {open && !declining && (
@@ -191,7 +194,7 @@ export default function PublicQuote() {
                 <span className="text-xs text-slate-500">{!f.signature && !f.accept ? 'Rita din signatur och kryssa i rutan ovan' : !f.signature ? 'Rita din signatur i rutan' : 'Kryssa i rutan för att godkänna'}</span>
               )}
               <button type="button" onClick={() => setDeclining(true)} className="text-sm text-slate-500 hover:text-slate-700">Tacka nej</button>
-              <button type="button" onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><Printer className="size-4" />Skriv ut / spara PDF</button>
+              <a href={`/api/public/quotes/${token}/pdf`} className="ml-auto inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><Download className="size-4" />Ladda ner PDF</a>
             </div>
             <p className="text-[11px] text-slate-400">Elektronisk underskrift. Namn, e-post, tidpunkt, IP-adress och en kontrollsumma av offerten sparas som bevis.</p>
           </form>
@@ -206,7 +209,7 @@ export default function PublicQuote() {
             </div>
           </div>
         )}
-        {!open && <p className="text-center print:hidden"><button onClick={() => window.print()} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><Printer className="size-4" />Skriv ut / spara PDF</button></p>}
+        {!open && <p className="flex justify-center gap-5 print:hidden"><a href={`/api/public/quotes/${token}/pdf`} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><Download className="size-4" />Ladda ner PDF</a><button onClick={() => window.print()} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><Printer className="size-4" />Skriv ut</button></p>}
         <p className="text-center text-[11px] text-slate-400 print:hidden">Skickad via LeadFlow CRM</p>
       </div>
     </div>

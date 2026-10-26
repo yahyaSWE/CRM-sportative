@@ -121,6 +121,8 @@ export function publicView(token, { track } = {}) {
     created_at: fresh.created_at, content: parseJSON(fresh.content, {}), content_hash: fresh.content_hash,
     signed: fresh.signed_at ? { at: fresh.signed_at, name: fresh.signer_name, email: fresh.signer_email, title: fresh.signer_title, signature: fresh.signature } : null,
     declined: fresh.declined_at ? { at: fresh.declined_at, reason: fresh.decline_reason } : null,
+    // Logga, färg och sidfot hämtas från de aktuella offertinställningarna (de ingår inte i det signerade innehållet).
+    branding: (({ logo, accent, footer }) => ({ logo: logo || null, accent: accent || null, footer: footer || null }))(getProfile()),
   };
 }
 

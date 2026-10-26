@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, FileText, Copy, ExternalLink, Send, Check, PenLine, Eye, XCircle, Clock, Repeat } from 'lucide-react';
+import { Plus, Trash2, FileText, Copy, ExternalLink, Send, Check, PenLine, Eye, XCircle, Clock, Repeat, Download } from 'lucide-react';
 import { api } from '../api.js';
 import { useLive } from '../lib/app.jsx';
 import { Button, Badge, Modal, Field, Input, Select, Textarea, Spinner, Confirm, useToast, cx } from './ui.jsx';
@@ -151,6 +151,7 @@ export default function DealProducts({ deal, editable, onChanged }) {
                   {q.status === 'expired' && <p className="mt-1 flex items-center gap-1 text-xs text-amber-700"><Clock className="size-3.5" />{tr("Giltighetstiden har gått ut – skapa en ny offert om kunden fortfarande är intresserad.")}</p>}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <Button size="sm" variant="secondary" icon={Eye} onClick={() => window.open(`/q/${q.token}`, '_blank')}>{tr("Visa")}</Button>
+                    <a href={`/api/quotes/${q.id}/pdf`} download><Button size="sm" variant="secondary" icon={Download}>{tr("PDF")}</Button></a>
                     {!['accepted', 'declined', 'expired'].includes(q.status) && editable && <>
                       <Button size="sm" variant="secondary" icon={Send} onClick={() => sendEmail(q)}>{tr("Mejla kunden")}</Button>
                       <Button size="sm" variant="secondary" icon={Copy} onClick={() => copy(q)}>{tr("Kopiera länk")}</Button>

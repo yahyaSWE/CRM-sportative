@@ -80,7 +80,9 @@ Säljare med Google Workspace eller Gmail kopplar sin brevlåda under **Inställ
 4. Kunden öppnar länken (säljaren får en notis), läser offerten och signerar genom att rita sin signatur och godkänna villkoren – eller tackar nej med en kommentar.
 5. Vid signering markeras affären som vunnen och kontakten som kund. *Signaturbevis* visar namn, e-post, tid, IP-adress och en kontrollsumma av offerten.
 
-Signaturen är en enkel elektronisk underskrift. För avancerad underskrift med BankID behöver en tjänst som Scrive, Oneflow eller Signicat kopplas in. Kunden kan skriva ut eller spara offerten som PDF via webbläsaren.
+Signaturen är en enkel elektronisk underskrift. För avancerad underskrift med BankID behöver en tjänst som Scrive, Oneflow eller Signicat kopplas in. 
+
+**Offertens utseende och PDF:** under *Produkter & offerter → Offertinställningar* (eller *Inställningar → Offerter*) fyller ni i företagsuppgifter och villkor, laddar upp er **logga** (PNG, JPG, SVG eller WebP – den skalas och sparas automatiskt), väljer **accentfärg** och skriver en **sidfot** (t.ex. bankgiro, momsreg.nr och F-skatt). Loggan, färgen och sidfoten används på kundens offertsida och i PDF:en. Varje offert har knappen **PDF** för att ladda ned en A4-PDF att bifoga i ett eget mejl, och kunden kan ladda ned samma PDF från offertsidan. En signerad offert får signaturen, namnet, tidpunkten och kontrollsumman med i PDF:en.
 
 ## Arbetsytor (flera bolag)
 

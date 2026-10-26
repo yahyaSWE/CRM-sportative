@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2 } from 'lucide-react';
+import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2, FileText, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { loadEmailStatus } from '../lib/email.js';
 import { api } from '../api.js';
@@ -150,6 +151,15 @@ export default function Settings() {
       </Card>
       <LanguageCard />
       <EmailCard />
+      {can('products.manage') && (
+        <Link to="/products?tab=profile" className="block">
+          <Card className="flex items-center gap-3 p-6 hover:bg-slate-50">
+            <FileText className="size-4 text-slate-400" />
+            <div className="flex-1"><h3 className="font-semibold text-slate-900">{tr('Offerter')}</h3><p className="text-sm text-slate-500">{tr('Företagsuppgifter, logga, färg, sidfot och villkor på offerter och PDF:er.')}</p></div>
+            <ChevronRight className="size-4 text-slate-400" />
+          </Card>
+        </Link>
+      )}
       <AiCard />
       <Card className="p-6">
         <h3 className="font-semibold text-slate-900">{tr("Dina behörigheter")}</h3>

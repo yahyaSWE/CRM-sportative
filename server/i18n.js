@@ -91,6 +91,8 @@ const EN = {
   'Mallen finns inte': 'The template does not exist',
   'Ange ämne och text': 'Enter a subject and text',
   'Välj minst en arbetsyta': 'Choose at least one workspace',
+  'Loggan måste vara en PNG- eller JPG-bild på högst 450 kB': 'The logo must be a PNG or JPG image of at most 450 kB',
+  'Ogiltig färg': 'Invalid colour',
   'För många mejl på kort tid. Vänta en stund och försök igen.': 'Too many emails in a short time. Wait a while and try again.',
   'Koppla Gmail under Inställningar för att skicka e-post från appen': 'Connect Gmail under Settings to send email from the app',
   'Google-kopplingen saknar rätt att skicka e-post – koppla Gmail igen under Inställningar': 'The Google connection is missing permission to send email – connect Gmail again under Settings',

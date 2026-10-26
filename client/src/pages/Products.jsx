@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Package, Plus, Pencil, Archive, RotateCcw, FileText } from 'lucide-react';
+import { Package, Plus, Pencil, Archive, RotateCcw, FileText, ImageUp, Trash2, Eye } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useFetch } from '../lib/app.jsx';
 import { Card, PageHeader, Button, Modal, Field, Input, Select, Textarea, Badge, Empty, Spinner, Tabs, useToast, cx } from '../components/ui.jsx';
@@ -7,6 +7,70 @@ import { RECURRING_SV } from '../components/DealProducts.jsx';
 import { tr, locale } from '../lib/i18n.js';
 
 const kr = (n) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 2 }).format(n || 0);
+// Loggan skalas ned och sparas som PNG (eller JPEG för foton), så att den fungerar i PDF:en och håller storleken nere.
+function readLogo(file) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(png|jpeg|svg\+xml|webp|gif)$/.test(file.type)) return reject(new Error(tr('Välj en bild (PNG, JPG, SVG eller WebP)')));
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 800 / img.width, 300 / img.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale)); canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      // Vit bakgrund: offerten är vit, och JPEG (för stora bilder) saknar genomskinlighet.
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      let url = canvas.toDataURL('image/png');
+      if (url.length > 600000) url = canvas.toDataURL('image/jpeg', 0.85);
+      URL.revokeObjectURL(img.src);
+      url.length > 600000 ? reject(new Error(tr('Bilden är för stor'))) : resolve(url);
+    };
+    img.onerror = () => reject(new Error(tr('Kunde inte läsa bilden')));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function BrandingFields({ p, setP, ro }) {
+  const toast = useToast();
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try { setP({ ...p, logo: await readLogo(file) }); } catch (err) { toast(err.message, 'error'); }
+  };
+  return (
+    <div className="space-y-4 rounded-xl border border-slate-200 p-4">
+      <div><h3 className="text-sm font-semibold text-slate-900">{tr("Logga och utseende")}</h3><p className="text-xs text-slate-500">{tr("Visas på kundens offertsida och i PDF:en.")}</p></div>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="grid h-20 w-48 place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-2">
+          {p.logo ? <img src={p.logo} alt={tr("Logga")} className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-slate-400">{tr("Ingen logga")}</span>}
+        </div>
+        {!ro && (
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
+              <ImageUp className="size-4" />{p.logo ? tr("Byt logga") : tr("Ladda upp logga")}
+              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={pick} />
+            </label>
+            {p.logo && <Button size="sm" variant="ghost" icon={Trash2} onClick={() => setP({ ...p, logo: '' })}>{tr("Ta bort")}</Button>}
+          </div>
+        )}
+      </div>
+      <div className="grid sm:grid-cols-[auto_1fr] gap-4">
+        <Field label={tr("Accentfärg")}>
+          <div className="flex items-center gap-2">
+            <input type="color" value={p.accent || '#4f46e5'} onChange={(e) => setP({ ...p, accent: e.target.value })} disabled={ro} className="h-9 w-12 cursor-pointer rounded border border-slate-200 bg-white p-0.5" />
+            <span className="font-mono text-xs text-slate-500">{p.accent || '#4f46e5'}</span>
+          </div>
+        </Field>
+        <Field label={tr("Sidfot")} hint={tr("T.ex. bankgiro, momsregistreringsnummer och F-skatt. Visas längst ned på varje sida.")}>
+          <Input value={p.footer || ''} onChange={(e) => setP({ ...p, footer: e.target.value })} disabled={ro} placeholder={tr("Bankgiro 123-4567 · Momsreg.nr SE559000000001 · Godkänd för F-skatt")} />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
 const EMPTY = { name: '', sku: '', description: '', unit: 'st', price: '', vat_rate: 25, recurring: 'none', active: true };
 
 function ProfileForm() {
@@ -31,6 +95,7 @@ function ProfileForm() {
         <Field label={tr("Offerten gäller (dagar)")}><Input type="number" value={p.validity_days} onChange={set('validity_days')} disabled={ro} /></Field>
         <Field label={tr("Standardvillkor")} className="sm:col-span-2" hint={tr("Kan ändras per offert")}><Textarea value={p.terms} onChange={set('terms')} disabled={ro} /></Field>
       </div>
+      <BrandingFields p={p} setP={setP} ro={ro} />
       {!ro && <Button onClick={save}>{tr("Spara")}</Button>}
     </Card>
   );
@@ -39,7 +104,8 @@ function ProfileForm() {
 export default function Products() {
   const { can } = useApp();
   const toast = useToast();
-  const [tab, setTab] = useState('products');
+  // ?tab=profile öppnar offertinställningarna direkt (länk från Inställningar).
+  const [tab, setTab] = useState(() => (new URLSearchParams(window.location.search).get('tab') === 'profile' ? 'profile' : 'products'));
   const { data, reload } = useFetch('/products?all=1');
   const [edit, setEdit] = useState(null);
   const manage = can('products.manage');
