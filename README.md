@@ -142,9 +142,9 @@ Knappen **Berika** på ett lead (eller i företagets vy) tar fram en kort bild a
 
 Resultatet sparas på **företaget** och visas i fliken **Företagsinfo** på alla dess kontakter, med källor och datum; *Uppdatera* hämtar på nytt. Tomma fält på företaget (bransch, hemsida, org.nr, ort) fylls i.
 
-`**Inställning:** en administratör lägger in en API-nyckel från [openrouter.ai/keys](https://openrouter.ai/keys) under **Inställningar → AI-berikning** (per arbetsyta, eller för alla via miljövariabeln \`OPENROUTER_API_KEY\`). Standardmodellen är *Claude Haiku 5.5* (\`anthropic/claude-haiku-5.5\`) – bra på svenska och kostar ungefär en hundradels krona per berikning; modellen går att byta.
+`**Inställning:** en administratör lägger in en API-nyckel från [openrouter.ai/keys](https://openrouter.ai/keys) under **Inställningar → AI-berikning** (per arbetsyta, eller för alla via miljövariabeln `OPENROUTER_API_KEY`). Standardmodellen är *Claude Haiku 5.5* (`anthropic/claude-haiku-5.5`) – bra på svenska och kostar ungefär en hundradels krona per berikning; modellen går att byta.
 `
-`**Via Claude:** med Claude-kopplingen kan du i stället säga "berika Hagab Industri" – Claude söker själv på webben och sparar sammanfattningen med verktyget \`save_company_summary\`. Det kostar inget extra utöver Claude.
+`**Via Claude:** med Claude-kopplingen kan du i stället säga "berika Hagab Industri" – Claude söker själv på webben och sparar sammanfattningen med verktyget `save_company_summary`. Det kostar inget extra utöver Claude.
 
 ## Prospektering (kalla leads)
 
