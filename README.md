@@ -132,6 +132,20 @@ Möten bokade i LeadFlow skapas i Google (valfritt med Meet-länk och inbjudan t
 
 **iCal-prenumeration** (reserv, bara läsning): varje användare har en personlig länk under Kalender som kan läggas till i Google, Outlook eller Apple Kalender. Kalenderappen hämtar ändringar med fördröjning.
 
+## Berika företag (AI-sammanfattning)
+
+Knappen **Berika** på ett lead (eller i företagets vy) tar fram en kort bild av bolaget inför första kontakten. Inget hämtas automatiskt – bara när någon klickar.
+
+1. Organisationsnummer och hemsida letas fram från företaget och dess kontakter (fält, meddelande och e-postdomän).
+2. Uppgifter hämtas från **Bolagsverket** (om nycklarna finns under Prospektering → Datakällor) och från företagets **hemsida** (startsidan och en "om oss"-sida; robots.txt respekteras).
+3. En AI-modell via **OpenRouter** sammanfattar: vad bolaget gör, bransch, erbjudande, kunder, storlek, något aktuellt, en **säljvinkel** utifrån era produkter och en **inledningsfras** att kopiera.
+
+Resultatet sparas på **företaget** och visas i fliken **Företagsinfo** på alla dess kontakter, med källor och datum; *Uppdatera* hämtar på nytt. Tomma fält på företaget (bransch, hemsida, org.nr, ort) fylls i.
+
+`**Inställning:** en administratör lägger in en API-nyckel från [openrouter.ai/keys](https://openrouter.ai/keys) under **Inställningar → AI-berikning** (per arbetsyta, eller för alla via miljövariabeln \`OPENROUTER_API_KEY\`). Standardmodellen är *Claude Haiku 5.5* (\`anthropic/claude-haiku-5.5\`) – bra på svenska och kostar ungefär en hundradels krona per berikning; modellen går att byta.
+`
+`**Via Claude:** med Claude-kopplingen kan du i stället säga "berika Hagab Industri" – Claude söker själv på webben och sparar sammanfattningen med verktyget \`save_company_summary\`. Det kostar inget extra utöver Claude.
+
 ## Prospektering (kalla leads)
 
 Under **Prospektering** söker du företag efter bransch och ort, granskar listan och importerar de du vill bearbeta.

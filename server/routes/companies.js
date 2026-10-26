@@ -7,6 +7,7 @@ import { hydrateLead, canSeeLead, LEAD_NEXT_COLUMNS, pickNextStep } from '../ser
 import { companyVisibilitySql, COMPANY_STATS, domainFromUrl, findCompany } from '../services/companies.js';
 import { getConfig as prospectingConfig, hasBolagsverket } from '../prospecting/service.js';
 import { lookupOrganisation, validOrgNr, formatOrgNr } from '../prospecting/bolagsverket.js';
+import { presentEnrichment, aiConfigured } from '../services/enrich.js';
 
 const r = Router();
 const FIELDS = ['name', 'org_nr', 'website', 'phone', 'email', 'address', 'city', 'industry', 'notes'];
@@ -64,6 +65,7 @@ r.get('/companies/:id', (req, res) => {
     ...c, contacts: contacts.filter((l) => canSeeLead(req.user, l)), hiddenContacts: contacts.filter((l) => !canSeeLead(req.user, l)).length,
     deals: deals.filter((d) => can(req.user, 'leads.view_all') || d.owner_id === req.user.id), activities,
     canEdit: canEditCompany(req.user, c), bolagsverket: hasBolagsverket(prospectingConfig()),
+    enrichment: presentEnrichment(c), aiConfigured: aiConfigured(),
   });
 });
 

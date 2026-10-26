@@ -22,7 +22,7 @@ async function get(url, maxBytes = 400_000) {
     chunks.push(value); size += value.length;
     if (size > maxBytes) { await reader.cancel(); break; }
   }
-  return { text: Buffer.concat(chunks).toString('utf8'), url: res.url };
+  return { text: Buffer.concat(chunks).toString('utf8'), url: res.url || url };
 }
 
 async function allowedByRobots(origin) {
@@ -76,4 +76,41 @@ export async function enrichFromWebsite(website) {
     } catch { /* sidan svarade inte – prova nästa */ }
   }
   return { email: found.emails[0] || null, orgNr: found.orgNr, note: read ? null : 'Hemsidan svarade inte' };
+}
+
+// ---------- Text för AI-berikning ----------
+const ABOUT_LINK = /href=["']([^"'#]*(?:om-oss|om_oss|\/om\/?|about|foretaget|företaget|vilka-vi-ar|verksamhet)[^"'#]*)["']/i;
+const toText = (html) => html
+  .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>|<svg[\s\S]*?<\/svg>/gi, ' ')
+  .replace(/<(br|\/p|\/div|\/li|\/h[1-6])[^>]*>/gi, '\n').replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+const meta = (html, name) => html.match(new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]*content=["']([^"']*)["']`, 'i'))?.[1]
+  || html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:name|property)=["']${name}["']`, 'i'))?.[1] || null;
+
+/** Läser startsidan och (om den finns) en "om oss"-sida. Returnerar titel, beskrivning och text (begränsad längd). */
+export async function readWebsiteText(website, maxChars = 6000) {
+  let base;
+  try { base = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`); } catch { return { note: 'Ogiltig hemsida' }; }
+  if (!/^https?:$/.test(base.protocol) || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[|0\.)/.test(base.hostname) || !base.hostname.includes('.')) {
+    return { note: 'Hemsidan hoppades över' };
+  }
+  if (!(await allowedByRobots(base.origin))) return { note: 'Hemsidan tillåter inte automatisk läsning (robots.txt)' };
+  const home = await get(base.href).catch(() => null);
+  if (!home) return { note: 'Hemsidan svarade inte' };
+  const pages = [{ url: home.url, text: toText(home.text).slice(0, maxChars) }];
+  const about = home.text.match(ABOUT_LINK)?.[1];
+  if (about) {
+    try {
+      const url = new URL(about, home.url);
+      if (url.hostname === new URL(home.url).hostname) {
+        const r = await get(url.href);
+        if (r) pages.push({ url: r.url, text: toText(r.text).slice(0, maxChars) });
+      }
+    } catch { /* ingen om-sida */ }
+  }
+  return {
+    url: home.url, title: home.text.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim() || null,
+    description: meta(home.text, 'description') || meta(home.text, 'og:description'), pages,
+  };
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus, FileText } from 'lucide-react';
+import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus, FileText, Sparkles } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
-import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, useToast } from './ui.jsx';
+import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, Tabs, useToast } from './ui.jsx';
+import CompanyInsight from './CompanyInsight.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
 import MeetingModal from './MeetingModal.jsx';
 import LeadMeetings from './LeadMeetings.jsx';
@@ -84,6 +85,19 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
   const [book, setBook] = useState(false);
   const [templates, setTemplates] = useState(false);
   const mail = useEmailStatus();
+  // Fliken Företagsinfo: hämtas när den öppnas; "Berika" hämtar och sammanfattar uppgifter om leadets företag.
+  const [tab, setTab] = useState('timeline');
+  const [info, setInfo] = useState(null);
+  const [enriching, setEnriching] = useState(false);
+  const loadInfo = () => api.get(`/leads/${id}/company-info`).then(setInfo).catch(() => setInfo({ company: null }));
+  useEffect(() => { setTab('timeline'); setInfo(null); }, [id]);
+  useEffect(() => { if (tab === 'company' && !info) loadInfo(); }, [tab, id]);
+  const enrich = async () => {
+    setTab('company');
+    setEnriching(true);
+    try { const r = await api.post(`/leads/${id}/enrich`); setInfo((i) => ({ ...i, company: r.company })); toast(tr('Företagsinfo hämtad')); load(); onChanged?.(); }
+    catch (e) { toast(e.message, 'error'); } finally { setEnriching(false); }
+  };
 
   const load = () => api.get(`/leads/${id}`).then(setLead).catch((e) => { toast(e.message, 'error'); onClose(); });
   useEffect(() => { setLead(null); load(); }, [id]);
@@ -161,6 +175,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                   : <a href={`mailto:${lead.email}`}><Button size="sm" variant="secondary" icon={Mail}>{tr("Mejla")}</Button></a>)}
                 <Button size="sm" variant="secondary" icon={FileText} onClick={() => setTemplates(true)}>{tr("Mall")}</Button>
                 {editable && <Button size="sm" variant="secondary" icon={CalendarPlus} onClick={() => setBook(true)}>{tr("Boka möte")}</Button>}
+                {editable && lead.company && <Button size="sm" variant="secondary" icon={Sparkles} loading={enriching} onClick={enrich}>{tr("Berika")}</Button>}
                 {editable && <Button size="sm" variant="soft" icon={ArrowRightLeft} onClick={openConvert}>{lead.deals.length ? tr("Ny affär") : tr("Konvertera till affär")}</Button>}
                 {can('leads.delete') && <Button size="sm" variant="ghost" icon={Trash2} className="ml-auto !text-rose-600" onClick={() => setDel(true)} />}
               </div>
@@ -183,6 +198,13 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
 
             <div className="flex-1 overflow-y-auto scroll-thin grid md:grid-cols-[1fr_250px]">
               <div className="px-6 py-5 md:border-r border-slate-100 min-w-0">
+                {lead.company && <div className="mb-4"><Tabs value={tab} onChange={setTab} tabs={[{ value: 'timeline', label: tr("Tidslinje") }, { value: 'company', label: tr("Företagsinfo") }]} /></div>}
+                {tab === 'company' ? (
+                  !info ? <div className="grid place-items-center py-10"><Spinner /></div> : (
+                    <CompanyInsight enrichment={info.company?.enrichment} companyName={info.company?.name || lead.company} configured={info.configured}
+                      canEnrich={info.canEnrich} busy={enriching} onEnrich={enrich} companyLink={info.company && `/companies/${info.company.id}`} />
+                  )
+                ) : <>
                 {editable && <div className="mb-6"><ActivityComposer onSubmit={addActivity} /></div>}
                 {lead.message && (
                   <div className="mb-6 rounded-xl bg-slate-50 p-4">
@@ -192,6 +214,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 )}
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje")}</h3>
                 <Timeline activities={lead.activities} onToggleTask={toggleTask} />
+                </>}
               </div>
 
               <aside className="px-5 py-5 space-y-6 bg-slate-50/50">

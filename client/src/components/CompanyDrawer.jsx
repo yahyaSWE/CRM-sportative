@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Building2, Globe, Phone, Mail, MapPin, Briefcase, UserPlus, Plus, Trash2, Merge, ShieldCheck, Factory, Hash, Star } from 'lucide-react';
+import { X, Building2, Globe, Phone, Mail, MapPin, Briefcase, UserPlus, Plus, Trash2, Merge, ShieldCheck, Factory, Hash, Star, Sparkles } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
 import { Avatar, Button, Select, Spinner, Modal, Field, Input, Confirm, Badge, useToast, cx } from './ui.jsx';
@@ -9,6 +9,7 @@ import { EditableField } from './LeadDrawer.jsx';
 import { STAGES, sek, formatDate, leadName } from '../lib/meta.jsx';
 import { NextStepCell } from './Records.jsx';
 import { tr } from '../lib/i18n.js';
+import CompanyInsight from './CompanyInsight.jsx';
 
 function NewContact({ companyId, onSaved, onCancel }) {
   const toast = useToast();
@@ -57,6 +58,12 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
   };
   const addActivity = async (body) => { await api.post(`/companies/${id}/activities`, body); await load(); };
   const toggleTask = async (a) => { await api.patch(`/activities/${a.id}`, { done: !a.done }); load(); };
+  const [enriching, setEnriching] = useState(false);
+  const enrich = async () => {
+    setEnriching(true);
+    try { await api.post(`/companies/${id}/enrich`); toast(tr('Företagsinfo hämtad')); load(); }
+    catch (e) { toast(e.message, 'error'); } finally { setEnriching(false); }
+  };
   const fetchBolagsverket = async () => {
     setBusy(true);
     try { const org = await api.post(`/companies/${id}/bolagsverket`); toast(`${org.name || c.name}: ${[org.form, org.city].filter(Boolean).join(', ')}`, 'success', { title: tr("Hämtat från Bolagsverket") }); load(); }
@@ -108,6 +115,10 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
 
             <div className="flex-1 overflow-y-auto scroll-thin grid md:grid-cols-[1fr_300px]">
               <div className="px-6 py-5 md:border-r border-slate-100 min-w-0 space-y-6">
+                <section>
+                  <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400"><Sparkles className="size-3.5" />{tr("Företagsinfo")}</h3>
+                  <CompanyInsight enrichment={c.enrichment} companyName={c.name} configured={c.aiConfigured} canEnrich={editable} busy={enriching} onEnrich={enrich} />
+                </section>
                 <section>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Kontaktpersoner")}</h3>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2, FileText, ChevronRight } from 'lucide-react';
+import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2, FileText, ChevronRight, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { loadEmailStatus } from '../lib/email.js';
@@ -55,6 +55,44 @@ function EmailCard() {
           <a href="/api/calendar/google/connect?return=settings"><Button icon={Mail}>{s.needsReconnect ? tr('Ge rätt att skicka e-post') : tr('Koppla Gmail')}</Button></a>
         </div>
       )}
+    </Card>
+  );
+}
+
+// AI-berikning: OpenRouter-nyckel och modell för den här arbetsytan (administratörer).
+function AiEnrichCard() {
+  const toast = useToast();
+  const [cfg, setCfg] = useState(null);
+  const [f, setF] = useState({ apiKey: '', model: '' });
+  const [saving, setSaving] = useState(false);
+  const load = () => api.get('/ai/config').then((c) => { setCfg(c); setF({ apiKey: c.apiKey, model: c.model }); }).catch(() => {});
+  useEffect(() => { load(); }, []);
+  if (!cfg) return null;
+  const custom = !cfg.models.some((m) => m.id === f.model);
+  const save = async () => {
+    setSaving(true);
+    try { await api.patch('/ai/config', f); toast(tr('AI-inställningarna sparades')); load(); }
+    catch (e) { toast(e.message, 'error'); } finally { setSaving(false); }
+  };
+  return (
+    <Card className="p-6">
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Sparkles className="size-4 text-slate-400" />{tr('AI-berikning')}
+        <Badge className={cfg.configured ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-slate-100 text-slate-500 ring-slate-400/20'}>{cfg.configured ? tr('Uppsatt') : tr('Ej uppsatt')}</Badge>
+      </h3>
+      <p className="text-sm text-slate-500 mb-4">{tr('Knappen Berika på leads och företag sammanfattar bolaget med AI via OpenRouter. Nyckeln gäller den här arbetsytan; du betalar OpenRouter per användning (med standardmodellen ungefär en hundradels krona per berikning).')}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={tr('API-nyckel')} hint={cfg.fromEnv ? tr('Nyckeln kommer från miljövariabeln OPENROUTER_API_KEY.') : <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">{tr('Skapa en nyckel på openrouter.ai/keys')}</a>}>
+          <Input type="password" value={f.apiKey} onChange={(e) => setF({ ...f, apiKey: e.target.value })} placeholder="sk-or-v1-…" autoComplete="off" />
+        </Field>
+        <Field label={tr('Modell')}>
+          <select className="input" value={custom ? '__custom' : f.model} onChange={(e) => setF({ ...f, model: e.target.value === '__custom' ? '' : e.target.value })}>
+            {cfg.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            <option value="__custom">{tr('Egen modell')}</option>
+          </select>
+          {custom && <Input className="mt-2" value={f.model} onChange={(e) => setF({ ...f, model: e.target.value })} placeholder={tr('leverantör/modell')} />}
+        </Field>
+      </div>
+      <Button className="mt-4" loading={saving} onClick={save}>{tr('Spara')}</Button>
     </Card>
   );
 }
@@ -151,6 +189,7 @@ export default function Settings() {
       </Card>
       <LanguageCard />
       <EmailCard />
+      {can('integrations.manage') && <AiEnrichCard />}
       {can('products.manage') && (
         <Link to="/products?tab=profile" className="block">
           <Card className="flex items-center gap-3 p-6 hover:bg-slate-50">

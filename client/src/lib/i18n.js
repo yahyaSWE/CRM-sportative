@@ -65,6 +65,7 @@ const STORED = [
   [/^(.+): kunden dök inte upp(?:\. (.+))?$/s, (m) => `${m[1]}: the customer didn’t show up${m[2] ? `. ${m[2]}` : ''}`],
   [/^(.+) genomfört$/s, (m) => `${m[1]} completed`],
   [/^Uppgifter hämtade från Bolagsverket: (.+)$/s, (m) => `Details fetched from the company registry: ${m[1]}`],
+  [/^Företagsinfo hämtad: (.+)$/s, (m) => `Company info fetched: ${m[1]}`],
   // Notiser
   [/^Ny lead tilldelad dig: (.+) \((.+)\)$/s, (m) => `New lead assigned to you: ${m[1]} (${src(m[2])})`],
   [/^(.+) har hört av sig igen via (.+)$/s, (m) => `${m[1]} got in touch again via ${src(m[2])}`],

@@ -470,6 +470,24 @@ export function buildServer(auth) {
     return ok(dealSummary(d), 'Affären är uppdaterad.');
   });
 
+  tool('save_company_summary', {
+    title: 'Spara företagsinfo',
+    description: 'Sparar en kort sammanfattning om ett företag (som du tagit fram, t.ex. via webbsökning) under fliken Företagsinfo i LeadFlow. Ange company_id eller lead_id. Hitta inte på något – utelämna det du inte vet, och ange källorna.',
+    inputSchema: {
+      company_id: id('Företaget').optional(), lead_id: id('Leadet (dess företag används)').optional(),
+      summary: z.string().min(10).describe('2–4 meningar: vad företaget gör och för vem'),
+      industry: z.string().optional(), offering: z.string().optional().describe('Viktigaste produkter/tjänster'),
+      customers: z.string().optional(), size: z.string().optional().describe('Anställda, omsättning, orter'),
+      news: z.string().optional().describe('Något aktuellt'), sales_angle: z.string().optional().describe('Varför de kan vara intresserade och vad säljaren kan fråga om'),
+      opening_line: z.string().optional(), sources: z.array(z.string()).optional().describe('Webbadresser du använt'),
+    },
+    annotations: { ...WRITE, idempotentHint: true },
+  }, async ({ company_id, lead_id, sources = [], ...data }) => {
+    if (!company_id && !lead_id) throw new ToolError('Ange company_id eller lead_id');
+    const r = await api(auth, 'POST', `${lead_id ? `/leads/${lead_id}` : `/companies/${company_id}`}/enrichment`, { ...data, sources });
+    return ok({ company_id: r.company.id, name: r.company.name, url: link(`/companies/${r.company.id}`) }, 'Företagsinfon är sparad.');
+  });
+
   tool('book_meeting', {
     title: 'Boka möte',
     description: 'Bokar ett möte i användarens kalender (synkas till Google Kalender om den är kopplad), kopplat till ett lead och/eller en affär. En kvalificerad affär flyttas då till "Möte bokat".',
