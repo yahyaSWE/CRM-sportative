@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, RefreshCw, ExternalLink, Target, MessageSquareQuote, Building2, Copy } from 'lucide-react';
+import { Sparkles, RefreshCw, ExternalLink, Target, MessageSquareQuote, Building2, Copy, Mail } from 'lucide-react';
 import { useApp } from '../lib/app.jsx';
 import { Button, useToast } from './ui.jsx';
 import { copyText } from '../lib/templates.js';
@@ -7,7 +7,7 @@ import { timeAgo } from '../lib/meta.jsx';
 import { tr } from '../lib/i18n.js';
 
 // Företagsinfo från "Berika": sammanfattning, säljvinkel, fakta och källor. Används i leadet och på företaget.
-export default function CompanyInsight({ enrichment: e, companyName, configured, canEnrich, busy, onEnrich, companyLink }) {
+export default function CompanyInsight({ enrichment: e, companyName, configured, canEnrich, busy, onEnrich, companyLink, onDraftEmail, drafting }) {
   const { can } = useApp();
   const toast = useToast();
   if (!e) {
@@ -41,6 +41,9 @@ export default function CompanyInsight({ enrichment: e, companyName, configured,
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
           <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-700"><Target className="size-3.5" />{tr('Säljvinkel')}</p>
           <p className="text-sm leading-relaxed text-slate-800">{e.sales_angle}</p>
+          {onDraftEmail && configured && canEnrich && (
+            <Button className="mt-3" size="sm" icon={Mail} loading={drafting} onClick={onDraftEmail}>{drafting ? tr('Skriver…') : tr('Skriv första mejlet')}</Button>
+          )}
           {e.opening_line && (
             <div className="mt-3 flex items-start gap-2 rounded-lg bg-white/80 p-2.5">
               <MessageSquareQuote className="mt-0.5 size-4 shrink-0 text-emerald-600" />
@@ -50,6 +53,7 @@ export default function CompanyInsight({ enrichment: e, companyName, configured,
           )}
         </div>
       )}
+      {!e.sales_angle && onDraftEmail && configured && canEnrich && <Button size="sm" icon={Mail} loading={drafting} onClick={onDraftEmail}>{drafting ? tr('Skriver…') : tr('Skriv första mejlet')}</Button>}
       {facts.length > 0 && (
         <dl className="grid gap-x-4 gap-y-2 rounded-xl border border-slate-200 p-4 text-sm sm:grid-cols-2">
           {facts.map(([k, v]) => <div key={k} className="min-w-0"><dt className="text-xs text-slate-500">{k}</dt><dd className="text-slate-800">{v}</dd></div>)}

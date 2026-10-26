@@ -89,7 +89,7 @@ function parseJson(text) {
   return null;
 }
 
-async function requestOpenRouter({ apiKey, model }, messages, format) {
+async function requestOpenRouter({ apiKey, model }, messages, format, schemaDef) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -100,7 +100,7 @@ async function requestOpenRouter({ apiKey, model }, messages, format) {
       model, messages, max_tokens: 4000,
       // Modeller som "tänker" innan de svarar ska göra det kort – annars kan tänkandet äta upp hela svaret.
       reasoning: { effort: 'low', exclude: true },
-      ...(format === 'schema' ? { response_format: { type: 'json_schema', json_schema: { name: 'company_summary', strict: true, schema: SCHEMA } } }
+      ...(format === 'schema' ? { response_format: { type: 'json_schema', json_schema: { name: schemaDef.name, strict: true, schema: schemaDef.schema } } }
         : format === 'json' ? { response_format: { type: 'json_object' } } : {}),
     }),
     signal: AbortSignal.timeout(90000),
@@ -115,11 +115,11 @@ async function requestOpenRouter({ apiKey, model }, messages, format) {
 }
 
 /** Frågar modellen; först med strikt schema, sedan (om svaret inte går att läsa) med enklare JSON-läge. */
-async function callOpenRouter(ai, messages) {
+async function callOpenRouter(ai, messages, schemaDef = { name: 'company_summary', schema: SCHEMA }) {
   let last = null;
   for (const format of ['schema', 'json']) {
     let r;
-    try { r = await requestOpenRouter(ai, messages, format); }
+    try { r = await requestOpenRouter(ai, messages, format, schemaDef); }
     catch (e) {
       // Vissa modeller/leverantörer stöder inte schemaläget – prova enklare format innan vi ger upp.
       if (e.retryable && format === 'schema') { last = { error: e }; continue; }
@@ -143,8 +143,8 @@ Svara ENDAST med ett JSON-objekt på svenska med fälten:
  "customers": "vilka deras kunder/marknad är, om det framgår",
  "size": "storlek (anställda, omsättning, orter) om det framgår, annars null",
  "news": "något aktuellt (nyhet, expansion, rekrytering) om det framgår, annars null",
- "sales_angle": "2–3 meningar: varför de kan vara intresserade av säljarens erbjudande och vad säljaren kan fråga om",
- "opening_line": "en naturlig första mening i ett samtal eller mejl"}
+ "sales_angle": "2–3 meningar: koppla företagets situation till säljarens erbjudande – vilket problem säljaren kan lösa för just dem och vad säljaren kan fråga om",
+ "opening_line": "en naturlig första mening i ett samtal eller mejl, i säljarens ton"}
 Hitta inte på något. Står något inte i underlaget: skriv null. Var konkret och kortfattad.`;
 
 /** Berikar företaget och sparar resultatet. Returnerar berikningen. */
@@ -182,9 +182,7 @@ export async function enrichCompany(company, user) {
   if (!sources.some((s) => !s.error) && !notes) {
     throw Object.assign(new Error('Hittade inget att sammanfatta. Lägg till företagets hemsida eller organisationsnummer och försök igen.'), { status: 400 });
   }
-  const profile = getProfile();
-  const products = all('SELECT name FROM products WHERE active = 1 ORDER BY name LIMIT 15').map((p) => p.name);
-  const seller = `Säljarens företag: ${profile.name || 'okänt'}${products.length ? `. Erbjudande: ${products.join(', ')}` : ''}.`;
+  const seller = offerText();
   const material = [
     `FÖRETAG I CRM:\n${known}`,
     Object.keys(facts).length ? `${sources.some((s) => s.type === 'bolagsverket' && !s.error) ? 'BOLAGSVERKET' : 'FAKTA'}:\n${JSON.stringify(facts)}` : null,
@@ -197,6 +195,92 @@ export async function enrichCompany(company, user) {
     { role: 'user', content: `${seller}\n\n${material}` },
   ]);
   return saveEnrichment(company, user, { ...pick(result), facts, sources, model, usage: usage && { prompt: usage.prompt_tokens, completion: usage.completion_tokens, cost: usage.cost }, via: 'app' }, { website: site?.url, orgNr });
+}
+
+// ---------- Vårt erbjudande (per arbetsyta) ----------
+// Beskriver vad det egna bolaget säljer, så att säljvinklar och mejlutkast anpassas efter det.
+const OFFER_KEY = 'sales:offer';
+export const OFFER_FIELDS = ['what', 'audience', 'problems', 'why_us', 'references', 'goal', 'tone'];
+const OFFER_LABELS = {
+  what: 'Vad vi gör', audience: 'Målgrupp', problems: 'Problem vi löser', why_us: 'Varför oss',
+  references: 'Referenser', goal: 'Målet med första kontakten', tone: 'Ton',
+};
+export const getOffer = () => parseJSON(get('SELECT value FROM settings WHERE key = ?', OFFER_KEY)?.value, {});
+export function saveOffer(o) {
+  const next = Object.fromEntries(OFFER_FIELDS.map((k) => [k, String(o[k] ?? '').trim().slice(0, 2000)]));
+  run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', OFFER_KEY, JSON.stringify(next));
+  return next;
+}
+
+/** Erbjudandet som text till AI:n. Saknas det används företagsnamnet och produktlistan. */
+export function offerText() {
+  const profile = getProfile();
+  const offer = getOffer();
+  const products = all('SELECT name, description FROM products WHERE active = 1 ORDER BY name LIMIT 20');
+  const lines = OFFER_FIELDS.filter((k) => offer[k]).map((k) => `${OFFER_LABELS[k]}: ${offer[k]}`);
+  return [
+    `SÄLJARENS FÖRETAG: ${profile.name || 'okänt'}${profile.website ? ` (${profile.website})` : ''}`,
+    ...lines,
+    products.length ? `Produkter/tjänster: ${products.map((p) => (p.description ? `${p.name} (${p.description})` : p.name)).join('; ')}` : null,
+  ].filter(Boolean).join('\n');
+}
+
+const OFFER_SCHEMA = {
+  type: 'object', additionalProperties: false, required: OFFER_FIELDS,
+  properties: Object.fromEntries(OFFER_FIELDS.map((k) => [k, nullableText])),
+};
+
+/** Läser den egna hemsidan och föreslår texter till "Vårt erbjudande" (sparas inte). */
+export async function draftOfferFromWebsite(website) {
+  const ai = aiSettings();
+  if (!ai.apiKey) throw Object.assign(new Error('AI-berikning är inte uppsatt. En administratör lägger in en OpenRouter-nyckel under Inställningar → AI-berikning.'), { status: 400 });
+  const site = await readWebsiteText(website).catch(() => ({ note: 'Hemsidan svarade inte' }));
+  if (!site.pages?.length) throw Object.assign(new Error(`Kunde inte läsa hemsidan: ${site.note || 'okänt fel'}`), { status: 400 });
+  const products = all('SELECT name, description FROM products WHERE active = 1 ORDER BY name LIMIT 20').map((p) => p.name).join(', ');
+  const { result } = await callOpenRouter(ai, [
+    { role: 'system', content: `Du hjälper ett svenskt företag att beskriva sitt erbjudande för säljarbete. Läs deras hemsida och svara ENDAST med JSON på svenska:
+{"what": "1–2 meningar: vad företaget gör",
+ "audience": "vilka de säljer till (bransch, storlek, roll, region) om det framgår",
+ "problems": "vilka problem/behov de löser för kunden",
+ "why_us": "varför välja dem (styrkor, unika fördelar)",
+ "references": "kunder/referenser som nämns, annars null",
+ "goal": "ett rimligt mål med en första säljkontakt, t.ex. boka ett kort möte",
+ "tone": "tonläge som passar varumärket, t.ex. personlig och rak med du-tilltal"}
+Hitta inte på kunder eller siffror som inte står på sidan.` },
+    { role: 'user', content: `${products ? `Produkter i CRM:et: ${products}\n\n` : ''}HEMSIDA (${site.url})\nTitel: ${site.title || '-'}\nBeskrivning: ${site.description || '-'}\n${site.pages.map((p) => `--- ${p.url}\n${p.text}`).join('\n')}` },
+  ], { name: 'our_offer', schema: OFFER_SCHEMA });
+  return Object.fromEntries(OFFER_FIELDS.map((k) => [k, typeof result[k] === 'string' ? result[k].trim() : '']));
+}
+
+const EMAIL_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['subject', 'body'],
+  properties: { subject: { type: 'string' }, body: { type: 'string' } },
+};
+
+/** Skriver ett utkast till ett första mejl till kontakten utifrån erbjudandet och företagsinfon (sparas inte). */
+export async function draftFirstEmail(lead, company, user) {
+  const ai = aiSettings();
+  if (!ai.apiKey) throw Object.assign(new Error('AI-berikning är inte uppsatt. En administratör lägger in en OpenRouter-nyckel under Inställningar → AI-berikning.'), { status: 400 });
+  const e = presentEnrichment(company);
+  const contact = [
+    `Namn: ${[lead.first_name, lead.last_name].filter(Boolean).join(' ') || '-'}`, lead.title && `Roll: ${lead.title}`,
+    `Företag: ${company?.name || lead.company || '-'}`, lead.city && `Ort: ${lead.city}`, lead.message && `Meddelande/anteckning: ${lead.message}`,
+  ].filter(Boolean).join('\n');
+  const about = e ? ['summary', 'industry', 'offering', 'customers', 'size', 'news', 'sales_angle'].filter((k) => e[k]).map((k) => `${k}: ${e[k]}`).join('\n') : null;
+  const history = all("SELECT type, content FROM activities WHERE lead_id = ? AND type IN ('call','email','meeting','note') ORDER BY created_at DESC LIMIT 5", lead.id)
+    .map((a) => `${a.type}: ${String(a.content).slice(0, 300)}`).join('\n');
+  const { result } = await callOpenRouter(ai, [
+    { role: 'system', content: `Du skriver säljmejl på svenska åt en säljare. Skriv ett kort, personligt FÖRSTA mejl till kontakten.
+- Koppla mottagarens situation till säljarens erbjudande – ett konkret problem ni kan lösa för just dem.
+- Max 120 ord i brödtexten, inga klyschor, inga påhittade fakta eller siffror.
+- Följ säljarens ton och mål med första kontakten (t.ex. föreslå ett kort samtal).
+- Har ni redan haft kontakt: anpassa mejlet efter det.
+- Avsluta med säljarens namn. Ämnesraden ska vara kort och konkret.
+Svara ENDAST med JSON: {"subject": "...", "body": "..."} (body med radbrytningar som \\n).` },
+    { role: 'user', content: `${offerText()}\nSäljarens namn: ${user.name}\n\nKONTAKT:\n${contact}${about ? `\n\nOM FÖRETAGET:\n${about}` : ''}${history ? `\n\nTIDIGARE KONTAKT:\n${history}` : ''}` },
+  ], { name: 'first_email', schema: EMAIL_SCHEMA });
+  if (!result.subject || !result.body) throw Object.assign(new Error('AI-svaret gick inte att tolka (svaret var tomt). Försök igen eller välj en annan modell under Inställningar → AI-berikning.'), { status: 502 });
+  return { subject: String(result.subject).trim(), body: String(result.body).trim() };
 }
 
 const FIELDS = ['summary', 'industry', 'offering', 'customers', 'size', 'news', 'sales_angle', 'opening_line'];

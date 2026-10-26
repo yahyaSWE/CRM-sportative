@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2, FileText, ChevronRight, Sparkles } from 'lucide-react';
+import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2, FileText, ChevronRight, Sparkles, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { loadEmailStatus } from '../lib/email.js';
@@ -97,6 +97,60 @@ function AiEnrichCard() {
   );
 }
 
+// Vårt erbjudande: vad bolaget säljer, så att säljvinklar och mejlutkast från AI anpassas efter det (per arbetsyta).
+const OFFER_FIELDS = [
+  ['what', 'Vad vi gör', 'Vi arrangerar teambuilding, sportevent och kickoffer för företag och föreningar.'],
+  ['audience', 'Målgrupp', 'HR-chefer och VD på bolag med 20–500 anställda i Småland, samt idrottsföreningar.'],
+  ['problems', 'Problem vi löser', 'Svårt att samla personalen, låg sammanhållning, tidskrävande att planera event.'],
+  ['why_us', 'Varför oss', 'Allt-i-ett med lokaler, aktiviteter och mat. Eget team på plats. 4,9 i betyg.'],
+  ['references', 'Referenser', 'Kunder vi får nämna, t.ex. Husqvarna och Jönköpings kommun.'],
+  ['goal', 'Målet med första kontakten', 'Boka ett 15 minuters samtal.'],
+  ['tone', 'Ton', 'Personlig och rak, du-tilltal, korta meningar.'],
+];
+
+function OfferCard() {
+  const toast = useToast();
+  const [data, setData] = useState(null);
+  const [f, setF] = useState({});
+  const [website, setWebsite] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  useEffect(() => { api.get('/ai/offer').then((d) => { setData(d); setF(d.offer || {}); setWebsite(d.website || ''); }).catch(() => {}); }, []);
+  if (!data) return null;
+  const ro = !data.canEdit;
+  const save = async () => {
+    setSaving(true);
+    try { const r = await api.put('/ai/offer', f); setF(r.offer); toast(tr('Erbjudandet sparades')); }
+    catch (e) { toast(e.message, 'error'); } finally { setSaving(false); }
+  };
+  const draft = async () => {
+    setDrafting(true);
+    try { const r = await api.post('/ai/offer/draft', { website }); setF((cur) => ({ ...cur, ...Object.fromEntries(Object.entries(r.offer).filter(([, v]) => v)) })); toast(tr('Förslag ifyllt – granska och klicka Spara')); }
+    catch (e) { toast(e.message, 'error'); } finally { setDrafting(false); }
+  };
+  return (
+    <Card className="p-6">
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Target className="size-4 text-slate-400" />{tr('Vårt erbjudande')}</h3>
+      <p className="text-sm text-slate-500 mb-4">{tr('Beskriv vad {name} säljer. AI:n använder det i säljvinkeln när du berikar ett företag, när den skriver första mejlet och när Claude skriver säljtexter. Gäller den här arbetsytan.', { name: data.company || tr('ert bolag') })}</p>
+      {!ro && (
+        <div className="mb-5 flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-3">
+          <Field label={tr('Er hemsida')} className="min-w-56 flex-1"><Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="sportative.se" /></Field>
+          <Button variant="secondary" icon={Sparkles} loading={drafting} disabled={!data.configured || !website.trim()} onClick={draft}>{tr('Fyll i från vår hemsida')}</Button>
+          {!data.configured && <p className="w-full text-xs text-slate-500">{tr('Kräver AI-berikning (OpenRouter-nyckel) ovan.')}</p>}
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {OFFER_FIELDS.map(([k, label, ph]) => (
+          <Field key={k} label={tr(label)} className={['what', 'problems', 'why_us'].includes(k) ? 'sm:col-span-2' : ''}>
+            <textarea className="input min-h-16" rows={2} value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={tr(ph)} disabled={ro} />
+          </Field>
+        ))}
+      </div>
+      {!ro && <Button className="mt-4" loading={saving} onClick={save}>{tr('Spara')}</Button>}
+    </Card>
+  );
+}
+
 // Claude och andra AI-assistenter som kopplats in via MCP. Administratörer ser och kan koppla bort allas.
 function AiCard() {
   const { can, user } = useApp();
@@ -190,6 +244,7 @@ export default function Settings() {
       <LanguageCard />
       <EmailCard />
       {can('integrations.manage') && <AiEnrichCard />}
+      <OfferCard />
       {can('products.manage') && (
         <Link to="/products?tab=profile" className="block">
           <Card className="flex items-center gap-3 p-6 hover:bg-slate-50">

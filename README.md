@@ -144,7 +144,11 @@ Resultatet sparas på **företaget** och visas i fliken **Företagsinfo** på al
 
 `**Inställning:** en administratör lägger in en API-nyckel från [openrouter.ai/keys](https://openrouter.ai/keys) under **Inställningar → AI-berikning** (per arbetsyta, eller för alla via miljövariabeln `OPENROUTER_API_KEY`). Standardmodellen är *Claude Haiku 5.5* (`anthropic/claude-haiku-5.5`) – bra på svenska och kostar ungefär en hundradels krona per berikning; modellen går att byta.
 `
-`**Via Claude:** med Claude-kopplingen kan du i stället säga "berika Hagab Industri" – Claude söker själv på webben och sparar sammanfattningen med verktyget `save_company_summary`. Det kostar inget extra utöver Claude.
+`**Vårt erbjudande:** under **Inställningar → Vårt erbjudande** beskriver ni per arbetsyta vad ni säljer – vad ni gör, målgrupp, problem ni löser, varför er, referenser, målet med första kontakten och tonläge. Knappen *Fyll i från vår hemsida* låter AI:n föreslå texterna. Erbjudandet styr säljvinkeln i berikningen och används av Claude (verktyget `get_our_offer`) när Claude skriver säljtexter.
+
+**Skriv första mejlet:** i fliken Företagsinfo skriver AI:n ett kort, personligt första mejl utifrån erbjudandet, företagsinfon, kontaktens roll och tidigare kontakt. Utkastet öppnas i skriv-rutan där du redigerar och sedan skickar (Gmail), kopierar eller loggar det.
+
+**Via Claude:** med Claude-kopplingen kan du i stället säga "berika Hagab Industri" – Claude söker själv på webben och sparar sammanfattningen med verktyget `save_company_summary`. Det kostar inget extra utöver Claude.
 
 ## Prospektering (kalla leads)
 

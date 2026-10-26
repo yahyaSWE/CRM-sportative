@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Mail, Search, FileText, StickyNote, Send, PenLine } from 'lucide-react';
+import { Copy, Mail, Search, FileText, StickyNote, Send, PenLine, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useApp } from '../lib/app.jsx';
@@ -13,7 +13,7 @@ const BLANK = { id: null, type: 'email', name: tr('Tomt mejl'), subject: '', bod
 
 // Skriv till ett lead utifrån en mall (eller ett tomt mejl): fälten fylls i med kontaktens och säljarens uppgifter
 // och allt går att redigera. Med Gmail kopplat skickas mejlet direkt; annars kopierar man eller öppnar e-postprogrammet.
-export default function TemplatePicker({ lead, open, onClose, onLogged, blank }) {
+export default function TemplatePicker({ lead, open, onClose, onLogged, blank, aiEmail }) {
   const { user, workspace } = useApp();
   const toast = useToast();
   const mail = useEmailStatus();
@@ -23,11 +23,15 @@ export default function TemplatePicker({ lead, open, onClose, onLogged, blank })
   const [draft, setDraft] = useState({ to: '', subject: '', body: '' });
   const [company, setCompany] = useState(profileName);
   const [sending, setSending] = useState(false);
+  const [aiDraft, setAiDraft] = useState(null);
 
   useEffect(() => {
     if (!open) return;
     setSel(null);
-    api.get('/templates').then((l) => { setList(l); setSel(blank ? BLANK : l.find((t) => t.type === 'email') || l[0] || BLANK); }).catch(() => { setList([]); setSel(BLANK); });
+    // Ett AI-utkast visas först i listan och är förvalt.
+    const ai = aiEmail ? { ...BLANK, name: tr('AI-utkast'), subject: aiEmail.subject, body: aiEmail.body, ai: true } : null;
+    setAiDraft(ai);
+    api.get('/templates').then((l) => { setList(l); setSel(ai || (blank ? BLANK : l.find((t) => t.type === 'email') || l[0] || BLANK)); }).catch(() => { setList([]); setSel(ai || BLANK); });
     if (!profileName) api.get('/sales/profile').then((p) => { profileName = p.name || null; setCompany(profileName); }).catch(() => {});
   }, [open]);
 
@@ -77,7 +81,7 @@ export default function TemplatePicker({ lead, open, onClose, onLogged, blank })
 
   const canSend = isEmail && mail?.canSend;
   const item = (t, key) => {
-    const I = t.id ? TEMPLATE_TYPES[t.type]?.icon || FileText : PenLine;
+    const I = t.ai ? Sparkles : t.id ? TEMPLATE_TYPES[t.type]?.icon || FileText : PenLine;
     const active = sel === t || (t.id && sel?.id === t.id);
     return (
       <li key={key}>
@@ -99,6 +103,7 @@ export default function TemplatePicker({ lead, open, onClose, onLogged, blank })
               <input className="input !py-1.5 !pl-8 text-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Sök…')} />
             </div>
             <ul className="max-h-96 space-y-1 overflow-y-auto scroll-thin">
+              {!q && aiDraft && item(aiDraft, 'ai')}
               {!q && item(BLANK, 'blank')}
               {filtered.map((t) => item(t, t.id))}
               {!list.length && <li className="px-2.5 py-2 text-xs text-slate-500"><Link to="/templates" onClick={onClose} className="text-brand-600 hover:underline">{tr('Skapa mallar under Mallar')}</Link></li>}

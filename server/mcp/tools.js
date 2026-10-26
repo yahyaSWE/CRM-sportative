@@ -128,7 +128,8 @@ export const INSTRUCTIONS = `LeadFlow är ett CRM för säljare. Du agerar som d
 Börja ofta med get_my_day (dagens möten, uppgifter, nya leads och affärer som står still) eller search för att hitta kunder, kontakter och affärer.
 Begrepp: "lead" = kontaktperson (kan höra till ett företag), "affär" (deal) = möjlighet i pipelinen med steg ${Object.values(STAGES).join(' → ')}.
 Tider i svaren är lokal tid (${TZ}). Belopp är i kronor exkl. moms. Allt du skapar loggas som användaren "via Claude".
-Bekräfta med användaren innan du flyttar en affär till Vunnen/Förlorad, skapar en offert eller bokar möten med inbjudningar till kunden.`;
+Bekräfta med användaren innan du flyttar en affär till Vunnen/Förlorad, skapar en offert eller bokar möten med inbjudningar till kunden.
+När du skriver säljmejl, säljvinklar eller samtalsmanus: läs get_our_offer först och anpassa efter vad bolaget säljer och dess ton.`;
 
 const WORKSPACE_INSTRUCTIONS = (list, def) => `
 Kopplingen når flera arbetsytor (separata bolag med helt egna kunder, leads och affärer): ${list.map((w) => `"${w.name}"`).join(', ')}.
@@ -352,6 +353,18 @@ export function buildServer(auth) {
     inputSchema: { type: z.enum(['email', 'message', 'call']).optional().describe('email = e-post, message = SMS/meddelande, call = samtalsmanus') },
     annotations: READ,
   }, async ({ type }) => ok((await api(auth, 'GET', `/templates${qs({ type })}`)).map((t) => ({ id: t.id, type: t.type, name: t.name, subject: t.subject, body: t.body, uses: t.use_count }))));
+
+  tool('get_our_offer', {
+    title: 'Vårt erbjudande',
+    description: 'Vad användarens eget bolag säljer: vad vi gör, målgrupp, problem vi löser, varför oss, referenser, målet med första kontakten och tonläge. Läs detta innan du skriver säljmejl, säljvinklar eller samtalsmanus, och följ tonen.',
+    inputSchema: {},
+    annotations: READ,
+  }, async () => {
+    const r = await api(auth, 'GET', '/ai/offer');
+    const products = await api(auth, 'GET', '/products');
+    return ok({ company: r.company, website: r.website, ...r.offer, products: products.map((p) => p.name) },
+      Object.values(r.offer || {}).some(Boolean) ? null : 'Erbjudandet är inte ifyllt än – det fylls i under Inställningar → Vårt erbjudande i LeadFlow.');
+  });
 
   tool('list_team', {
     title: 'Teamet',

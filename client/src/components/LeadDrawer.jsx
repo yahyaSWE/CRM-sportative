@@ -89,6 +89,14 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
   const [tab, setTab] = useState('timeline');
   const [info, setInfo] = useState(null);
   const [enriching, setEnriching] = useState(false);
+  // "Skriv första mejlet": AI-utkastet öppnas i skriv-rutan för redigering innan det skickas.
+  const [draft, setDraft] = useState(null);
+  const [drafting, setDrafting] = useState(false);
+  const draftEmail = async () => {
+    setDrafting(true);
+    try { setDraft(await api.post(`/leads/${id}/draft-email`)); setTemplates('draft'); }
+    catch (e) { toast(e.message, 'error'); } finally { setDrafting(false); }
+  };
   const loadInfo = () => api.get(`/leads/${id}/company-info`).then(setInfo).catch(() => setInfo({ company: null }));
   useEffect(() => { setTab('timeline'); setInfo(null); }, [id]);
   useEffect(() => { if (tab === 'company' && !info) loadInfo(); }, [tab, id]);
@@ -205,7 +213,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 {tab === 'company' ? (
                   !info ? <div className="grid place-items-center py-10"><Spinner /></div> : (
                     <CompanyInsight enrichment={info.company?.enrichment} companyName={info.company?.name || lead.company} configured={info.configured}
-                      canEnrich={info.canEnrich} busy={enriching} onEnrich={enrich} companyLink={info.company && `/companies/${info.company.id}`} />
+                      canEnrich={info.canEnrich} busy={enriching} onEnrich={enrich} onDraftEmail={lead.email ? draftEmail : null} drafting={drafting} companyLink={info.company && `/companies/${info.company.id}`} />
                   )
                 ) : <>
                 {editable && <div className="mb-6"><ActivityComposer onSubmit={addActivity} /></div>}
@@ -314,7 +322,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
           </div>
         </div>
       </Modal>
-      {lead && <TemplatePicker lead={lead} open={!!templates} blank={templates === 'blank'} onClose={() => setTemplates(false)} onLogged={() => { load(); onChanged?.(); }} />}
+      {lead && <TemplatePicker lead={lead} open={!!templates} blank={templates === 'blank'} aiEmail={templates === 'draft' ? draft : null} onClose={() => setTemplates(false)} onLogged={() => { load(); onChanged?.(); }} />}
       <MeetingModal open={book} onClose={() => setBook(false)} preset={meetingPreset || {}} onSaved={load} />
       <Confirm open={del} onClose={() => setDel(false)} onConfirm={remove} title={tr("Radera lead?")} text={tr("Leadet och all dess historik raderas permanent.")} />
     </div>
