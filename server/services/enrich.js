@@ -65,24 +65,74 @@ function findWebsite(company) {
   return null;
 }
 
-async function callOpenRouter({ apiKey, model }, messages) {
+// Svaret ska följa det här schemat. Med "structured outputs" tvingas modellen ge giltig JSON i exakt den formen.
+const nullableText = { type: ['string', 'null'] };
+const SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['summary', 'industry', 'offering', 'customers', 'size', 'news', 'sales_angle', 'opening_line'],
+  properties: { summary: { type: 'string' }, industry: nullableText, offering: nullableText, customers: nullableText, size: nullableText, news: nullableText, sales_angle: nullableText, opening_line: nullableText },
+};
+
+// Svarstexten kan komma som sträng eller som en lista av delar, ibland inom ```json-staket.
+function contentText(message) {
+  const c = message?.content;
+  const text = Array.isArray(c) ? c.map((p) => (typeof p === 'string' ? p : p?.text || '')).join('') : String(c || '');
+  return text.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+}
+function parseJson(text) {
+  const candidates = [text, text.match(/\{[\s\S]*\}/)?.[0]].filter(Boolean);
+  for (const c of candidates) {
+    try { return JSON.parse(c); } catch { /* prova nästa */ }
+    // Vanliga småfel: kommatecken före } och radbrytningar inuti strängar.
+    try { return JSON.parse(c.replace(/,\s*([}\]])/g, '$1').replace(/"(?:[^"\\]|\\.)*"/g, (s) => s.replace(/\r?\n/g, '\\n'))); } catch { /* prova nästa */ }
+  }
+  return null;
+}
+
+async function requestOpenRouter({ apiKey, model }, messages, format) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json',
       'HTTP-Referer': process.env.PUBLIC_URL || 'https://leadflow.local', 'X-Title': 'LeadFlow CRM',
     },
-    body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 1200, response_format: { type: 'json_object' } }),
-    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({
+      model, messages, max_tokens: 4000,
+      // Modeller som "tänker" innan de svarar ska göra det kort – annars kan tänkandet äta upp hela svaret.
+      reasoning: { effort: 'low', exclude: true },
+      ...(format === 'schema' ? { response_format: { type: 'json_schema', json_schema: { name: 'company_summary', strict: true, schema: SCHEMA } } }
+        : format === 'json' ? { response_format: { type: 'json_object' } } : {}),
+    }),
+    signal: AbortSignal.timeout(90000),
   });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) throw Object.assign(new Error('OpenRouter godkände inte API-nyckeln. Kontrollera den under Inställningar → AI-berikning.'), { status: 400 });
   if (res.status === 402) throw Object.assign(new Error('OpenRouter-kontot saknar krediter. Fyll på på openrouter.ai.'), { status: 400 });
-  if (!res.ok) throw Object.assign(new Error(`OpenRouter svarade: ${data.error?.message || res.status}`), { status: 502 });
-  const text = data.choices?.[0]?.message?.content || '';
-  const json = text.match(/\{[\s\S]*\}/)?.[0];
-  try { return { result: JSON.parse(json), usage: data.usage, model: data.model || model }; }
-  catch { throw Object.assign(new Error('AI-svaret gick inte att tolka. Försök igen.'), { status: 502 }); }
+  if (!res.ok) throw Object.assign(new Error(`OpenRouter svarade: ${data.error?.message || res.status}`), { status: res.status === 400 ? 400 : 502, retryable: res.status === 400 });
+  if (data.error) throw Object.assign(new Error(`OpenRouter svarade: ${data.error.message || 'okänt fel'}`), { status: 502, retryable: true });
+  const choice = data.choices?.[0];
+  return { text: contentText(choice?.message), finish: choice?.finish_reason || choice?.native_finish_reason, usage: data.usage, model: data.model || model };
+}
+
+/** Frågar modellen; först med strikt schema, sedan (om svaret inte går att läsa) med enklare JSON-läge. */
+async function callOpenRouter(ai, messages) {
+  let last = null;
+  for (const format of ['schema', 'json']) {
+    let r;
+    try { r = await requestOpenRouter(ai, messages, format); }
+    catch (e) {
+      // Vissa modeller/leverantörer stöder inte schemaläget – prova enklare format innan vi ger upp.
+      if (e.retryable && format === 'schema') { last = { error: e }; continue; }
+      throw e;
+    }
+    const result = parseJson(r.text);
+    if (result && typeof result === 'object') return { result, usage: r.usage, model: r.model };
+    last = r;
+    console.error(`[berika] kunde inte tolka svaret (${ai.model}, ${format}, slut: ${r.finish || '?'}): ${JSON.stringify(r.text.slice(0, 400))}`);
+  }
+  if (last?.error) throw last.error;
+  const why = last?.finish === 'length' ? 'svaret blev avklippt' : !last?.text ? 'svaret var tomt' : 'svaret var inte i rätt format';
+  throw Object.assign(new Error(`AI-svaret gick inte att tolka (${why}). Försök igen eller välj en annan modell under Inställningar → AI-berikning.`), { status: 502 });
 }
 
 const SYSTEM = `Du är en researchassistent åt en svensk säljare. Du får fakta från Bolagsverket och text från ett företags hemsida.
