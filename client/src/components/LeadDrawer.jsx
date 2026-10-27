@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus, FileText, Sparkles } from 'lucide-react';
+import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus, FileText, Sparkles, RotateCcw, PhoneOff, MailPlus, XCircle } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
 import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, Tabs, useToast } from './ui.jsx';
 import CompanyInsight from './CompanyInsight.jsx';
+import { followupText } from './Records.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
 import MeetingModal from './MeetingModal.jsx';
 import LeadMeetings from './LeadMeetings.jsx';
 import TemplatePicker from './TemplatePicker.jsx';
 import { useEmailStatus } from '../lib/email.js';
-import { STATUSES, STAGES, leadName, timeAgo, sek, toSqlDate } from '../lib/meta.jsx';
+import { STATUSES, STAGES, leadName, timeAgo, sek, toSqlDate, dueLabel } from '../lib/meta.jsx';
 import { tr } from '../lib/i18n.js';
 
 export function EditableField({ icon: Icon, value, placeholder, onSave, disabled, href }) {
@@ -73,6 +74,8 @@ const tomorrowAt10 = () => {
   const d = new Date(Date.now() + 864e5); d.setHours(10, 0, 0, 0);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
+
+const dueText = (due) => dueLabel(due).text;
 
 export default function LeadDrawer({ id, onClose, onChanged }) {
   const { team, can, user } = useApp();
@@ -190,6 +193,19 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 {editable && <Button size="sm" variant="soft" icon={ArrowRightLeft} onClick={openConvert}>{lead.deals.length ? tr("Ny affär") : tr("Konvertera till affär")}</Button>}
                 {can('leads.delete') && <Button size="sm" variant="ghost" icon={Trash2} className="ml-auto !text-rose-600" onClick={() => setDel(true)} />}
               </div>
+              {lead.followup && (
+                <div className={`mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 ${new Date(lead.followup.due_at.replace(' ', 'T') + 'Z') <= new Date() ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
+                  <RotateCcw className="size-4 text-amber-600" />
+                  <span className="text-sm text-slate-800"><span className="font-medium">{followupText(lead.followup)}</span> <span className="text-slate-500">· {dueText(lead.followup.due_at)}</span></span>
+                  {editable && (
+                    <span className="ml-auto flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="secondary" icon={PhoneOff} onClick={() => addActivity({ type: 'call', content: tr('Ringde – inget svar') })}>{tr('Ringt, inget svar')}</Button>
+                      <Button size="sm" variant="secondary" icon={MailPlus} onClick={() => addActivity({ type: 'email', content: tr('Följde upp via mejl') })}>{tr('Mejlat igen')}</Button>
+                      <Button size="sm" variant="ghost" icon={XCircle} onClick={() => patch({ status: 'unqualified' })}>{tr('Ej aktuell')}</Button>
+                    </span>
+                  )}
+                </div>
+              )}
               {openDeals.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {openDeals.map((d) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2, FileText, ChevronRight, Sparkles, Target } from 'lucide-react';
+import { Download, DatabaseBackup, Languages, Bot, Copy, Unplug, Mail, CheckCircle2, FileText, ChevronRight, Sparkles, Target, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { loadEmailStatus } from '../lib/email.js';
@@ -151,6 +151,42 @@ function OfferCard() {
   );
 }
 
+// Uppföljningsrytm: hur länge man väntar på svar och hur många gånger man följer upp innan leadet blir Ej aktuell.
+function CadenceCard() {
+  const toast = useToast();
+  const [c, setC] = useState(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { api.get('/followup-cadence').then(setC).catch(() => {}); }, []);
+  if (!c) return null;
+  const ro = !c.canEdit;
+  const save = async () => {
+    setSaving(true);
+    try { const r = await api.put('/followup-cadence', { days: Number(c.days), attempts: Number(c.attempts), autoClose: c.autoClose }); setC({ ...c, ...r }); toast(tr('Uppföljningen sparades')); }
+    catch (e) { toast(e.message, 'error'); } finally { setSaving(false); }
+  };
+  const total = Number(c.days) * (Number(c.attempts) + 1);
+  return (
+    <Card className="p-6">
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><RotateCcw className="size-4 text-slate-400" />{tr('Uppföljning av kontaktade leads')}</h3>
+      <p className="text-sm text-slate-500 mb-4">{tr('När ett lead är Kontaktat och inte svarat hamnar det under Leads → Kontakta igen efter valt antal dagar. Varje loggat samtal, mejl eller möte räknas som ett försök. Gäller den här arbetsytan.')}</p>
+      <div className="grid gap-4 sm:grid-cols-2 max-w-lg">
+        <Field label={tr('Dagar innan nästa försök')}><Input type="number" min={1} max={60} value={c.days} disabled={ro} onChange={(e) => setC({ ...c, days: e.target.value })} /></Field>
+        <Field label={tr('Antal uppföljningar')}><Input type="number" min={0} max={10} value={c.attempts} disabled={ro} onChange={(e) => setC({ ...c, attempts: e.target.value })} /></Field>
+      </div>
+      <label className="mt-4 flex items-start gap-2 text-sm text-slate-700">
+        <input type="checkbox" className="mt-0.5 size-4 accent-brand-600" checked={c.autoClose} disabled={ro} onChange={(e) => setC({ ...c, autoClose: e.target.checked })} />
+        <span>{tr('Markera som Ej aktuell automatiskt när uppföljningarna är slut utan svar')}</span>
+      </label>
+      <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        {tr('Exempel: kontakt dag 0, påminnelse efter {d} dagar, sedan {n} uppföljning(ar) med {d} dagars mellanrum – {end} efter {total} dagar utan svar.', {
+          d: c.days, n: c.attempts, total, end: c.autoClose ? tr('Ej aktuell') : tr('kvar i listan'),
+        })}
+      </p>
+      {!ro && <Button className="mt-4" loading={saving} onClick={save}>{tr('Spara')}</Button>}
+    </Card>
+  );
+}
+
 // Claude och andra AI-assistenter som kopplats in via MCP. Administratörer ser och kan koppla bort allas.
 function AiCard() {
   const { can, user } = useApp();
@@ -243,6 +279,7 @@ export default function Settings() {
       </Card>
       <LanguageCard />
       <EmailCard />
+      <CadenceCard />
       {can('integrations.manage') && <AiEnrichCard />}
       <OfferCard />
       {can('products.manage') && (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarClock, CheckSquare, AlertTriangle } from 'lucide-react';
+import { CalendarClock, CheckSquare, AlertTriangle, RotateCcw, XCircle } from 'lucide-react';
 import LeadDrawer from './LeadDrawer.jsx';
 import DealDrawer from './DealDrawer.jsx';
 import CompanyDrawer from './CompanyDrawer.jsx';
@@ -27,14 +27,22 @@ export function useRecordDrawers(onChanged) {
 }
 
 // Nästa steg (uppgift eller möte) och när kunden senast kontaktades.
+// Text för uppföljningsrytmens steg (uppgifter och möten visar sitt eget innehåll).
+export const followupText = (step) => (step.kind === 'followup'
+  ? (step.of > 1 ? tr('Kontakta igen · försök {n} av {of}', { n: step.attempt, of: step.of }) : tr('Kontakta igen'))
+  : step.kind === 'close' ? tr(step.content) : step.content);
+
 export function NextStepCell({ step, lastContact, status }) {
   const active = ['contacted', 'qualified', 'converted'].includes(status) || status === undefined;
   return (
     <div className="min-w-0 text-xs">
       {step ? (
         <p className={cx('flex items-center gap-1.5 truncate', dueLabel(step.due_at).cls === 'text-rose-600' ? 'text-rose-600 font-medium' : 'text-slate-700')}>
-          {step.kind === 'meeting' ? <CalendarClock className="size-3.5 shrink-0 text-violet-500" /> : <CheckSquare className="size-3.5 shrink-0 text-brand-500" />}
-          <span className="truncate">{step.content}</span>
+          {step.kind === 'meeting' ? <CalendarClock className="size-3.5 shrink-0 text-violet-500" />
+            : step.kind === 'followup' ? <RotateCcw className="size-3.5 shrink-0 text-amber-500" />
+            : step.kind === 'close' ? <XCircle className="size-3.5 shrink-0 text-slate-400" />
+            : <CheckSquare className="size-3.5 shrink-0 text-brand-500" />}
+          <span className="truncate">{followupText(step)}</span>
         </p>
       ) : active && status !== 'new' ? (
         <p className="flex items-center gap-1.5 text-amber-600"><AlertTriangle className="size-3.5" />{tr("Inget nästa steg")}</p>

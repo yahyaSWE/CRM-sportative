@@ -322,6 +322,27 @@ function initSchema(db) {
   addColumn('activities', 'email_thread_id', 'TEXT');
   // Berikning av företag (sammanfattning, fakta, säljvinkel och källor) som JSON.
   addColumn('companies', 'enrichment', 'TEXT');
+
+  // Uppföljningsrytm för kontaktade leads: senaste kontaktförsöket och antal uppföljningar sedan första kontakten.
+  // Hålls i synk av databasen själv, så att det stämmer oavsett var en kontakt loggas (appen, Gmail, Claude, kalendern).
+  addColumn('leads', 'followup_last_at', 'TEXT');
+  addColumn('leads', 'followup_attempts', 'INTEGER NOT NULL DEFAULT 0');
+  db.exec(`
+  CREATE TRIGGER IF NOT EXISTS leads_followup_contact AFTER INSERT ON activities
+  WHEN NEW.lead_id IS NOT NULL AND NEW.type IN ('call', 'email', 'meeting')
+  BEGIN
+    UPDATE leads SET followup_attempts = CASE WHEN followup_last_at IS NULL THEN 0 ELSE followup_attempts + 1 END, followup_last_at = NEW.created_at
+    WHERE id = NEW.lead_id AND status IN ('new', 'contacted');
+  END;
+  CREATE TRIGGER IF NOT EXISTS leads_followup_status AFTER UPDATE OF status ON leads
+  WHEN NEW.status IS NOT OLD.status
+  BEGIN
+    UPDATE leads SET followup_attempts = 0, followup_last_at = CASE WHEN NEW.status = 'contacted' THEN coalesce(OLD.followup_last_at, datetime('now')) ELSE NULL END
+    WHERE id = NEW.id;
+  END;`);
+  // Kontaktade leads från innan rytmen fanns räknas från senaste kontakten.
+  db.exec(`UPDATE leads SET followup_last_at = coalesce((SELECT max(a.created_at) FROM activities a WHERE a.lead_id = leads.id AND a.type IN ('call', 'email', 'meeting')), updated_at)
+    WHERE status = 'contacted' AND followup_last_at IS NULL`);
   db.function('current_via', () => currentVia());
   db.exec(`CREATE TRIGGER IF NOT EXISTS activities_via AFTER INSERT ON activities WHEN current_via() IS NOT NULL
     BEGIN UPDATE activities SET via = current_via() WHERE id = NEW.id; END`);

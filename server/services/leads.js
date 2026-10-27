@@ -50,10 +50,42 @@ export function leadSearchSql(q, alias = 'l') {
 export const CUSTOMER_SQL = (a = 'l') =>
   `(EXISTS (SELECT 1 FROM deals cd WHERE cd.lead_id = ${a}.id AND cd.stage = 'won') OR EXISTS (SELECT 1 FROM json_each(${a}.tags) WHERE value = 'Kund'))`;
 
-// Leads som riskerar att glömmas: kontaktade men utan öppen uppgift eller kommande möte.
-export const NEEDS_FOLLOWUP_SQL = (a = 'l') => `(${a}.status IN ('contacted','qualified')
-  AND NOT EXISTS (SELECT 1 FROM activities t WHERE t.lead_id = ${a}.id AND t.type = 'task' AND t.done = 0)
-  AND NOT EXISTS (SELECT 1 FROM meetings mt WHERE mt.lead_id = ${a}.id AND mt.status = 'scheduled' AND mt.end_at > datetime('now')))`;
+// ---------- Uppföljningsrytm ----------
+// Kontaktade leads utan svar ska kontaktas igen efter `days` dagar, högst `attempts` gånger; därefter Ej aktuell.
+const CADENCE_KEY = 'followup:cadence';
+export const DEFAULT_CADENCE = { days: 3, attempts: 2, autoClose: true };
+export function getCadence() {
+  const c = { ...DEFAULT_CADENCE, ...parseJSON(get('SELECT value FROM settings WHERE key = ?', CADENCE_KEY)?.value, {}) };
+  return { days: Math.min(60, Math.max(1, Math.round(Number(c.days) || 3))), attempts: Math.min(10, Math.max(0, Math.round(Number(c.attempts) || 0))), autoClose: !!c.autoClose };
+}
+export function saveCadence(b) {
+  const next = { ...getCadence(), ...b };
+  run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', CADENCE_KEY, JSON.stringify(next));
+  return getCadence();
+}
+
+const NO_NEXT_STEP = (a) => `NOT EXISTS (SELECT 1 FROM activities t WHERE t.lead_id = ${a}.id AND t.type = 'task' AND t.done = 0)
+  AND NOT EXISTS (SELECT 1 FROM meetings mt WHERE mt.lead_id = ${a}.id AND mt.status = 'scheduled' AND mt.end_at > datetime('now'))`;
+
+// "Kontakta igen": kontaktade leads vars väntetid har gått ut, och kvalificerade leads utan nästa steg.
+// Leads med öppen uppgift eller bokat möte har redan ett nästa steg och räknas inte.
+export const NEEDS_FOLLOWUP_SQL = (a = 'l') => `((${a}.status = 'contacted' AND coalesce(${a}.followup_last_at, ${a}.updated_at) <= datetime('now', '-${getCadence().days} days'))
+  OR ${a}.status = 'qualified') AND ${NO_NEXT_STEP(a)}`;
+
+/** Kontaktade leads där alla uppföljningar är gjorda utan svar markeras Ej aktuell (körs schemalagt per arbetsyta). */
+export function closeUnanswered() {
+  const c = getCadence();
+  if (!c.autoClose) return 0;
+  const rows = all(`SELECT l.* FROM leads l WHERE l.status = 'contacted' AND l.followup_attempts >= ?
+    AND coalesce(l.followup_last_at, l.updated_at) <= datetime('now', ?) AND ${NO_NEXT_STEP('l')}`, c.attempts, `-${c.days} days`);
+  for (const l of rows) {
+    run("UPDATE leads SET status = 'unqualified', updated_at = datetime('now') WHERE id = ?", l.id);
+    run("INSERT INTO activities (lead_id, user_id, type, content) VALUES (?, NULL, 'system', ?)", l.id,
+      c.attempts ? `Ej aktuell – inget svar efter ${c.attempts} uppföljning${c.attempts === 1 ? '' : 'ar'}` : 'Ej aktuell – inget svar');
+  }
+  if (rows.length) broadcast('refresh', { entity: 'leads' });
+  return rows.length;
+}
 
 // Extra kolumner för listor: senaste kontakt och nästa steg (uppgift eller möte, det som kommer först).
 export const LEAD_NEXT_COLUMNS = (a = 'l') => `
@@ -63,11 +95,21 @@ export const LEAD_NEXT_COLUMNS = (a = 'l') => `
   (SELECT json_object('kind', 'meeting', 'content', mt.title, 'due_at', mt.start_at, 'id', mt.id) FROM meetings mt
     WHERE mt.lead_id = ${a}.id AND mt.status = 'scheduled' AND mt.end_at > datetime('now') ORDER BY mt.start_at LIMIT 1) AS next_meeting`;
 
-// Väljer det som infaller först av nästa uppgift och nästa möte.
+// Väljer det som infaller först av nästa uppgift och nästa möte. Kontaktade leads utan sådant får
+// "Kontakta igen" enligt uppföljningsrytmen (med vilket försök det gäller).
 export function pickNextStep(row) {
   const t = row.next_task ? JSON.parse(row.next_task) : null;
   const m = row.next_meeting ? JSON.parse(row.next_meeting) : null;
-  const next = !t ? m : !m ? t : (m.due_at < (t.due_at || '9999') ? m : t);
+  let next = !t ? m : !m ? t : (m.due_at < (t.due_at || '9999') ? m : t);
+  if (!next && row.status === 'contacted') {
+    const c = getCadence();
+    const from = new Date(`${String(row.followup_last_at || row.updated_at).replace(' ', 'T')}Z`);
+    const due = new Date(from.getTime() + c.days * 864e5).toISOString().slice(0, 19).replace('T', ' ');
+    const attempt = (row.followup_attempts || 0) + 1;
+    next = attempt > c.attempts
+      ? { kind: 'close', content: c.autoClose ? 'Avslutas om inget svar' : 'Sista försöket gjort', due_at: due, attempt: attempt - 1, of: c.attempts }
+      : { kind: 'followup', content: 'Kontakta igen', due_at: due, attempt, of: c.attempts };
+  }
   const { next_task, next_meeting, ...rest } = row;
   return { ...rest, next_step: next };
 }

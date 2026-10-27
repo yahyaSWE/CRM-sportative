@@ -45,7 +45,8 @@ Gemensamt mönster som LeadFlow följer: **alla kanaler matas in i en och samma 
 - **Min dag** (startsidan): dagens möten, möten utan utfall, försenade och dagens uppgifter, nya leads att ringa, affärer utan nästa steg och leads som behöver följas upp – med Ring-knappar direkt i listan. Diagrammen finns under **Översikt**.
 - **Sök (Ctrl + K)**: hittar kunder, leads och affärer på namn, företag, telefon (oavsett format: 070…, +4670…), e-post och domän, ort, org.nr, kampanj och taggar. Affärer hittas även via kontaktperson. Enter visar alla resultat.
 - **Kunder**: alla kontakter med vunna affärer, med vunnet och pågående värde, nästa steg och "Mina kunder".
-- **Leads**: snabbflikarna *Nya att ringa*, *Behöver uppföljning* (kontaktade utan uppgift eller bokat möte) och *Kunder*, samt kolumnen *Nästa steg* med senaste kontakt.
+- **Leads**: snabbflikarna *Nya att ringa*, *Kontakta igen* och *Kunder*, samt kolumnen *Nästa steg* med senaste kontakt.
+- **Uppföljningsrytm**: när ett lead är *Kontaktat* och inte svarar dyker det upp under *Kontakta igen* efter valt antal dagar (Inställningar → Uppföljning av kontaktade leads, t.ex. 3 dagar och 2 uppföljningar). Varje loggat samtal, mejl eller möte räknas som ett försök och startar om klockan – i leadet finns snabbknapparna *Ringt, inget svar*, *Mejlat igen* och *Ej aktuell*. När uppföljningarna är slut utan svar markeras leadet automatiskt *Ej aktuell* (går att stänga av). Leads med öppen uppgift eller bokat möte har redan ett nästa steg och räknas inte.
 - **Pipeline**: sökruta och listvy (sorterbar, med äldre avslutade affärer). Tavlan visar avslutade affärer från de senaste 30 dagarna.
 
 ## Mallar

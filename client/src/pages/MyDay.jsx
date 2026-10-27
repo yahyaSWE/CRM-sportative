@@ -194,7 +194,7 @@ export default function MyDay() {
               })}
             </Section>
 
-            <Section icon={Clock} tone="amber" title={tr("Följ upp")} count={data.followups.length} empty={tr("Inga leads som riskerar att glömmas bort.")}
+            <Section icon={Clock} tone="amber" title={tr("Kontakta igen")} count={data.followups.length} empty={tr("Inga leads som riskerar att glömmas bort.")}
               action={<Link to="/leads?view=followup&owner=me" className="text-xs font-medium text-brand-600">{tr("Alla")}</Link>}>
               {data.followups.map((l) => (
                 <div key={l.id} className="flex items-center gap-3 px-5 py-3">

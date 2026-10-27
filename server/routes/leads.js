@@ -6,7 +6,7 @@ import { broadcast } from '../events.js';
 import { linkLeadToCompany, companyVisibilitySql } from '../services/companies.js';
 import {
   getLead, hydrateLead, canSeeLead, canEditLead, leadVisibilitySql, normalizeLeadData, notify, leadName,
-  STATUSES, SOURCES, runAutomations, leadSearchSql, CUSTOMER_SQL, NEEDS_FOLLOWUP_SQL, LEAD_NEXT_COLUMNS, pickNextStep,
+  STATUSES, SOURCES, runAutomations, leadSearchSql, CUSTOMER_SQL, NEEDS_FOLLOWUP_SQL, LEAD_NEXT_COLUMNS, pickNextStep, getCadence, saveCadence,
 } from '../services/leads.js';
 
 const r = Router();
@@ -26,6 +26,16 @@ function checkOwnerChange(req, lead, ownerId) {
   if (ownerId === req.user.id && (!lead || lead.owner_id == null)) return null;
   return 'Du har inte behörighet att tilldela leads till andra';
 }
+
+// ---------- Uppföljningsrytm ----------
+r.get('/followup-cadence', (req, res) => res.json({ ...getCadence(), canEdit: can(req.user, 'automation.manage') }));
+r.put('/followup-cadence', requirePerm('automation.manage'), (req, res) => {
+  const { days, attempts, autoClose } = req.body || {};
+  const c = saveCadence({ days, attempts, autoClose });
+  audit(req.user.id, 'followup.cadence', 'settings', null, c);
+  broadcast('refresh', { entity: 'leads' });
+  res.json(c);
+});
 
 // ---------- Leads ----------
 r.get('/leads', (req, res) => {
@@ -151,7 +161,11 @@ r.get('/leads/:id', (req, res) => {
     LEFT JOIN users u ON u.id = a.user_id LEFT JOIN deals dl ON dl.id = a.deal_id
     WHERE a.lead_id = ? ORDER BY a.created_at DESC, a.id DESC`, lead.id);
   const deals = all(`SELECT d.*, u.name AS owner_name FROM deals d LEFT JOIN users u ON u.id = d.owner_id WHERE d.lead_id = ? ORDER BY d.id DESC`, lead.id);
-  res.json({ ...lead, activities, deals, canEdit: canEditLead(req.user, lead) });
+  // Var i uppföljningsrytmen leadet är (bara kontaktade leads utan öppen uppgift eller bokat möte).
+  const hasNextStep = get(`SELECT 1 FROM activities WHERE lead_id = ? AND type = 'task' AND done = 0
+    UNION SELECT 1 FROM meetings WHERE lead_id = ? AND status = 'scheduled' AND end_at > datetime('now')`, lead.id, lead.id);
+  const followup = lead.status === 'contacted' && !hasNextStep ? pickNextStep({ ...lead }).next_step : null;
+  res.json({ ...lead, activities, deals, followup, canEdit: canEditLead(req.user, lead) });
 });
 
 r.patch('/leads/:id', (req, res) => {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { Search, Download, Upload, Users, Trash2, UserCheck, Tag, Filter, ChevronLeft, ChevronRight, ArrowUpDown, X } from 'lucide-react';
 import { api, qs } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
@@ -98,10 +98,10 @@ export default function Leads() {
         <Tabs value={filters.view} onChange={(v) => setFilter('view', v)} tabs={[
           { value: '', label: tr("Alla"), count: data?.counts?.total },
           { value: 'new', label: tr("Nya att ringa"), count: data?.counts?.new },
-          { value: 'followup', label: tr("Behöver uppföljning"), count: data?.counts?.followup },
+          { value: 'followup', label: tr("Kontakta igen"), count: data?.counts?.followup },
           { value: 'customers', label: tr("Kunder"), count: data?.counts?.customers },
         ]} />
-        {filters.view === 'followup' && <span className="text-xs text-slate-500">{tr("Kontaktade leads utan uppgift eller bokat möte – risk att de glöms bort.")}</span>}
+        {filters.view === 'followup' && <span className="text-xs text-slate-500">{tr("Kontaktade leads som inte svarat inom vald tid, och kvalificerade leads utan nästa steg.")} <Link to="/settings" className="text-brand-600 hover:underline">{tr("Ändra uppföljning")}</Link></span>}
       </div>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 p-3 border-b border-slate-100">

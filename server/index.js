@@ -21,6 +21,7 @@ import calendarRoutes from './routes/calendar.js';
 import { tick as calendarTick } from './calendar/service.js';
 import { startScheduler } from './integrations/scheduler.js';
 import { scheduledTick as prospectingTick } from './prospecting/service.js';
+import { closeUnanswered } from './services/leads.js';
 import { seed } from './seed.js';
 import { PROD, ADMIN_EMAIL, TRUST_PROXY, PORT } from './config.js';
 import { dailyBackup } from './backup.js';
@@ -88,7 +89,7 @@ app.listen(PORT, () => {
   setApiPort(PORT);
   startScheduler();
   // Sparade sökningar körs veckovis, gammal Google-data rensas och avbruten berikning återupptas.
-  const prospecting = () => forEachWorkspace(prospectingTick, 'prospektering');
+  const prospecting = () => { forEachWorkspace(prospectingTick, 'prospektering'); forEachWorkspace(closeUnanswered, 'uppföljning'); };
   setTimeout(prospecting, 8000);
   setInterval(prospecting, 15 * 60000);
   // Mötespåminnelser, uppföljning och synk med Google Kalender varje minut.
