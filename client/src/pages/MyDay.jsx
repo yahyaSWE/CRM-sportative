@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarClock, Circle, Phone, Video, MapPin, Briefcase, UserPlus, Clock, AlertTriangle, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import { CalendarClock, Circle, Phone, Video, MapPin, Briefcase, UserPlus, Clock, AlertTriangle, CheckCircle2, ArrowRight, Sparkles, ShoppingCart } from 'lucide-react';
 import { api, qs } from '../api.js';
 import { useApp, useFetch, useLive } from '../lib/app.jsx';
 import { Card, Button, SourceBadge, Spinner, useToast, cx } from '../components/ui.jsx';
 import { useRecordDrawers } from '../components/Records.jsx';
 import MeetingModal, { parseUtc, toUtcSql, fmtTime } from '../components/MeetingModal.jsx';
-import { STAGES, leadName, sek, timeAgo, dueLabel, daysSince } from '../lib/meta.jsx';
+import { STAGES, leadName, sek, timeAgo, dueLabel, daysSince, formatDate } from '../lib/meta.jsx';
 import { tr, locale } from '../lib/i18n.js';
 
 function Section({ icon: Icon, title, count, tone = 'slate', action, children, empty }) {
@@ -30,7 +30,7 @@ export default function MyDay() {
   const [dayStart] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const url = '/today' + qs({ from: toUtcSql(dayStart), to: toUtcSql(new Date(dayStart.getTime() + 864e5)) });
   const { data, reload } = useFetch(url);
-  const { openLead, openDeal, drawers } = useRecordDrawers(reload);
+  const { openLead, openDeal, openCompany, drawers } = useRecordDrawers(reload);
   const [meeting, setMeeting] = useState(null);
   const [done, setDone] = useState(new Set());
   useLive(['lead', 'refresh', 'meeting'], () => reload());
@@ -193,6 +193,22 @@ export default function MyDay() {
                 );
               })}
             </Section>
+
+            {data.purchasing?.length > 0 && (
+              <Section icon={ShoppingCart} tone="violet" title={tr("Avtal och inköp på gång")} count={data.purchasing.length}>
+                {data.purchasing.map((p) => (
+                  <button key={`${p.company_id}-${p.kind}`} onClick={() => openCompany(p.company_id)} className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-slate-50">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-slate-800 truncate">{p.company}</span>
+                      <span className="block text-xs text-slate-500 truncate">{p.kind === 'contract'
+                        ? tr('Avtalet går ut {date}', { date: formatDate(p.date) }) + (p.supplier ? ` · ${p.supplier}` : '')
+                        : tr('Nästa inköp {date}', { date: formatDate(p.date) }) + (p.note ? ` · ${p.note}` : '')}</span>
+                    </span>
+                    <ArrowRight className="size-4 text-slate-300" />
+                  </button>
+                ))}
+              </Section>
+            )}
 
             <Section icon={Clock} tone="amber" title={tr("Kontakta igen")} count={data.followups.length} empty={tr("Inga leads som riskerar att glömmas bort.")}
               action={<Link to="/leads?view=followup&owner=me" className="text-xs font-medium text-brand-600">{tr("Alla")}</Link>}>

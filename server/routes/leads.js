@@ -4,6 +4,7 @@ import { can } from '../security.js';
 import { requirePerm } from '../middleware.js';
 import { broadcast } from '../events.js';
 import { linkLeadToCompany, companyVisibilitySql } from '../services/companies.js';
+import { upcomingPurchasing } from '../services/purchasing.js';
 import {
   getLead, hydrateLead, canSeeLead, canEditLead, leadVisibilitySql, normalizeLeadData, notify, leadName,
   STATUSES, SOURCES, runAutomations, leadSearchSql, CUSTOMER_SQL, NEEDS_FOLLOWUP_SQL, LEAD_NEXT_COLUMNS, pickNextStep, getCadence, saveCadence,
@@ -514,7 +515,11 @@ r.get('/today', (req, res) => {
   const followups = all(`SELECT l.*, ${LEAD_NEXT_COLUMNS()} FROM leads l WHERE l.owner_id = ? AND ${NEEDS_FOLLOWUP_SQL()}
     AND NOT EXISTS (SELECT 1 FROM deals fd WHERE fd.lead_id = l.id AND fd.stage NOT IN ('won','lost'))
     ORDER BY coalesce(last_contact_at, l.created_at) LIMIT 12`, uid).map((x) => hydrateLead(pickNextStep(x)));
-  res.json({ meetings, outcomes, tasks, newLeads, stuckDeals, followups });
+  const purchasing = upcomingPurchasing({
+    sql: '(c.owner_id = ? OR EXISTS (SELECT 1 FROM leads pl WHERE pl.company_id = c.id AND pl.owner_id = ?) OR EXISTS (SELECT 1 FROM deals pd WHERE pd.company_id = c.id AND pd.owner_id = ?))',
+    params: [uid, uid, uid],
+  });
+  res.json({ meetings, outcomes, tasks, newLeads, stuckDeals, followups, purchasing });
 });
 
 export default r;

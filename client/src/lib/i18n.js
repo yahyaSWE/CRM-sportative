@@ -68,6 +68,7 @@ const STORED = [
   [/^Företagsinfo hämtad: (.+)$/s, (m) => `Company info fetched: ${m[1]}`],
   [/^Ej aktuell – inget svar efter (\d+) uppföljningar?$/, (m) => `Not relevant – no reply after ${m[1]} follow-up${m[1] === '1' ? '' : 's'}`],
   [/^Ej aktuell – inget svar$/, () => 'Not relevant – no reply'],
+  [/^Inköpsinformation uppdaterad$/, () => 'Purchasing information updated'],
   // Notiser
   [/^Ny lead tilldelad dig: (.+) \((.+)\)$/s, (m) => `New lead assigned to you: ${m[1]} (${src(m[2])})`],
   [/^(.+) har hört av sig igen via (.+)$/s, (m) => `${m[1]} got in touch again via ${src(m[2])}`],

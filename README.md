@@ -72,6 +72,7 @@ Säljare med Google Workspace eller Gmail kopplar sin brevlåda under **Inställ
 - **Företag** samlar alla kontaktpersoner (VD, inköpare, ekonomi …), affärer och en gemensam tidslinje för organisationen. Flikar: Alla, Kunder, Med öppna affärer, Prospekt.
 - Leads kopplas automatiskt till rätt företag via org.nr, företagets e-postdomän (inte Gmail/Hotmail m.fl.) eller namnet ("Nordlys AB" = "nordlys aktiebolag"). Kopplingen kan ändras i leadet.
 - Dubbletter slås ihop från företagspanelen. Med Bolagsverket-nycklar kan adress och bransch hämtas via org.nr.
+- **Inköpsinformation** (på företaget/föreningen och i leadets flik *Företagsinfo*): beslutsfattare och materialansvarig (välj bland kontaktpersonerna eller skriv fritt), befintlig leverantör, avtalsutgång, nästa inköp med vad som ska köpas, och en anteckning. Datum som närmar sig markeras, och **Min dag** visar *Avtal och inköp på gång* (från en vecka sedan till 45 dagar framåt) för dina företag. Mejlutkastet och Claude (verktygen `get_company` och `update_purchasing_info`) använder uppgifterna.
 
 ## Produkter, offerter och e-signering
 

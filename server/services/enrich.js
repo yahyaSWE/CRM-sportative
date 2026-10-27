@@ -9,6 +9,7 @@ import { lookupOrganisation, validOrgNr, formatOrgNr } from '../prospecting/bola
 import { readWebsiteText } from '../prospecting/website.js';
 import { getProfile } from './quotes.js';
 import { linkLeadToCompany, domainFromEmail } from './companies.js';
+import { purchasingText } from './purchasing.js';
 
 const CONFIG_KEY = 'ai:openrouter';
 export const DEFAULT_MODEL = 'anthropic/claude-haiku-5.5';
@@ -267,6 +268,7 @@ export async function draftFirstEmail(lead, company, user) {
     `Företag: ${company?.name || lead.company || '-'}`, lead.city && `Ort: ${lead.city}`, lead.message && `Meddelande/anteckning: ${lead.message}`,
   ].filter(Boolean).join('\n');
   const about = e ? ['summary', 'industry', 'offering', 'customers', 'size', 'news', 'sales_angle'].filter((k) => e[k]).map((k) => `${k}: ${e[k]}`).join('\n') : null;
+  const purchasing = company ? purchasingText(company) : null;
   const history = all("SELECT type, content FROM activities WHERE lead_id = ? AND type IN ('call','email','meeting','note') ORDER BY created_at DESC LIMIT 5", lead.id)
     .map((a) => `${a.type}: ${String(a.content).slice(0, 300)}`).join('\n');
   const { result } = await callOpenRouter(ai, [
@@ -277,7 +279,7 @@ export async function draftFirstEmail(lead, company, user) {
 - Har ni redan haft kontakt: anpassa mejlet efter det.
 - Avsluta med säljarens namn. Ämnesraden ska vara kort och konkret.
 Svara ENDAST med JSON: {"subject": "...", "body": "..."} (body med radbrytningar som \\n).` },
-    { role: 'user', content: `${offerText()}\nSäljarens namn: ${user.name}\n\nKONTAKT:\n${contact}${about ? `\n\nOM FÖRETAGET:\n${about}` : ''}${history ? `\n\nTIDIGARE KONTAKT:\n${history}` : ''}` },
+    { role: 'user', content: `${offerText()}\nSäljarens namn: ${user.name}\n\nKONTAKT:\n${contact}${about ? `\n\nOM FÖRETAGET:\n${about}` : ''}${purchasing ? `\n\nINKÖPSINFORMATION (använd varsamt, t.ex. tajming inför avtalsutgång eller nästa inköp):\n${purchasing}` : ''}${history ? `\n\nTIDIGARE KONTAKT:\n${history}` : ''}` },
   ], { name: 'first_email', schema: EMAIL_SCHEMA });
   if (!result.subject || !result.body) throw Object.assign(new Error('AI-svaret gick inte att tolka (svaret var tomt). Försök igen eller välj en annan modell under Inställningar → AI-berikning.'), { status: 502 });
   return { subject: String(result.subject).trim(), body: String(result.body).trim() };

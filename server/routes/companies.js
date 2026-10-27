@@ -8,6 +8,7 @@ import { companyVisibilitySql, COMPANY_STATS, domainFromUrl, findCompany } from 
 import { getConfig as prospectingConfig, hasBolagsverket } from '../prospecting/service.js';
 import { lookupOrganisation, validOrgNr, formatOrgNr } from '../prospecting/bolagsverket.js';
 import { presentEnrichment, aiConfigured } from '../services/enrich.js';
+import { presentPurchasing, savePurchasing } from '../services/purchasing.js';
 
 const r = Router();
 const FIELDS = ['name', 'org_nr', 'website', 'phone', 'email', 'address', 'city', 'industry', 'notes'];
@@ -65,7 +66,7 @@ r.get('/companies/:id', (req, res) => {
     ...c, contacts: contacts.filter((l) => canSeeLead(req.user, l)), hiddenContacts: contacts.filter((l) => !canSeeLead(req.user, l)).length,
     deals: deals.filter((d) => can(req.user, 'leads.view_all') || d.owner_id === req.user.id), activities,
     canEdit: canEditCompany(req.user, c), bolagsverket: hasBolagsverket(prospectingConfig()),
-    enrichment: presentEnrichment(c), aiConfigured: aiConfigured(),
+    enrichment: presentEnrichment(c), aiConfigured: aiConfigured(), purchasing: presentPurchasing(c),
   });
 });
 
@@ -101,6 +102,13 @@ r.patch('/companies/:id', (req, res) => {
   audit(req.user.id, 'company.update', 'company', c.id);
   broadcast('refresh', { entity: 'companies' });
   res.json({ ok: true });
+});
+
+r.put('/companies/:id/purchasing', (req, res) => {
+  const c = loadCompany(req, res);
+  if (!c) return;
+  if (!canEditCompany(req.user, c)) return res.status(403).json({ error: 'Du kan inte redigera företaget' });
+  res.json({ purchasing: savePurchasing(c, req.user, req.body || {}) });
 });
 
 r.delete('/companies/:id', requirePerm('leads.delete'), (req, res) => {

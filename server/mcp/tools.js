@@ -501,6 +501,24 @@ export function buildServer(auth) {
     return ok({ company_id: r.company.id, name: r.company.name, url: link(`/companies/${r.company.id}`) }, 'Företagsinfon är sparad.');
   });
 
+  tool('update_purchasing_info', {
+    title: 'Uppdatera inköpsinformation',
+    description: 'Sparar inköpsinformation på ett företag/en förening: beslutsfattare, materialansvarig, befintlig leverantör, avtalsutgång och nästa inköp. Ange company_id eller lead_id. Fält som utelämnas töms – hämta nuvarande värden med get_company först om du bara ändrar ett fält.',
+    inputSchema: {
+      company_id: id('Företaget').optional(), lead_id: id('Leadet (dess företag används)').optional(),
+      decision_maker_id: id('Kontaktpersonen (lead) som är beslutsfattare').optional(), decision_maker: z.string().optional().describe('Beslutsfattare som fritext om personen inte finns som kontakt'),
+      material_id: id('Kontaktpersonen (lead) som är materialansvarig').optional(), material: z.string().optional().describe('Materialansvarig som fritext'),
+      supplier: z.string().optional().describe('Befintlig leverantör'), contract_end: z.string().optional().describe('Avtalsutgång, YYYY-MM-DD'),
+      next_purchase: z.string().optional().describe('Nästa inköp, YYYY-MM-DD'), next_purchase_note: z.string().optional().describe('Vad som ska köpas'),
+      notes: z.string().optional(),
+    },
+    annotations: { ...WRITE, idempotentHint: true },
+  }, async ({ company_id, lead_id, ...data }) => {
+    if (!company_id && !lead_id) throw new ToolError('Ange company_id eller lead_id');
+    const r = await api(auth, 'PUT', lead_id ? `/leads/${lead_id}/purchasing` : `/companies/${company_id}/purchasing`, data);
+    return ok(r.purchasing || {}, 'Inköpsinformationen är sparad.');
+  });
+
   tool('book_meeting', {
     title: 'Boka möte',
     description: 'Bokar ett möte i användarens kalender (synkas till Google Kalender om den är kopplad), kopplat till ett lead och/eller en affär. En kvalificerad affär flyttas då till "Möte bokat".',

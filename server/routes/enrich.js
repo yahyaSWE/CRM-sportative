@@ -1,12 +1,13 @@
 // Berikning av företag (knappen "Berika") och inställningar för AI-tjänsten (OpenRouter), per arbetsyta.
 import { Router } from 'express';
-import { get, audit } from '../db.js';
+import { get, all, audit } from '../db.js';
 import { can } from '../security.js';
 import { requirePerm } from '../middleware.js';
 import { getLead, canSeeLead, canEditLead } from '../services/leads.js';
 import { companyVisibilitySql } from '../services/companies.js';
 import { enrichCompany, companyForLead, presentEnrichment, aiSettings, aiConfigured, saveAiConfig, saveEnrichment, SUGGESTED_MODELS, getOffer, saveOffer, draftOfferFromWebsite, draftFirstEmail } from '../services/enrich.js';
 import { getProfile } from '../services/quotes.js';
+import { presentPurchasing, savePurchasing } from '../services/purchasing.js';
 
 const r = Router();
 const busy = new Set(); // ett företag berikas i taget
@@ -34,7 +35,11 @@ r.get('/leads/:id/company-info', (req, res) => {
   const lead = getLead(Number(req.params.id));
   if (!lead || !canSeeLead(req.user, lead)) return res.status(404).json({ error: 'Lead hittades inte' });
   const c = lead.company_id ? get('SELECT * FROM companies WHERE id = ?', lead.company_id) : null;
-  res.json({ company: companyInfo(c), configured: aiConfigured(), canEnrich: canEditLead(req.user, lead) && (!!c || !!lead.company) });
+  const contacts = c ? all('SELECT id, first_name, last_name, title FROM leads WHERE company_id = ? ORDER BY first_name', c.id) : [];
+  res.json({
+    company: companyInfo(c), configured: aiConfigured(), canEnrich: canEditLead(req.user, lead) && (!!c || !!lead.company),
+    purchasing: c ? presentPurchasing(c) : null, contacts,
+  });
 });
 
 r.post('/leads/:id/enrich', wrap(async (req, res) => {
@@ -80,6 +85,15 @@ r.post('/companies/:id/enrichment', (req, res) => {
   if (!company) return res.status(404).json({ error: 'Företaget hittades inte' });
   if (!canEditCompany(req.user, company)) return res.status(403).json({ error: 'Du kan inte redigera företaget' });
   saveProvided(company, req, res);
+});
+
+r.put('/leads/:id/purchasing', (req, res) => {
+  const lead = getLead(Number(req.params.id));
+  if (!lead || !canSeeLead(req.user, lead)) return res.status(404).json({ error: 'Lead hittades inte' });
+  if (!canEditLead(req.user, lead)) return res.status(403).json({ error: 'Du kan inte redigera detta lead' });
+  const company = companyForLead(lead);
+  if (!company) return res.status(400).json({ error: 'Leadet saknar företag. Lägg till företagsnamn först.' });
+  res.json({ purchasing: savePurchasing(company, req.user, req.body || {}), company_id: company.id });
 });
 
 // ---------- Vårt erbjudande ----------

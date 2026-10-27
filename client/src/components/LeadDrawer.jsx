@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
 import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, Tabs, useToast } from './ui.jsx';
 import CompanyInsight from './CompanyInsight.jsx';
+import Purchasing from './Purchasing.jsx';
 import { followupText } from './Records.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
 import MeetingModal from './MeetingModal.jsx';
@@ -227,9 +228,15 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
               <div className="px-6 py-5 md:border-r border-slate-100 min-w-0">
                 {lead.company && <div className="mb-4"><Tabs value={tab} onChange={setTab} tabs={[{ value: 'timeline', label: tr("Tidslinje") }, { value: 'company', label: tr("Företagsinfo") }]} /></div>}
                 {tab === 'company' ? (
-                  !info ? <div className="grid place-items-center py-10"><Spinner /></div> : (
+                  !info ? <div className="grid place-items-center py-10"><Spinner /></div> : (<div className="space-y-5">
+                    <section>
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Inköpsinformation")}</h3>
+                      <Purchasing purchasing={info.purchasing} contacts={info.contacts} canEdit={editable}
+                        onSave={async (data) => { const r = await api.put(`/leads/${id}/purchasing`, data); setInfo(null); await loadInfo(); if (!lead.company_id && r.company_id) load(); }} />
+                    </section>
                     <CompanyInsight enrichment={info.company?.enrichment} companyName={info.company?.name || lead.company} configured={info.configured}
                       canEnrich={info.canEnrich} busy={enriching} onEnrich={enrich} onDraftEmail={lead.email ? draftEmail : null} drafting={drafting} companyLink={info.company && `/companies/${info.company.id}`} />
+                  </div>
                   )
                 ) : <>
                 {editable && <div className="mb-6"><ActivityComposer onSubmit={addActivity} /></div>}
