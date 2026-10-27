@@ -100,7 +100,9 @@ export default function Leads() {
           { value: 'new', label: tr("Nya att ringa"), count: data?.counts?.new },
           { value: 'followup', label: tr("Kontakta igen"), count: data?.counts?.followup },
           { value: 'customers', label: tr("Kunder"), count: data?.counts?.customers },
+          { value: 'archived', label: tr("Arkiv"), count: data?.counts?.archived },
         ]} />
+        {filters.view === 'archived' && <span className="text-xs text-slate-500">{tr("Leads med status Ej aktuell. Byt status för att plocka tillbaka ett lead.")}</span>}
         {filters.view === 'followup' && <span className="text-xs text-slate-500">{tr("Kontaktade leads som inte svarat inom vald tid, och kvalificerade leads utan nästa steg.")} <Link to="/settings" className="text-brand-600 hover:underline">{tr("Ändra uppföljning")}</Link></span>}
       </div>
       <Card className="overflow-hidden">

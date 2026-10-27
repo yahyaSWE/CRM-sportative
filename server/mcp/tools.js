@@ -219,7 +219,7 @@ export function buildServer(auth) {
     title: 'Lista leads',
     description: 'Listar leads/kontakter med filter. Synligheten följer användarens roll.',
     inputSchema: {
-      view: z.enum(['all', 'new', 'followup', 'customers']).optional().describe('new = nya att ringa, followup = kontakta igen (kontaktade utan svar inom uppföljningstiden), customers = kunder'),
+      view: z.enum(['all', 'new', 'followup', 'customers', 'archived']).optional().describe('new = nya att ringa, followup = kontakta igen (kontaktade utan svar inom uppföljningstiden), customers = kunder, archived = arkiv (Ej aktuell). all visar inte arkiverade.'),
       status: z.enum(['new', 'contacted', 'qualified', 'unqualified', 'converted']).optional(),
       source: z.enum(['email', 'facebook', 'instagram', 'webform', 'prospecting', 'manual', 'import']).optional(),
       owner: z.string().optional().describe('"me", "none" (otilldelade) eller en användares id'),

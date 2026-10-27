@@ -75,7 +75,7 @@ export default function GlobalSearch() {
                     : it.kind === 'company' ? <span className={cx('grid place-items-center size-6 rounded-md', x.is_customer ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500')}>{x.is_customer ? <Star className="size-3.5" /> : <Building2 className="size-3.5" />}</span>
                       : <SourceBadge source={x.source} compact />}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-slate-800 truncate">{it.kind === 'deal' ? x.title : it.kind === 'company' ? x.name : leadName(x)}</span>
+                    <span className="block text-sm font-medium text-slate-800 truncate">{it.kind === 'deal' ? x.title : it.kind === 'company' ? x.name : leadName(x)}{it.kind === 'lead' && x.status === 'unqualified' && <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-px text-[10px] font-medium text-slate-500">{tr('Arkiverad')}</span>}</span>
                     <span className="block text-xs text-slate-500 truncate">
                       {it.kind === 'company' ? [x.org_nr, x.city, `${x.contact_count} kontakter`, x.is_customer ? 'Kund' : null].filter(Boolean).join(' · ')
                         : it.kind === 'deal'

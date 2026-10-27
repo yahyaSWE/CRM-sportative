@@ -46,10 +46,13 @@ r.get('/leads', (req, res) => {
   const where = [vis.sql];
   const params = [...vis.params];
   if (q) { const s = leadSearchSql(q); where.push(s.sql); params.push(...s.params); }
-  // Snabbvyer: nya att ringa, behöver uppföljning, kunder.
+  // Snabbvyer: nya att ringa, kontakta igen, kunder och arkiv. Ej aktuella leads ligger i arkivet och visas
+  // inte bland de andra – utom när man uttryckligen filtrerar på status Ej aktuell.
   if (view === 'new') where.push("l.status = 'new'");
   else if (view === 'followup') where.push(NEEDS_FOLLOWUP_SQL());
   else if (view === 'customers') where.push(CUSTOMER_SQL());
+  if (view === 'archived') where.push("l.status = 'unqualified'");
+  else if (status !== 'unqualified') where.push("l.status != 'unqualified'");
   if (status) { where.push('l.status = ?'); params.push(status); }
   if (source) { where.push('l.source = ?'); params.push(source); }
   if (owner === 'me') { where.push('l.owner_id = ?'); params.push(req.user.id); }
@@ -64,7 +67,7 @@ r.get('/leads', (req, res) => {
   const total = get(`SELECT count(*) AS n ${sql}`, ...params).n;
   // Antal per snabbvy (inom samma synlighet och sökning) för flikarna i gränssnittet.
   const base = { sql: [vis.sql, ...(q ? [leadSearchSql(q).sql] : [])].join(' AND '), params: [...vis.params, ...(q ? leadSearchSql(q).params : [])] };
-  const counts = get(`SELECT count(*) AS total, sum(l.status = 'new') AS new, sum(${NEEDS_FOLLOWUP_SQL()}) AS followup, sum(${CUSTOMER_SQL()}) AS customers
+  const counts = get(`SELECT sum(l.status != 'unqualified') AS total, sum(l.status = 'unqualified') AS archived, sum(l.status = 'new') AS new, sum(${NEEDS_FOLLOWUP_SQL()}) AS followup, sum(l.status != 'unqualified' AND ${CUSTOMER_SQL()}) AS customers
     FROM leads l WHERE ${base.sql}`, ...base.params);
   const rows = all(`SELECT l.*, u.name AS owner_name, u.color AS owner_color, ${LEAD_NEXT_COLUMNS()} ${sql}
     ORDER BY ${sortCol} ${dir === 'asc' ? 'ASC' : 'DESC'}, l.id DESC LIMIT ? OFFSET ?`, ...params, limit, (page - 1) * limit);

@@ -1224,4 +1224,6 @@ export default {
   "Markera som Ej aktuell automatiskt när uppföljningarna är slut utan svar": "Mark as Not relevant automatically when the follow-ups run out without a reply",
   "Exempel: kontakt dag 0, påminnelse efter {d} dagar, sedan {n} uppföljning(ar) med {d} dagars mellanrum – {end} efter {total} dagar utan svar.": "Example: contact on day 0, reminder after {d} days, then {n} follow-up(s) {d} days apart – {end} after {total} days without a reply.",
   "kvar i listan": "stays in the list",
+  "Arkiv": "Archive",
+  "Leads med status Ej aktuell. Byt status för att plocka tillbaka ett lead.": "Leads with the status Not relevant. Change the status to bring a lead back.",
 };
