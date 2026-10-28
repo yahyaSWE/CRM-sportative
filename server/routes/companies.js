@@ -148,9 +148,10 @@ r.post('/companies/:id/activities', (req, res) => {
   const c = loadCompany(req, res);
   if (!c) return;
   if (!canEditCompany(req.user, c)) return res.status(403).json({ error: 'Du kan inte redigera företaget' });
-  const { type, content, due_at } = req.body || {};
+  const { type, content, due_at, outcome } = req.body || {};
   if (!['note', 'call', 'email', 'meeting', 'task'].includes(type) || !content?.trim()) return res.status(400).json({ error: 'Ogiltig aktivitet' });
-  const ins = run('INSERT INTO activities (company_id, user_id, type, content, due_at) VALUES (?,?,?,?,?)', c.id, req.user.id, type, content.trim(), due_at || null);
+  const ins = run('INSERT INTO activities (company_id, user_id, type, content, due_at, outcome) VALUES (?,?,?,?,?,?)', c.id, req.user.id, type, content.trim(), due_at || null,
+    ['call', 'email'].includes(type) && ['answered', 'no_answer'].includes(outcome) ? outcome : null);
   res.status(201).json(get('SELECT * FROM activities WHERE id = ?', ins.lastInsertRowid));
 });
 

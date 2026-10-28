@@ -7,6 +7,7 @@ import { api } from '../api.js';
 import { Card, PageHeader, Tabs, SourceBadge, StatusBadge, Avatar, Spinner, Empty, cx } from '../components/ui.jsx';
 import { SOURCES, STAGES, leadName, sek, num, pct, timeAgo, dueLabel } from '../lib/meta.jsx';
 import { tr, locale } from '../lib/i18n.js';
+import ContactResults from '../components/ContactResults.jsx';
 
 function Kpi({ label, value, sub, icon: Icon, trend, accent }) {
   return (
@@ -108,6 +109,8 @@ export default function Dashboard() {
         <Kpi label={tr("Pipelinevärde")} value={sek(k.pipelineValue)} sub={tr("{0} öppna affärer · {1} vunnet", { 0: k.openDeals, 1: sek(k.wonValue) })} icon={Wallet} accent="bg-violet-50 text-violet-600" />
         <Kpi label={tr("Svarstid")} value={k.responseHours != null ? `${k.responseHours < 1 ? Math.round(k.responseHours * 60) + ' min' : k.responseHours.toFixed(1) + ' h'}` : '–'} sub="snitt till första kontakt" icon={Clock} accent="bg-amber-50 text-amber-600" />
       </div>
+
+      {data.contactResults && <ContactResults data={data.contactResults} days={days} />}
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="p-5 xl:col-span-2">

@@ -324,6 +324,8 @@ function initSchema(db) {
   addColumn('companies', 'enrichment', 'TEXT');
   // Inköpsinformation (beslutsfattare, materialansvarig, leverantör, avtalsutgång, nästa inköp) som JSON.
   addColumn('companies', 'purchasing', 'TEXT');
+  // Utfall för samtal och mejl: 'answered' (svarade), 'no_answer' (inget svar) eller NULL (inväntar svar / ej angivet).
+  addColumn('activities', 'outcome', 'TEXT');
 
   // Uppföljningsrytm för kontaktade leads: senaste kontaktförsöket och antal uppföljningar sedan första kontakten.
   // Hålls i synk av databasen själv, så att det stämmer oavsett var en kontakt loggas (appen, Gmail, Claude, kalendern).

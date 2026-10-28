@@ -93,6 +93,9 @@ export default function DealDrawer({ id, onClose, onChanged }) {
     catch (e) { toast(e.message, 'error'); throw e; }
   };
   const toggleTask = async (a) => { await api.patch(`/activities/${a.id}`, { done: !a.done }); load(); onChanged?.(); };
+  const setOutcome = async (a, outcome) => {
+    try { await api.patch(`/activities/${a.id}`, { outcome }); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
+  };
   const deleteActivity = async (a) => {
     try { await api.del(`/activities/${a.id}`); toast(tr('Aktiviteten raderades')); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
   };
@@ -183,7 +186,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                 {editable && <ActivityComposer onSubmit={addActivity} hint={lead ? tr("Syns även på leadet") : undefined} />}
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje")}</h3>
-                  <Timeline activities={deal.activities} onToggleTask={toggleTask} onDelete={deleteActivity} currentDealId={deal.id} />
+                  <Timeline activities={deal.activities} onToggleTask={toggleTask} onDelete={deleteActivity} onOutcome={editable ? setOutcome : null} currentDealId={deal.id} />
                 </div>
                 </>}
               </div>

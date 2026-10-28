@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, StickyNote, PhoneCall, CalendarClock, CheckSquare, Sparkles, Circle, CheckCircle2, Briefcase, Trash2 } from 'lucide-react';
+import { Mail, StickyNote, PhoneCall, CalendarClock, CheckSquare, Sparkles, Circle, CheckCircle2, Briefcase, Trash2, PhoneMissed, Clock } from 'lucide-react';
 import { useApp } from '../lib/app.jsx';
 import { Button, Confirm, cx } from './ui.jsx';
 import { timeAgo, formatDateTime, dueLabel, toSqlDate } from '../lib/meta.jsx';
@@ -15,19 +15,28 @@ export const ACT = {
   system: { label: tr("System"), icon: Sparkles, cls: 'bg-slate-100 text-slate-500' },
 };
 
-// Skrivfält för anteckningar, samtal, möten och uppgifter. `onSubmit` får { type, content, due_at }.
+// Utfall på samtal och mejl. Mejl utan utfall "inväntar svar"; samtal utan utfall visas utan märkning.
+export const OUTCOME = {
+  answered: { label: tr("Svarade"), icon: CheckCircle2, cls: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
+  no_answer: { label: tr("Inget svar"), icon: PhoneMissed, cls: 'bg-slate-100 text-slate-600 ring-slate-400/20' },
+  pending: { label: tr("Inväntar svar"), icon: Clock, cls: 'bg-amber-50 text-amber-700 ring-amber-600/20' },
+};
+const outcomeKey = (a) => a.outcome || (a.type === 'email' ? 'pending' : null);
+
+// Skrivfält för anteckningar, samtal, möten och uppgifter. `onSubmit` får { type, content, due_at, outcome }.
 export function ActivityComposer({ onSubmit, hint }) {
   const [type, setType] = useState('note');
   const [text, setText] = useState('');
   const [due, setDue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [outcome, setOutcome] = useState(null);
   const submit = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
     setSaving(true);
     try {
-      await onSubmit({ type, content: text, due_at: type === 'task' ? toSqlDate(due) : null });
-      setText(''); setDue('');
+      await onSubmit({ type, content: text, due_at: type === 'task' ? toSqlDate(due) : null, outcome: ['call', 'email'].includes(type) ? outcome : undefined });
+      setText(''); setDue(''); setOutcome(null);
     } finally { setSaving(false); }
   };
   return (
@@ -35,7 +44,7 @@ export function ActivityComposer({ onSubmit, hint }) {
       <div className="flex gap-1 mb-2 overflow-x-auto scroll-thin">
         {['note', 'call', 'email', 'meeting', 'task'].map((t) => {
           const I = ACT[t].icon;
-          return <button type="button" key={t} onClick={() => setType(t)} className={cx('inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap', type === t ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100')}><I className="size-3.5" />{ACT[t].label}</button>;
+          return <button type="button" key={t} onClick={() => { setType(t); setOutcome(null); }} className={cx('inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap', type === t ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100')}><I className="size-3.5" />{ACT[t].label}</button>;
         })}
       </div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
@@ -43,6 +52,20 @@ export function ActivityComposer({ onSubmit, hint }) {
         className="w-full resize-none text-sm outline-none placeholder:text-slate-400 px-1" />
       <div className="flex items-center justify-end gap-2">
         {hint && <span className="mr-auto text-[11px] text-slate-400">{hint}</span>}
+        {['call', 'email'].includes(type) && (
+          <span className="mr-auto inline-flex rounded-md bg-slate-100 p-0.5" role="radiogroup" aria-label={tr("Utfall")}>
+            {(type === 'call' ? ['answered', 'no_answer'] : [null, 'answered']).map((o) => {
+              const m = OUTCOME[o || 'pending'];
+              const I = m.icon;
+              return (
+                <button type="button" key={o || 'pending'} role="radio" aria-checked={outcome === o} onClick={() => setOutcome(outcome === o && o ? null : o)}
+                  className={cx('inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium', outcome === o ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700')}>
+                  <I className="size-3" />{m.label}
+                </button>
+              );
+            })}
+          </span>
+        )}
         {type === 'task' && <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className="input !w-auto !py-1 text-xs" />}
         <Button size="sm" type="submit" loading={saving} disabled={!text.trim()}>{tr("Spara")}</Button>
       </div>
@@ -50,10 +73,23 @@ export function ActivityComposer({ onSubmit, hint }) {
   );
 }
 
+// Märkning för samtal/mejl. Klick växlar utfall (svarade → inget svar → inväntar/ingen) när man får ändra.
+function OutcomeChip({ a, onChange }) {
+  const key = outcomeKey(a);
+  const m = OUTCOME[key];
+  const I = m.icon;
+  const order = a.type === 'email' ? [null, 'answered', 'no_answer'] : [null, 'answered', 'no_answer'];
+  const next = order[(order.indexOf(a.outcome || null) + 1) % order.length];
+  const cls = cx('inline-flex items-center gap-1 rounded px-1.5 py-px text-[11px] font-medium ring-1 ring-inset', m.cls);
+  return onChange
+    ? <button type="button" onClick={() => onChange(a, next)} title={tr("Klicka för att ändra utfall")} className={cx(cls, 'hover:opacity-80')}><I className="size-3" />{m.label}</button>
+    : <span className={cls}><I className="size-3" />{m.label}</span>;
+}
+
 // Gemensam tidslinje för lead och affär. Aktiviteter från en affär märks med affärens namn.
 // Egna anteckningar, samtal, mejl, möten och uppgifter kan raderas (säljchefer och admin kan radera allas);
 // systemhändelser som statusändringar ligger kvar.
-export function Timeline({ activities, onToggleTask, onDelete, currentDealId, showContact }) {
+export function Timeline({ activities, onToggleTask, onDelete, onOutcome, currentDealId, showContact }) {
   const { user, can } = useApp();
   const [del, setDel] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -77,6 +113,7 @@ export function Timeline({ activities, onToggleTask, onDelete, currentDealId, sh
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                 <span className="font-medium text-slate-700">{a.user_name || tr("LeadFlow")}</span><span>·</span><span>{m.label}</span><span>·</span>
                 <span title={formatDateTime(a.created_at)}>{timeAgo(a.created_at)}</span>
+                {outcomeKey(a) && <OutcomeChip a={a} onChange={deletable(a) || (onOutcome && a.type !== 'system') ? onOutcome : null} />}
                 {deletable(a) && <button onClick={() => setDel(a)} title={tr("Radera")} className="ml-auto rounded p-0.5 text-slate-300 opacity-0 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 focus:opacity-100"><Trash2 className="size-3.5" /></button>}
                 {a.via === 'claude' && <span className="rounded bg-orange-50 px-1.5 py-px text-[11px] font-medium text-orange-700">{tr('via Claude')}</span>}
                 {a.deal_id && a.deal_id !== currentDealId && a.deal_title && (

@@ -311,12 +311,12 @@ export function buildServer(auth) {
 
   tool('get_overview_stats', {
     title: 'Översikt och statistik',
-    description: 'Nyckeltal för en period: nya leads, konvertering, pipelinevärde, vunnet, vinstgrad, svarstid, leads per källa, förlustorsaker och (för chefer) topplista.',
+    description: 'Nyckeltal för en period: nya leads, kontaktresultat (kontaktade → svarade → kvalificerade, per kanal och säljare), konvertering, pipelinevärde, vunnet, vinstgrad, svarstid, leads per källa, förlustorsaker och (för chefer) topplista.',
     inputSchema: { days: z.number().int().min(7).max(365).optional().describe('Periodens längd i dagar, standard 30') },
     annotations: READ,
   }, async ({ days = 30 }) => {
     const r = await api(auth, 'GET', `/dashboard${qs({ days })}`);
-    return ok({ team_wide: r.team, days: r.days, kpi: r.kpi, by_source: r.bySource, by_status: r.byStatus, stages: r.stages, lost_reasons: r.lostReasons, leaderboard: r.leaderboard });
+    return ok({ team_wide: r.team, days: r.days, kpi: r.kpi, by_source: r.bySource, by_status: r.byStatus, stages: r.stages, lost_reasons: r.lostReasons, leaderboard: r.leaderboard, contact_results: r.contactResults });
   });
 
   tool('list_tasks', {
@@ -414,11 +414,12 @@ export function buildServer(auth) {
     inputSchema: {
       type: z.enum(['note', 'call', 'email', 'meeting']).describe('note = anteckning, call = samtal, email = mejl, meeting = möte'),
       content: z.string().min(1).describe('Vad som hände/sades'),
+      outcome: z.enum(['answered', 'no_answer']).optional().describe('För samtal och mejl: answered = kontakten svarade, no_answer = inget svar. Utelämna för mejl som inväntar svar.'),
       lead_id: id('Leadet').optional(), deal_id: id('Affären').optional(), company_id: id('Företaget').optional(),
     },
     annotations: WRITE,
-  }, async ({ type, content, ...target }) => {
-    const a = await api(auth, 'POST', `${targetPath(target)}/activities`, { type, content });
+  }, async ({ type, content, outcome, ...target }) => {
+    const a = await api(auth, 'POST', `${targetPath(target)}/activities`, { type, content, outcome });
     return ok(activityRow(a), 'Aktiviteten är loggad.');
   });
 
@@ -578,6 +579,7 @@ function targetPath({ lead_id, deal_id, company_id }) {
 const ACTIVITY_TYPES = { note: 'anteckning', call: 'samtal', email: 'mejl', meeting: 'möte', task: 'uppgift', system: 'händelse' };
 const activityRow = (a) => ({
   id: a.id, type: ACTIVITY_TYPES[a.type] || a.type, content: a.content, by: a.user_name, via: a.via, at: a.created_at,
+  outcome: a.outcome === 'answered' ? 'svarade' : a.outcome === 'no_answer' ? 'inget svar' : ['call', 'email'].includes(a.type) ? 'inväntar svar' : undefined,
   due_at: a.due_at, done: a.type === 'task' ? !!a.done : undefined, deal: a.deal_title,
 });
 

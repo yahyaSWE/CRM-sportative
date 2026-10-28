@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus, FileText, Sparkles, RotateCcw, PhoneOff, MailPlus, XCircle } from 'lucide-react';
+import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus, FileText, Sparkles, RotateCcw, PhoneOff, MailPlus, XCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
 import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, Tabs, useToast } from './ui.jsx';
@@ -147,6 +147,13 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
     try { await api.del(`/leads/${id}`); toast(tr("Lead raderad")); onChanged?.(); onClose(); } catch (e) { toast(e.message, 'error'); }
   };
   const toggleTask = async (a) => { await api.patch(`/activities/${a.id}`, { done: !a.done }); load(); onChanged?.(); };
+  const setOutcome = async (a, outcome) => {
+    try { await api.patch(`/activities/${a.id}`, { outcome }); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
+  };
+  // Kontakten svarade: senaste samtal/mejl markeras som besvarat.
+  const markResponded = async () => {
+    try { await api.post(`/leads/${id}/responded`); toast(tr('Markerat som svarat – kvalificera leadet eller boka ett möte')); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
+  };
   const deleteActivity = async (a) => {
     try { await api.del(`/activities/${a.id}`); toast(tr('Aktiviteten raderades')); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
   };
@@ -200,8 +207,9 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                   <span className="text-sm text-slate-800"><span className="font-medium">{followupText(lead.followup)}</span> <span className="text-slate-500">· {dueText(lead.followup.due_at)}</span></span>
                   {editable && (
                     <span className="ml-auto flex flex-wrap gap-1.5">
-                      <Button size="sm" variant="secondary" icon={PhoneOff} onClick={() => addActivity({ type: 'call', content: tr('Ringde – inget svar') })}>{tr('Ringt, inget svar')}</Button>
+                      <Button size="sm" variant="secondary" icon={PhoneOff} onClick={() => addActivity({ type: 'call', content: tr('Ringde – inget svar'), outcome: 'no_answer' })}>{tr('Ringt, inget svar')}</Button>
                       <Button size="sm" variant="secondary" icon={MailPlus} onClick={() => addActivity({ type: 'email', content: tr('Följde upp via mejl') })}>{tr('Mejlat igen')}</Button>
+                      <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={markResponded}>{tr('Fick svar')}</Button>
                       <Button size="sm" variant="ghost" icon={XCircle} onClick={() => patch({ status: 'unqualified' })}>{tr('Ej aktuell')}</Button>
                     </span>
                   )}
@@ -247,7 +255,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                   </div>
                 )}
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje")}</h3>
-                <Timeline activities={lead.activities} onToggleTask={toggleTask} onDelete={deleteActivity} />
+                <Timeline activities={lead.activities} onToggleTask={toggleTask} onDelete={deleteActivity} onOutcome={editable ? setOutcome : null} />
                 </>}
               </div>
 

@@ -118,8 +118,9 @@ export function seed({ reset = false } = {}) {
           source === 'webform' ? integ.webform : source === 'email' ? integ.email : null, source, 'created', leadId, `Ny lead: ${first} ${last}`, created);
       }
       if (status !== 'new') {
-        run("INSERT INTO activities (lead_id, user_id, type, content, created_at) VALUES (?, ?, 'call', ?, ?)", leadId, owner,
-          pick(['Pratade med kunden, intresserad. Skickar info.', 'Ingen svarade, lämnade röstmeddelande.', 'Bra samtal – vill ha offert.']), ts(daysAgo, 3 + rand() * 20));
+        const call = pick(['Pratade med kunden, intresserad. Skickar info.', 'Ingen svarade, lämnade röstmeddelande.', 'Bra samtal – vill ha offert.']);
+        run("INSERT INTO activities (lead_id, user_id, type, content, outcome, created_at) VALUES (?, ?, 'call', ?, ?, ?)", leadId, owner,
+          call, call.startsWith('Ingen svarade') ? 'no_answer' : 'answered', ts(daysAgo, 3 + rand() * 20));
       }
       if (owner && rand() < 0.35) {
         run("INSERT INTO activities (lead_id, user_id, type, content, due_at, done, created_at) VALUES (?, ?, 'task', ?, ?, ?, ?)", leadId, owner,

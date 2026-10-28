@@ -223,11 +223,22 @@ r.post('/leads/:id/activities', (req, res) => {
   const lead = loadVisibleLead(req, res);
   if (!lead) return;
   if (!canEditLead(req.user, lead)) return res.status(403).json({ error: 'Du kan inte redigera detta lead' });
-  const { type, content, due_at } = req.body || {};
+  const { type, content, due_at, outcome } = req.body || {};
   if (!['note', 'call', 'email', 'meeting', 'task'].includes(type) || !content?.trim()) return res.status(400).json({ error: 'Ogiltig aktivitet' });
-  const act = addActivity({ leadId: lead.id, userId: req.user.id, type, content: content.trim(), dueAt: due_at || null });
+  const act = addActivity({ leadId: lead.id, userId: req.user.id, type, content: content.trim(), dueAt: due_at || null, outcome });
   if (['call', 'email', 'meeting'].includes(type) && lead.status === 'new') run("UPDATE leads SET status = 'contacted' WHERE id = ?", lead.id);
   res.status(201).json(act);
+});
+
+r.post('/leads/:id/responded', (req, res) => {
+  const lead = loadVisibleLead(req, res);
+  if (!lead) return;
+  if (!canEditLead(req.user, lead)) return res.status(403).json({ error: 'Du kan inte redigera detta lead' });
+  const last = get("SELECT * FROM activities WHERE lead_id = ? AND type IN ('call','email') AND coalesce(outcome, '') != 'answered' ORDER BY created_at DESC, id DESC LIMIT 1", lead.id);
+  if (last) run("UPDATE activities SET outcome = 'answered' WHERE id = ?", last.id);
+  else addActivity({ leadId: lead.id, userId: req.user.id, type: 'call', content: 'Fick svar', outcome: 'answered' });
+  audit(req.user.id, 'lead.responded', 'lead', lead.id);
+  res.json({ ok: true, activity_id: last?.id || null });
 });
 
 r.post('/leads/:id/convert', (req, res) => {
@@ -271,6 +282,7 @@ r.patch('/activities/:id', (req, res) => {
   const { done, content, due_at } = req.body || {};
   run('UPDATE activities SET done = coalesce(?, done), content = coalesce(?, content), due_at = coalesce(?, due_at) WHERE id = ?',
     done == null ? null : done ? 1 : 0, content ?? null, due_at ?? null, a.id);
+  if ('outcome' in (req.body || {}) && ['call', 'email'].includes(a.type)) run('UPDATE activities SET outcome = ? WHERE id = ?', outcomeFor(a.type, req.body.outcome), a.id);
   res.json(get('SELECT * FROM activities WHERE id = ?', a.id));
 });
 
@@ -305,8 +317,11 @@ function dealRows(where, params) {
     .map((d) => ({ ...d, next_task: d.next_task ? JSON.parse(d.next_task) : null }));
 }
 
-function addActivity({ leadId = null, dealId = null, userId, type, content, dueAt = null }) {
-  const ins = run('INSERT INTO activities (lead_id, deal_id, user_id, type, content, due_at) VALUES (?,?,?,?,?,?)', leadId, dealId, userId, type, content, dueAt);
+export const OUTCOMES = ['answered', 'no_answer'];
+const outcomeFor = (type, outcome) => (['call', 'email'].includes(type) && OUTCOMES.includes(outcome) ? outcome : null);
+
+function addActivity({ leadId = null, dealId = null, userId, type, content, dueAt = null, outcome = null }) {
+  const ins = run('INSERT INTO activities (lead_id, deal_id, user_id, type, content, due_at, outcome) VALUES (?,?,?,?,?,?,?)', leadId, dealId, userId, type, content, dueAt, outcomeFor(type, outcome));
   if (leadId) run("UPDATE leads SET last_activity_at = datetime('now') WHERE id = ?", leadId);
   return get(`SELECT a.*, u.name AS user_name, u.color AS user_color, dl.title AS deal_title FROM activities a
     LEFT JOIN users u ON u.id = a.user_id LEFT JOIN deals dl ON dl.id = a.deal_id WHERE a.id = ?`, ins.lastInsertRowid);
@@ -334,9 +349,9 @@ r.post('/deals/:id/activities', (req, res) => {
   const d = get('SELECT * FROM deals WHERE id = ?', req.params.id);
   if (!d || !canSeeDeal(req.user, d)) return res.status(404).json({ error: 'Affären hittades inte' });
   if (!canEditDeal(req.user, d)) return res.status(403).json({ error: 'Du kan inte redigera denna affär' });
-  const { type, content, due_at } = req.body || {};
+  const { type, content, due_at, outcome } = req.body || {};
   if (!['note', 'call', 'email', 'meeting', 'task'].includes(type) || !content?.trim()) return res.status(400).json({ error: 'Ogiltig aktivitet' });
-  const act = addActivity({ leadId: d.lead_id, dealId: d.id, userId: req.user.id, type, content: content.trim(), dueAt: due_at || null });
+  const act = addActivity({ leadId: d.lead_id, dealId: d.id, userId: req.user.id, type, content: content.trim(), dueAt: due_at || null, outcome });
   broadcast('refresh', { entity: 'deals' });
   res.status(201).json(act);
 });
@@ -398,6 +413,32 @@ r.delete('/deals/:id', requirePerm('leads.delete'), (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- Kontaktresultat ----------
+// Leads som kontaktats (samtal eller mejl) under perioden: hur många svarade och hur många blev kvalificerade.
+// "Svarade" räknar även leads som kvalificerats eller fått en affär – de har uppenbarligen svarat.
+function contactResults(user, team, since) {
+  const who = team ? { sql: '1=1', params: [] } : { sql: 'a.user_id = ?', params: [user.id] };
+  const QUALIFIED = "(q.status IN ('qualified','converted') OR EXISTS (SELECT 1 FROM deals qd WHERE qd.lead_id = q.id))";
+  const ANSWERED = `(EXISTS (SELECT 1 FROM activities x WHERE x.lead_id = q.id AND x.type IN ('call','email') AND x.outcome = 'answered') OR ${QUALIFIED})`;
+  const cohort = `SELECT DISTINCT a.lead_id AS id, a.user_id FROM activities a WHERE a.lead_id IS NOT NULL AND a.type IN ('call','email')
+    AND a.created_at >= datetime('now', ?) AND ${who.sql}`;
+  const funnel = get(`SELECT count(DISTINCT c.id) AS contacted,
+      count(DISTINCT CASE WHEN ${ANSWERED} THEN c.id END) AS answered,
+      count(DISTINCT CASE WHEN ${QUALIFIED} THEN c.id END) AS qualified
+    FROM (${cohort}) c JOIN leads q ON q.id = c.id`, since, ...who.params);
+  // Per kanal räknas varje kontaktförsök: hur många samtal/mejl och hur många som fick svar.
+  const channels = all(`SELECT a.type AS channel, count(*) AS attempts, sum(a.outcome = 'answered') AS answered, sum(a.outcome = 'no_answer') AS no_answer,
+      count(DISTINCT a.lead_id) AS leads
+    FROM activities a WHERE a.lead_id IS NOT NULL AND a.type IN ('call','email') AND a.created_at >= datetime('now', ?) AND ${who.sql}
+    GROUP BY a.type`, since, ...who.params);
+  const perUser = team ? all(`SELECT u.id, u.name, u.color, count(DISTINCT c.id) AS contacted,
+      count(DISTINCT CASE WHEN ${ANSWERED} THEN c.id END) AS answered,
+      count(DISTINCT CASE WHEN ${QUALIFIED} THEN c.id END) AS qualified
+    FROM (${cohort}) c JOIN leads q ON q.id = c.id JOIN users u ON u.id = c.user_id
+    GROUP BY u.id ORDER BY contacted DESC LIMIT 10`, since, ...who.params) : [];
+  return { ...funnel, channels, perUser };
+}
+
 // ---------- Översikt ----------
 r.get('/dashboard', (req, res) => {
   const days = Math.min(365, Math.max(7, Number(req.query.days || 30)));
@@ -449,7 +490,7 @@ r.get('/dashboard', (req, res) => {
       wonValue: won.v, wonCount: won.n, winRate: won.n + lost ? won.n / (won.n + lost) : 0,
       responseHours: responseTime,
     },
-    perDay, bySource, byStatus, stages, leaderboard, recent, tasks, lostReasons,
+    perDay, bySource, byStatus, stages, leaderboard, recent, tasks, lostReasons, contactResults: contactResults(req.user, team, since),
   });
 });
 
