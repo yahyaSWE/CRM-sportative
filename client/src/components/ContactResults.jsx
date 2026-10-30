@@ -9,7 +9,7 @@ const rate = (a, b) => (b ? a / b : 0);
 // Tratten är ett mått (antal) i en färgskala – ljus till mörk – och siffrorna står alltid i text bredvid stapeln.
 export default function ContactResults({ data, days }) {
   const steps = [
-    { key: 'contacted', label: tr('Kontaktade'), value: data.contacted, bar: 'bg-indigo-300', note: tr('leads du ringt eller mejlat') },
+    { key: 'contacted', label: tr('Kontaktade'), value: data.contacted, bar: 'bg-indigo-300', note: tr('leads med status Kontaktad eller längre') },
     { key: 'answered', label: tr('Svarade'), value: data.answered, bar: 'bg-indigo-500', note: tr('{p} av kontaktade', { p: pct(rate(data.answered, data.contacted)) }) },
     { key: 'qualified', label: tr('Kvalificerade'), value: data.qualified, bar: 'bg-indigo-700', note: tr('{p} av de som svarade', { p: pct(rate(data.qualified, data.answered)) }) },
   ];
@@ -27,7 +27,7 @@ export default function ContactResults({ data, days }) {
       </div>
 
       {empty ? (
-        <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">{tr('Inga samtal eller mejl loggade under perioden. Logga dem med utfall (Svarade / Inget svar) så fylls statistiken på.')}</p>
+        <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">{tr('Inga kontaktade leads under perioden. Sätt status Kontaktad eller logga samtal och mejl så fylls statistiken på.')}</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
           {/* Tratten */}
@@ -78,6 +78,8 @@ export default function ContactResults({ data, days }) {
           </div>
         </div>
       )}
+
+      {data.unlogged > 0 && <p className="mt-4 text-xs text-slate-500">{tr('{n} av de kontaktade saknar loggat samtal eller mejl och syns därför inte per kanal.', { n: data.unlogged })}</p>}
 
       {/* Per säljare (för den som ser teamets siffror) */}
       {data.perUser.length > 0 && (

@@ -1270,4 +1270,10 @@ export default {
   "inväntar/ej angivet": "awaiting/not set",
   "Svarsfrekvens": "Reply rate",
   "Av svarade": "Of replied",
+  "Har kontakten svarat?": "Has the contact replied?",
+  "Svar på telefon": "Replied by phone",
+  "Svar på mejl": "Replied by email",
+  "leads med status Kontaktad eller längre": "leads with status Contacted or further",
+  "{n} av de kontaktade saknar loggat samtal eller mejl och syns därför inte per kanal.": "{n} of those contacted have no logged call or email and therefore do not appear per channel.",
+  "Inga kontaktade leads under perioden. Sätt status Kontaktad eller logga samtal och mejl så fylls statistiken på.": "No contacted leads in the period. Set the status to Contacted or log calls and emails to fill the statistics.",
 };

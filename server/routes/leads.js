@@ -234,9 +234,11 @@ r.post('/leads/:id/responded', (req, res) => {
   const lead = loadVisibleLead(req, res);
   if (!lead) return;
   if (!canEditLead(req.user, lead)) return res.status(403).json({ error: 'Du kan inte redigera detta lead' });
-  const last = get("SELECT * FROM activities WHERE lead_id = ? AND type IN ('call','email') AND coalesce(outcome, '') != 'answered' ORDER BY created_at DESC, id DESC LIMIT 1", lead.id);
+  const channel = req.body?.channel === 'email' ? 'email' : req.body?.channel === 'call' ? 'call' : null;
+  const last = get(`SELECT * FROM activities WHERE lead_id = ? AND type IN ('call','email') AND coalesce(outcome, '') != 'answered'
+    ${channel ? 'AND type = ?' : ''} ORDER BY created_at DESC, id DESC LIMIT 1`, lead.id, ...(channel ? [channel] : []));
   if (last) run("UPDATE activities SET outcome = 'answered' WHERE id = ?", last.id);
-  else addActivity({ leadId: lead.id, userId: req.user.id, type: 'call', content: 'Fick svar', outcome: 'answered' });
+  else addActivity({ leadId: lead.id, userId: req.user.id, type: channel || 'call', content: 'Fick svar', outcome: 'answered' });
   audit(req.user.id, 'lead.responded', 'lead', lead.id);
   res.json({ ok: true, activity_id: last?.id || null });
 });
@@ -414,18 +416,27 @@ r.delete('/deals/:id', requirePerm('leads.delete'), (req, res) => {
 });
 
 // ---------- Kontaktresultat ----------
-// Leads som kontaktats (samtal eller mejl) under perioden: hur många svarade och hur många blev kvalificerade.
+// Kontaktade under perioden: leads med status Kontaktad eller längre, leads som satts till Kontaktad (även om de sedan
+// arkiverats) och leads med loggat samtal eller mejl. Av dem: hur många svarade och hur många blev kvalificerade.
 // "Svarade" räknar även leads som kvalificerats eller fått en affär – de har uppenbarligen svarat.
 function contactResults(user, team, since) {
   const who = team ? { sql: '1=1', params: [] } : { sql: 'a.user_id = ?', params: [user.id] };
+  const owner = team ? { sql: '1=1', params: [] } : { sql: 'l.owner_id = ?', params: [user.id] };
   const QUALIFIED = "(q.status IN ('qualified','converted') OR EXISTS (SELECT 1 FROM deals qd WHERE qd.lead_id = q.id))";
   const ANSWERED = `(EXISTS (SELECT 1 FROM activities x WHERE x.lead_id = q.id AND x.type IN ('call','email') AND x.outcome = 'answered') OR ${QUALIFIED})`;
-  const cohort = `SELECT DISTINCT a.lead_id AS id, a.user_id FROM activities a WHERE a.lead_id IS NOT NULL AND a.type IN ('call','email')
-    AND a.created_at >= datetime('now', ?) AND ${who.sql}`;
+  const cohort = `SELECT a.lead_id AS id, a.user_id FROM activities a WHERE a.lead_id IS NOT NULL
+      AND (a.type IN ('call','email') OR (a.type = 'system' AND a.content = 'Status ändrad till Kontaktad'))
+      AND a.created_at >= datetime('now', ?) AND ${who.sql}
+    UNION SELECT l.id, l.owner_id FROM leads l WHERE l.status IN ('contacted','qualified','converted')
+      AND coalesce(l.followup_last_at, l.updated_at) >= datetime('now', ?) AND ${owner.sql}`;
+  const cohortParams = [since, ...who.params, since, ...owner.params];
   const funnel = get(`SELECT count(DISTINCT c.id) AS contacted,
       count(DISTINCT CASE WHEN ${ANSWERED} THEN c.id END) AS answered,
       count(DISTINCT CASE WHEN ${QUALIFIED} THEN c.id END) AS qualified
-    FROM (${cohort}) c JOIN leads q ON q.id = c.id`, since, ...who.params);
+    FROM (${cohort}) c JOIN leads q ON q.id = c.id`, ...cohortParams);
+  // Kontaktade utan loggat samtal eller mejl syns i tratten men inte per kanal.
+  const unlogged = get(`SELECT count(DISTINCT c.id) AS n FROM (${cohort}) c
+    WHERE NOT EXISTS (SELECT 1 FROM activities x WHERE x.lead_id = c.id AND x.type IN ('call','email') AND x.created_at >= datetime('now', ?))`, ...cohortParams, since).n;
   // Per kanal räknas varje kontaktförsök: hur många samtal/mejl och hur många som fick svar.
   const channels = all(`SELECT a.type AS channel, count(*) AS attempts, sum(a.outcome = 'answered') AS answered, sum(a.outcome = 'no_answer') AS no_answer,
       count(DISTINCT a.lead_id) AS leads
@@ -435,8 +446,8 @@ function contactResults(user, team, since) {
       count(DISTINCT CASE WHEN ${ANSWERED} THEN c.id END) AS answered,
       count(DISTINCT CASE WHEN ${QUALIFIED} THEN c.id END) AS qualified
     FROM (${cohort}) c JOIN leads q ON q.id = c.id JOIN users u ON u.id = c.user_id
-    GROUP BY u.id ORDER BY contacted DESC LIMIT 10`, since, ...who.params) : [];
-  return { ...funnel, channels, perUser };
+    GROUP BY u.id ORDER BY contacted DESC LIMIT 10`, ...cohortParams) : [];
+  return { ...funnel, unlogged, channels, perUser };
 }
 
 // ---------- Översikt ----------

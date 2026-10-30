@@ -151,14 +151,23 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
     try { await api.patch(`/activities/${a.id}`, { outcome }); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
   };
   // Kontakten svarade: senaste samtal/mejl markeras som besvarat.
-  const markResponded = async () => {
-    try { await api.post(`/leads/${id}/responded`); toast(tr('Markerat som svarat – kvalificera leadet eller boka ett möte')); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
+  const markResponded = async (channel) => {
+    try { await api.post(`/leads/${id}/responded`, channel ? { channel } : {}); toast(tr('Markerat som svarat – kvalificera leadet eller boka ett möte')); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
   };
   const deleteActivity = async (a) => {
     try { await api.del(`/activities/${a.id}`); toast(tr('Aktiviteten raderades')); load(); onChanged?.(); } catch (e) { toast(e.message, 'error'); }
   };
 
   const editable = lead?.canEdit;
+  // Svar registreras på senaste samtalet/mejlet. Finns inget loggat väljer man vilken kanal svaret kom på.
+  const hasContact = lead?.activities?.some((a) => ['call', 'email'].includes(a.type));
+  const hasAnswered = lead?.activities?.some((a) => a.outcome === 'answered');
+  const respondedButtons = hasAnswered ? null : hasContact
+    ? <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={() => markResponded()}>{tr('Fick svar')}</Button>
+    : <>
+      <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={() => markResponded('call')}>{tr('Svar på telefon')}</Button>
+      <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={() => markResponded('email')}>{tr('Svar på mejl')}</Button>
+    </>;
   const ownerSelectable = can('leads.assign') || (editable && !lead?.owner_id);
   const openDeals = lead?.deals.filter((d) => !['won', 'lost'].includes(d.stage)) || [];
   // Bokas mötet från leadet kopplas det också till kontaktens senaste öppna affär.
@@ -201,6 +210,12 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 {editable && <Button size="sm" variant="soft" icon={ArrowRightLeft} onClick={openConvert}>{lead.deals.length ? tr("Ny affär") : tr("Konvertera till affär")}</Button>}
                 {can('leads.delete') && <Button size="sm" variant="ghost" icon={Trash2} className="ml-auto !text-rose-600" onClick={() => setDel(true)} />}
               </div>
+              {!lead.followup && editable && lead.status === 'contacted' && !hasAnswered && (
+                <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <span className="mr-auto text-sm text-slate-600">{tr('Har kontakten svarat?')}</span>
+                  {respondedButtons}
+                </div>
+              )}
               {lead.followup && (
                 <div className={`mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 ${new Date(lead.followup.due_at.replace(' ', 'T') + 'Z') <= new Date() ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
                   <RotateCcw className="size-4 text-amber-600" />
@@ -209,7 +224,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                     <span className="ml-auto flex flex-wrap gap-1.5">
                       <Button size="sm" variant="secondary" icon={PhoneOff} onClick={() => addActivity({ type: 'call', content: tr('Ringde – inget svar'), outcome: 'no_answer' })}>{tr('Ringt, inget svar')}</Button>
                       <Button size="sm" variant="secondary" icon={MailPlus} onClick={() => addActivity({ type: 'email', content: tr('Följde upp via mejl') })}>{tr('Mejlat igen')}</Button>
-                      <Button size="sm" variant="secondary" icon={CheckCircle2} onClick={markResponded}>{tr('Fick svar')}</Button>
+                      {respondedButtons}
                       <Button size="sm" variant="ghost" icon={XCircle} onClick={() => patch({ status: 'unqualified' })}>{tr('Ej aktuell')}</Button>
                     </span>
                   )}
