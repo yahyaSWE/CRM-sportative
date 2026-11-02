@@ -426,9 +426,9 @@ function contactResults(user, team, since) {
   const ANSWERED = `(EXISTS (SELECT 1 FROM activities x WHERE x.lead_id = q.id AND x.type IN ('call','email') AND x.outcome = 'answered') OR ${QUALIFIED})`;
   const cohort = `SELECT a.lead_id AS id, a.user_id FROM activities a WHERE a.lead_id IS NOT NULL
       AND (a.type IN ('call','email') OR (a.type = 'system' AND a.content = 'Status ändrad till Kontaktad'))
-      AND a.created_at >= datetime('now', ?) AND ${who.sql}
+      AND a.created_at >= ? AND ${who.sql}
     UNION SELECT l.id, l.owner_id FROM leads l WHERE l.status IN ('contacted','qualified','converted')
-      AND coalesce(l.followup_last_at, l.updated_at) >= datetime('now', ?) AND ${owner.sql}`;
+      AND coalesce(l.followup_last_at, l.updated_at) >= ? AND ${owner.sql}`;
   const cohortParams = [since, ...who.params, since, ...owner.params];
   const funnel = get(`SELECT count(DISTINCT c.id) AS contacted,
       count(DISTINCT CASE WHEN ${ANSWERED} THEN c.id END) AS answered,
@@ -436,11 +436,11 @@ function contactResults(user, team, since) {
     FROM (${cohort}) c JOIN leads q ON q.id = c.id`, ...cohortParams);
   // Kontaktade utan loggat samtal eller mejl syns i tratten men inte per kanal.
   const unlogged = get(`SELECT count(DISTINCT c.id) AS n FROM (${cohort}) c
-    WHERE NOT EXISTS (SELECT 1 FROM activities x WHERE x.lead_id = c.id AND x.type IN ('call','email') AND x.created_at >= datetime('now', ?))`, ...cohortParams, since).n;
+    WHERE NOT EXISTS (SELECT 1 FROM activities x WHERE x.lead_id = c.id AND x.type IN ('call','email') AND x.created_at >= ?)`, ...cohortParams, since).n;
   // Per kanal räknas varje kontaktförsök: hur många samtal/mejl och hur många som fick svar.
   const channels = all(`SELECT a.type AS channel, count(*) AS attempts, sum(a.outcome = 'answered') AS answered, sum(a.outcome = 'no_answer') AS no_answer,
       count(DISTINCT a.lead_id) AS leads
-    FROM activities a WHERE a.lead_id IS NOT NULL AND a.type IN ('call','email') AND a.created_at >= datetime('now', ?) AND ${who.sql}
+    FROM activities a WHERE a.lead_id IS NOT NULL AND a.type IN ('call','email') AND a.created_at >= ? AND ${who.sql}
     GROUP BY a.type`, since, ...who.params);
   const perUser = team ? all(`SELECT u.id, u.name, u.color, count(DISTINCT c.id) AS contacted,
       count(DISTINCT CASE WHEN ${ANSWERED} THEN c.id END) AS answered,
@@ -450,37 +450,75 @@ function contactResults(user, team, since) {
   return { ...funnel, unlogged, channels, perUser };
 }
 
+// ---------- Ditt arbete ----------
+// Räknar det säljaren gjort under perioden: samtal, mejl, anteckningar, statusbyten, avbockade uppgifter, möten och nya leads.
+// Teamets siffror per säljare för den som ser rapporter. För Idag följer en logg över det man gjort.
+const WORK_SQL = `SELECT u.id, u.name, u.color,
+    (SELECT count(*) FROM activities WHERE user_id = u.id AND type = 'call' AND created_at >= $s) AS calls,
+    (SELECT count(*) FROM activities WHERE user_id = u.id AND type = 'call' AND outcome = 'answered' AND created_at >= $s) AS calls_answered,
+    (SELECT count(*) FROM activities WHERE user_id = u.id AND type = 'email' AND created_at >= $s) AS emails,
+    (SELECT count(*) FROM activities WHERE user_id = u.id AND type = 'note' AND created_at >= $s) AS notes,
+    (SELECT count(DISTINCT lead_id) FROM activities WHERE user_id = u.id AND type = 'system' AND content = 'Status ändrad till Kontaktad' AND created_at >= $s) AS contacted,
+    (SELECT count(DISTINCT lead_id) FROM activities WHERE user_id = u.id AND type = 'system' AND content = 'Status ändrad till Kvalificerad' AND created_at >= $s) AS qualified,
+    (SELECT count(*) FROM activities WHERE user_id = u.id AND type = 'task' AND done = 1 AND done_at >= $s) AS tasks_done,
+    (SELECT count(*) FROM meetings WHERE owner_id = u.id AND status != 'cancelled' AND created_at >= $s) AS meetings_booked,
+    (SELECT count(*) FROM meetings WHERE owner_id = u.id AND status != 'cancelled' AND start_at >= $s AND start_at <= datetime('now')) AS meetings_held,
+    (SELECT count(*) FROM audit_log WHERE user_id = u.id AND action = 'lead.create' AND created_at >= $s) AS leads_created,
+    (SELECT count(*) FROM deals WHERE owner_id = u.id AND stage = 'won' AND closed_at >= $s) AS deals_won
+  FROM users u`;
+const WORK_KEYS = ['calls', 'emails', 'notes', 'contacted', 'qualified', 'tasks_done', 'meetings_booked', 'meetings_held', 'leads_created', 'deals_won'];
+
+function workSummary(user, team, since, isToday) {
+  const mine = get(`${WORK_SQL} WHERE u.id = $u`, { s: since, u: user.id });
+  const perUser = team ? all(`${WORK_SQL} WHERE u.active = 1`, { s: since })
+    .filter((u) => WORK_KEYS.some((k) => u[k] > 0))
+    .sort((x, y) => WORK_KEYS.reduce((n, k) => n + y[k], 0) - WORK_KEYS.reduce((n, k) => n + x[k], 0)) : [];
+  // Dagens logg: allt man själv gjort, senaste först. Öppna uppgifter räknas inte som gjorda.
+  const log = isToday ? all(`SELECT a.id, a.type, a.content, a.outcome, a.lead_id, a.deal_id, coalesce(a.done_at, a.created_at) AS at,
+      l.first_name, l.last_name, l.company FROM activities a LEFT JOIN leads l ON l.id = a.lead_id
+    WHERE a.user_id = ? AND ((a.type = 'task' AND a.done = 1 AND a.done_at >= ?) OR (a.type != 'task' AND a.created_at >= ?))
+    ORDER BY at DESC, a.id DESC LIMIT 15`, user.id, since, since) : [];
+  return { mine, perUser, log };
+}
+
 // ---------- Översikt ----------
 r.get('/dashboard', (req, res) => {
-  const days = Math.min(365, Math.max(7, Number(req.query.days || 30)));
+  // Perioden är antingen "today" (från användarens midnatt, skickad som UTC i `from`) eller ett antal dagar bakåt.
+  const isToday = req.query.days === 'today';
+  const days = isToday ? 1 : Math.min(365, Math.max(7, Number(req.query.days || 30)));
+  const sqlTime = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  const from = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(req.query.from || '') ? req.query.from : sqlTime(new Date().setUTCHours(0, 0, 0, 0));
   const team = can(req.user, 'reports.view');
   const vis = team ? { sql: '1=1', params: [] } : { sql: 'l.owner_id = ?', params: [req.user.id] };
   const dvis = team ? { sql: '1=1', params: [] } : { sql: 'd.owner_id = ?', params: [req.user.id] };
-  const since = `-${days} days`;
+  const since = isToday ? from : sqlTime(Date.now() - days * 864e5);
+  const prevSince = sqlTime(Date.parse(since.replace(' ', 'T') + 'Z') - days * 864e5);
+  // Diagrammet över inkommande leads visar minst en vecka, även för Idag.
+  const chartSince = isToday ? sqlTime(Date.now() - 7 * 864e5) : since;
   const count = (extra, ...p) => get(`SELECT count(*) AS n FROM leads l WHERE ${vis.sql} AND ${extra}`, ...vis.params, ...p).n;
 
-  const newLeads = count("l.created_at >= datetime('now', ?)", since);
-  const prevLeads = count("l.created_at >= datetime('now', ?) AND l.created_at < datetime('now', ?)", `-${days * 2} days`, since);
-  const today = count("date(l.created_at) = date('now')");
-  const converted = count("l.status = 'converted' AND l.created_at >= datetime('now', ?)", since);
+  const newLeads = count("l.created_at >= ?", since);
+  const prevLeads = count("l.created_at >= ? AND l.created_at < ?", prevSince, since);
+  const today = count("l.created_at >= ?", from);
+  const converted = count("l.status = 'converted' AND l.created_at >= ?", since);
   const unassigned = get('SELECT count(*) AS n FROM leads WHERE owner_id IS NULL AND status = \'new\'').n;
   const pipeline = get(`SELECT coalesce(sum(value),0) AS v, count(*) AS n FROM deals d WHERE ${dvis.sql} AND stage NOT IN ('won','lost')`, ...dvis.params);
-  const won = get(`SELECT coalesce(sum(value),0) AS v, count(*) AS n FROM deals d WHERE ${dvis.sql} AND stage = 'won' AND closed_at >= datetime('now', ?)`, ...dvis.params, since);
-  const lost = get(`SELECT count(*) AS n FROM deals d WHERE ${dvis.sql} AND stage = 'lost' AND closed_at >= datetime('now', ?)`, ...dvis.params, since).n;
+  const won = get(`SELECT coalesce(sum(value),0) AS v, count(*) AS n FROM deals d WHERE ${dvis.sql} AND stage = 'won' AND closed_at >= ?`, ...dvis.params, since);
+  const lost = get(`SELECT count(*) AS n FROM deals d WHERE ${dvis.sql} AND stage = 'lost' AND closed_at >= ?`, ...dvis.params, since).n;
 
   const perDay = all(`SELECT date(l.created_at) AS day, l.source, count(*) AS n FROM leads l
-    WHERE ${vis.sql} AND l.created_at >= datetime('now', ?) GROUP BY day, l.source ORDER BY day`, ...vis.params, since);
+    WHERE ${vis.sql} AND l.created_at >= ? GROUP BY day, l.source ORDER BY day`, ...vis.params, chartSince);
   const bySource = all(`SELECT l.source, count(*) AS n, sum(l.status = 'converted') AS converted FROM leads l
-    WHERE ${vis.sql} AND l.created_at >= datetime('now', ?) GROUP BY l.source ORDER BY n DESC`, ...vis.params, since);
+    WHERE ${vis.sql} AND l.created_at >= ? GROUP BY l.source ORDER BY n DESC`, ...vis.params, since);
   const byStatus = all(`SELECT l.status, count(*) AS n FROM leads l WHERE ${vis.sql} GROUP BY l.status`, ...vis.params);
   const stages = all(`SELECT stage, count(*) AS n, coalesce(sum(value),0) AS v FROM deals d WHERE ${dvis.sql} GROUP BY stage`, ...dvis.params);
   const lostReasons = all(`SELECT coalesce(d.lost_reason, 'Ej angiven') AS reason, coalesce(l.source, 'manual') AS source, count(*) AS n, sum(d.value) AS v
-    FROM deals d LEFT JOIN leads l ON l.id = d.lead_id WHERE ${dvis.sql} AND d.stage = 'lost' AND d.closed_at >= datetime('now', ?)
+    FROM deals d LEFT JOIN leads l ON l.id = d.lead_id WHERE ${dvis.sql} AND d.stage = 'lost' AND d.closed_at >= ?
     GROUP BY reason, source`, ...dvis.params, since);
   const leaderboard = team ? all(`SELECT u.id, u.name, u.color,
-      (SELECT count(*) FROM leads WHERE owner_id = u.id AND created_at >= datetime('now', ?)) AS leads,
-      (SELECT count(*) FROM deals WHERE owner_id = u.id AND stage = 'won' AND closed_at >= datetime('now', ?)) AS won,
-      (SELECT coalesce(sum(value),0) FROM deals WHERE owner_id = u.id AND stage = 'won' AND closed_at >= datetime('now', ?)) AS revenue
+      (SELECT count(*) FROM leads WHERE owner_id = u.id AND created_at >= ?) AS leads,
+      (SELECT count(*) FROM deals WHERE owner_id = u.id AND stage = 'won' AND closed_at >= ?) AS won,
+      (SELECT coalesce(sum(value),0) FROM deals WHERE owner_id = u.id AND stage = 'won' AND closed_at >= ?) AS revenue
     FROM users u WHERE u.active = 1 ORDER BY revenue DESC, leads DESC LIMIT 8`, since, since, since) : [];
   const lv = leadVisibilitySql(req.user);
   const recent = all(`SELECT l.*, u.name AS owner_name, u.color AS owner_color FROM leads l LEFT JOIN users u ON u.id = l.owner_id
@@ -490,10 +528,10 @@ r.get('/dashboard', (req, res) => {
     ORDER BY coalesce(a.due_at, '9999') LIMIT 6`, req.user.id, req.user.id);
   const responseTime = get(`SELECT avg((julianday(a.created_at) - julianday(l.created_at)) * 24) AS h FROM leads l
     JOIN activities a ON a.id = (SELECT id FROM activities WHERE lead_id = l.id AND type IN ('call','email','meeting','note') ORDER BY created_at LIMIT 1)
-    WHERE ${vis.sql} AND l.created_at >= datetime('now', ?)`, ...vis.params, since).h;
+    WHERE ${vis.sql} AND l.created_at >= ?`, ...vis.params, since).h;
 
   res.json({
-    team, days,
+    team, days: isToday ? 'today' : days,
     kpi: {
       newLeads, prevLeads, today, unassigned,
       conversionRate: newLeads ? converted / newLeads : 0,
@@ -502,6 +540,7 @@ r.get('/dashboard', (req, res) => {
       responseHours: responseTime,
     },
     perDay, bySource, byStatus, stages, leaderboard, recent, tasks, lostReasons, contactResults: contactResults(req.user, team, since),
+    work: workSummary(req.user, team, since, isToday),
   });
 });
 

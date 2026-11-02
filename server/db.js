@@ -326,6 +326,11 @@ function initSchema(db) {
   addColumn('companies', 'purchasing', 'TEXT');
   // Utfall för samtal och mejl: 'answered' (svarade), 'no_answer' (inget svar) eller NULL (inväntar svar / ej angivet).
   addColumn('activities', 'outcome', 'TEXT');
+  // När en uppgift bockades av, för "Ditt arbete" i Översikt. Sätts av databasen oavsett var uppgiften klarmarkeras.
+  addColumn('activities', 'done_at', 'TEXT');
+  db.exec(`
+  CREATE TRIGGER IF NOT EXISTS activities_done_at AFTER UPDATE OF done ON activities WHEN NEW.done != OLD.done
+  BEGIN UPDATE activities SET done_at = CASE WHEN NEW.done = 1 THEN datetime('now') END WHERE id = NEW.id; END;`);
 
   // Uppföljningsrytm för kontaktade leads: senaste kontaktförsöket och antal uppföljningar sedan första kontakten.
   // Hålls i synk av databasen själv, så att det stämmer oavsett var en kontakt loggas (appen, Gmail, Claude, kalendern).

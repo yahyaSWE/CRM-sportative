@@ -8,6 +8,10 @@ import { Card, PageHeader, Tabs, SourceBadge, StatusBadge, Avatar, Spinner, Empt
 import { SOURCES, STAGES, leadName, sek, num, pct, timeAgo, dueLabel } from '../lib/meta.jsx';
 import { tr, locale } from '../lib/i18n.js';
 import ContactResults from '../components/ContactResults.jsx';
+import WorkSummary from '../components/WorkSummary.jsx';
+
+// Idag räknas från midnatt i användarens tidszon; servern lagrar UTC.
+const midnightUtc = () => new Date(new Date().setHours(0, 0, 0, 0)).toISOString().slice(0, 19).replace('T', ' ');
 
 function Kpi({ label, value, sub, icon: Icon, trend, accent }) {
   return (
@@ -54,7 +58,7 @@ function LostReasons({ rows, days }) {
   return (
     <Card className="p-5">
       <div className="flex items-baseline justify-between mb-4">
-        <div><h3 className="font-semibold text-slate-900">{tr("Varför förlorar vi affärer?")}</h3><p className="text-xs text-slate-500">{total} {tr("förlorade affärer senaste")} {days} {tr("dagarna, per orsak och kanal")}</p></div>
+        <div><h3 className="font-semibold text-slate-900">{tr("Varför förlorar vi affärer?")}</h3><p className="text-xs text-slate-500">{days === 'today' ? tr('{n} förlorade affärer idag, per orsak och kanal', { n: total }) : <>{total} {tr("förlorade affärer senaste")} {days} {tr("dagarna, per orsak och kanal")}</>}</p></div>
         <span className="text-sm text-slate-500">{sek(list.reduce((s, r) => s + r.v, 0))} {tr("förlorat")}</span>
       </div>
       <div className="space-y-3">
@@ -76,13 +80,14 @@ function LostReasons({ rows, days }) {
 export default function Dashboard() {
   const { user } = useApp();
   const [days, setDays] = useState(30);
-  const { data, reload } = useFetch(`/dashboard?days=${days}`);
+  const { data, reload } = useFetch(days === 'today' ? `/dashboard?days=today&from=${encodeURIComponent(midnightUtc())}` : `/dashboard?days=${days}`);
   useLive(['lead', 'refresh'], () => reload());
 
   const series = useMemo(() => {
     if (!data) return [];
     const map = {};
-    for (let i = days - 1; i >= 0; i--) {
+    // Diagrammet visar minst en vecka, även för Idag.
+    for (let i = (days === 'today' ? 7 : days) - 1; i >= 0; i--) {
       const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
       map[d] = { day: d, label: new Date(d).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }), ...Object.fromEntries(Object.keys(SOURCES).map((s) => [s, 0])) };
     }
@@ -101,14 +106,16 @@ export default function Dashboard() {
     <div className="space-y-6">
       <PageHeader title={`${greeting}, ${user.name.split(' ')[0]}`}
         subtitle={data.team ? tr("Så här går det för teamet.") : tr("Så här går det för dig.")}
-        actions={<Tabs value={days} onChange={setDays} tabs={[{ value: 7, label: '7 dagar' }, { value: 30, label: '30 dagar' }, { value: 90, label: '90 dagar' }]} />} />
+        actions={<Tabs value={days} onChange={setDays} tabs={[{ value: 'today', label: 'Idag' }, { value: 7, label: '7 dagar' }, { value: 30, label: '30 dagar' }, { value: 90, label: '90 dagar' }]} />} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi label={tr("Nya leads")} value={num(k.newLeads)} sub={`${k.today} idag`} trend={trend} icon={Users} accent="bg-brand-50 text-brand-600" />
+        <Kpi label={tr("Nya leads")} value={num(k.newLeads)} sub={days === 'today' ? tr('mot {n} igår', { n: k.prevLeads }) : tr('{n} idag', { n: k.today })} trend={trend} icon={Users} accent="bg-brand-50 text-brand-600" />
         <Kpi label={tr("Konverteringsgrad")} value={pct(k.conversionRate)} sub={tr("Vinstgrad affärer {0}", { 0: pct(k.winRate) })} icon={Target} accent="bg-emerald-50 text-emerald-600" />
         <Kpi label={tr("Pipelinevärde")} value={sek(k.pipelineValue)} sub={tr("{0} öppna affärer · {1} vunnet", { 0: k.openDeals, 1: sek(k.wonValue) })} icon={Wallet} accent="bg-violet-50 text-violet-600" />
         <Kpi label={tr("Svarstid")} value={k.responseHours != null ? `${k.responseHours < 1 ? Math.round(k.responseHours * 60) + ' min' : k.responseHours.toFixed(1) + ' h'}` : '–'} sub="snitt till första kontakt" icon={Clock} accent="bg-amber-50 text-amber-600" />
       </div>
+
+      {data.work && <WorkSummary data={data.work} days={days} />}
 
       {data.contactResults && <ContactResults data={data.contactResults} days={days} />}
 
@@ -228,7 +235,7 @@ export default function Dashboard() {
 
       {data.team && data.leaderboard.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-semibold text-slate-900">{tr("Topplista")}</h3><p className="text-xs text-slate-500">{tr("Senaste")} {days} {tr("dagarna")}</p></div>
+          <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-semibold text-slate-900">{tr("Topplista")}</h3><p className="text-xs text-slate-500">{days === 'today' ? tr('Idag') : <>{tr("Senaste")} {days} {tr("dagarna")}</>}</p></div>
           <table className="w-full text-sm">
             <thead><tr className="text-left text-xs text-slate-500"><th className="px-5 py-2 font-medium">{tr("Säljare")}</th><th className="px-5 py-2 font-medium text-right">{tr("Nya leads")}</th><th className="px-5 py-2 font-medium text-right">{tr("Vunna affärer")}</th><th className="px-5 py-2 font-medium text-right">{tr("Intäkt")}</th></tr></thead>
             <tbody className="divide-y divide-slate-100">

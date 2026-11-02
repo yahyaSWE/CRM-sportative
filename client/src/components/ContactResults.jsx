@@ -21,7 +21,7 @@ export default function ContactResults({ data, days }) {
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h3 className="font-semibold text-slate-900">{tr('Kontaktresultat')}</h3>
-          <p className="text-xs text-slate-500">{tr('Leads som kontaktats senaste {days} dagarna – hur många svarade och gick vidare', { days })}</p>
+          <p className="text-xs text-slate-500">{days === 'today' ? tr('Leads som kontaktats idag – hur många svarade och gick vidare') : tr('Leads som kontaktats senaste {days} dagarna – hur många svarade och gick vidare', { days })}</p>
         </div>
         {!empty && <p className="text-sm text-slate-600">{tr('Från kontakt till kvalificerad:')} <span className="font-semibold tabular-nums text-slate-900">{pct(rate(data.qualified, data.contacted))}</span></p>}
       </div>
