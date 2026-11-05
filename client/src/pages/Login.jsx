@@ -35,11 +35,9 @@ export default function Login() {
   return (
     <div className="min-h-full grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between bg-slate-950 p-12 text-white relative overflow-hidden">
-        <div className="absolute -top-40 -right-40 size-[520px] rounded-full bg-brand-600/30 blur-3xl" />
-        <div className="absolute -bottom-40 -left-20 size-[420px] rounded-full bg-violet-600/20 blur-3xl" />
         <div className="relative flex items-center gap-2.5">
-          <div className="grid place-items-center size-9 rounded-lg bg-gradient-to-br from-brand-500 to-violet-500">
-            <svg viewBox="0 0 32 32" className="size-5"><path d="M7 22l6-7 4 3 8-9" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <div className="grid place-items-center size-9 rounded-lg bg-brand-600">
+            <svg viewBox="0 0 32 32" className="size-5" aria-hidden="true"><path d="M7 22l6-7 4 3 8-9" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </div>
           <span className="text-lg font-semibold">{tr("LeadFlow")}</span>
         </div>
@@ -54,7 +52,7 @@ export default function Login() {
             ))}
           </div>
         </div>
-        <p className="relative text-xs text-slate-500">© {new Date().getFullYear()} {tr("LeadFlow CRM")}</p>
+        <p className="relative text-xs text-slate-400">© {new Date().getFullYear()} {tr("LeadFlow CRM")}</p>
       </div>
       <div className="relative flex items-center justify-center p-6">
         {/* Språkval innan inloggning; efter inloggning gäller kontots sparade språk. */}
@@ -71,10 +69,10 @@ export default function Login() {
             <label className="block"><span className="label">{tr("Ditt namn")}</span><input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus required /></label>
             <label className="block"><span className="label">{tr("Företagets namn")}</span><input className="input" value={company} onChange={(e) => setCompany(e.target.value)} placeholder={tr("t.ex. Sportative Event AB")} /></label>
             <label className="block"><span className="label">{tr("E-post")}</span><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={setup.adminEmail || ''} required />
-              {setup.adminEmail && <span className="mt-1 block text-xs text-slate-400">{tr("Måste vara adressen i ADMIN_EMAIL (")}{setup.adminEmail})</span>}</label>
+              {setup.adminEmail && <span className="mt-1 block text-xs text-slate-500">{tr("Måste vara adressen i ADMIN_EMAIL (")}{setup.adminEmail})</span>}</label>
             <label className="block"><span className="label">{tr("Lösenord (minst 10 tecken)")}</span><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} required autoComplete="new-password" /></label>
             <label className="block"><span className="label">{tr("Upprepa lösenord")}</span><input className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required autoComplete="new-password" /></label>
-            {error && <p className="text-sm text-rose-600">{error}</p>}
+            {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
             <Button type="submit" className="w-full py-2.5" loading={loading}>{tr("Skapa konto och logga in")}</Button>
           </div>
         </form>
@@ -83,9 +81,9 @@ export default function Login() {
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{tr("Logga in")}</h2>
           <p className="mt-1 text-sm text-slate-500">{tr("Välkommen tillbaka! Ange dina uppgifter.")}</p>
           <div className="mt-8 space-y-4">
-            <label className="block"><span className="label">{tr("E-post")}</span><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus required /></label>
-            <label className="block"><span className="label">{tr("Lösenord")}</span><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
-            {error && <p className="text-sm text-rose-600">{error}</p>}
+            <label className="block"><span className="label">{tr("E-post")}</span><input className="input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus required /></label>
+            <label className="block"><span className="label">{tr("Lösenord")}</span><input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+            {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
             <Button type="submit" className="w-full py-2.5" loading={loading}>{tr("Logga in")}</Button>
           </div>
           {setup?.demo && (

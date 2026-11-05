@@ -7,12 +7,12 @@ import { timeAgo, formatDateTime, dueLabel, toSqlDate } from '../lib/meta.jsx';
 import { tr, translateStored } from '../lib/i18n.js';
 
 export const ACT = {
-  note: { label: tr("Anteckning"), icon: StickyNote, cls: 'bg-amber-50 text-amber-600' },
-  call: { label: tr("Samtal"), icon: PhoneCall, cls: 'bg-emerald-50 text-emerald-600' },
+  note: { label: tr("Anteckning"), icon: StickyNote, cls: 'bg-amber-50 text-amber-700' },
+  call: { label: tr("Samtal"), icon: PhoneCall, cls: 'bg-emerald-50 text-emerald-700' },
   email: { label: tr("E-post"), icon: Mail, cls: 'bg-sky-50 text-sky-600' },
   meeting: { label: tr("Möte"), icon: CalendarClock, cls: 'bg-violet-50 text-violet-600' },
   task: { label: tr("Uppgift"), icon: CheckSquare, cls: 'bg-brand-50 text-brand-600' },
-  system: { label: tr("System"), icon: Sparkles, cls: 'bg-slate-100 text-slate-500' },
+  system: { label: tr("System"), icon: Sparkles, cls: 'bg-slate-100 text-slate-600' },
 };
 
 // Utfall på samtal och mejl. Mejl utan utfall "inväntar svar"; samtal utan utfall visas utan märkning.
@@ -49,9 +49,9 @@ export function ActivityComposer({ onSubmit, hint }) {
       </div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
         placeholder={type === 'task' ? tr("Vad behöver göras?") : type === 'call' ? tr("Vad pratade ni om?") : type === 'meeting' ? tr("Vad kom ni fram till?") : tr("Skriv en anteckning…")}
-        className="w-full resize-none text-sm outline-none placeholder:text-slate-400 px-1" />
+        className="w-full resize-none text-sm outline-none placeholder:text-slate-500 px-1" />
       <div className="flex items-center justify-end gap-2">
-        {hint && <span className="mr-auto text-[11px] text-slate-400">{hint}</span>}
+        {hint && <span className="mr-auto text-[11px] text-slate-500">{hint}</span>}
         {['call', 'email'].includes(type) && (
           <span className="mr-auto inline-flex rounded-md bg-slate-100 p-0.5" role="radiogroup" aria-label={tr("Utfall")}>
             {(type === 'call' ? ['answered', 'no_answer'] : [null, 'answered']).map((o) => {
@@ -93,7 +93,7 @@ export function Timeline({ activities, onToggleTask, onDelete, onOutcome, curren
   const { user, can } = useApp();
   const [del, setDel] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  if (!activities.length) return <p className="text-sm text-slate-400">{tr("Ingen historik än.")}</p>;
+  if (!activities.length) return <p className="text-sm text-slate-500">{tr("Ingen historik än.")}</p>;
   const deletable = (a) => onDelete && a.type !== 'system' && (a.user_id === user?.id || can('leads.edit_all'));
   const confirmDelete = async () => {
     setDeleting(true);
@@ -114,7 +114,7 @@ export function Timeline({ activities, onToggleTask, onDelete, onOutcome, curren
                 <span className="font-medium text-slate-700">{a.user_name || tr("LeadFlow")}</span><span>·</span><span>{m.label}</span><span>·</span>
                 <span title={formatDateTime(a.created_at)}>{timeAgo(a.created_at)}</span>
                 {outcomeKey(a) && <OutcomeChip a={a} onChange={deletable(a) || (onOutcome && a.type !== 'system') ? onOutcome : null} />}
-                {deletable(a) && <button onClick={() => setDel(a)} title={tr("Radera")} className="ml-auto rounded p-0.5 text-slate-300 opacity-0 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 focus:opacity-100"><Trash2 className="size-3.5" /></button>}
+                {deletable(a) && <button onClick={() => setDel(a)} title={tr("Radera")} className="ml-auto rounded p-0.5 text-slate-400 opacity-0 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 focus:opacity-100"><Trash2 className="size-3.5" /></button>}
                 {a.via === 'claude' && <span className="rounded bg-orange-50 px-1.5 py-px text-[11px] font-medium text-orange-700">{tr('via Claude')}</span>}
                 {a.deal_id && a.deal_id !== currentDealId && a.deal_title && (
                   <Link to={`/pipeline/${a.deal_id}`} className="inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-px text-[11px] font-medium text-violet-700 hover:bg-violet-100">
@@ -128,8 +128,8 @@ export function Timeline({ activities, onToggleTask, onDelete, onOutcome, curren
               </div>
               {a.type === 'task' ? (
                 <button onClick={() => onToggleTask?.(a)} className="mt-1 flex items-start gap-2 text-left">
-                  {a.done ? <CheckCircle2 className="size-4 text-emerald-500 mt-0.5" /> : <Circle className="size-4 text-slate-300 mt-0.5 hover:text-emerald-500" />}
-                  <span className={cx('text-sm', a.done ? 'line-through text-slate-400' : 'text-slate-700')}>{a.content}{due && <span className={cx('ml-2 text-xs', due.cls)}>{due.text}</span>}</span>
+                  {a.done ? <CheckCircle2 className="size-4 text-emerald-500 mt-0.5" /> : <Circle className="size-4 text-slate-500 mt-0.5 hover:text-emerald-600" />}
+                  <span className={cx('text-sm', a.done ? 'line-through text-slate-500' : 'text-slate-700')}>{a.content}{due && <span className={cx('ml-2 text-xs', due.cls)}>{due.text}</span>}</span>
                 </button>
               ) : <p className={cx('mt-1 text-sm whitespace-pre-wrap', a.type === 'system' ? 'text-slate-500' : 'text-slate-700')}>{['system', 'meeting'].includes(a.type) ? translateStored(a.content) : a.content}</p>}
             </div>

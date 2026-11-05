@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, MessageSquare, Trophy, XCircle, Clock, CalendarDays, AlertTriangle, ArrowUpRight, RotateCcw, CalendarPlus } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
-import { Avatar, Button, SourceBadge, Select, Spinner, Modal, Field, Input, Textarea, Confirm, Tabs, useToast, cx } from './ui.jsx';
+import { Avatar, Button, SourceBadge, Select, Spinner, Modal, Field, Input, Textarea, Confirm, Tabs, useToast, drawerRef, cx } from './ui.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
 import MeetingModal from './MeetingModal.jsx';
 import LeadMeetings from './LeadMeetings.jsx';
@@ -50,8 +50,8 @@ function StageBar({ stage, onChange, disabled }) {
         return (
           <button key={s.key} disabled={disabled} onClick={() => onChange(s.key)} title={s.label}
             className={cx('group relative flex-1 h-9 text-xs font-medium transition first:rounded-l-lg last:rounded-r-lg',
-              active ? (stage === 'won' ? 'bg-emerald-500 text-white' : 'bg-brand-600 text-white') : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
-              stage === 'lost' && 'bg-slate-100 text-slate-400', s.key === stage && 'ring-2 ring-offset-1 ring-brand-300')}>
+              active ? (stage === 'won' ? 'bg-emerald-500 text-white' : 'bg-brand-600 text-white') : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+              stage === 'lost' && 'bg-slate-100 text-slate-600', s.key === stage && 'ring-2 ring-offset-1 ring-brand-300')}>
             <span className="truncate px-2">{s.label}</span>
           </button>
         );
@@ -114,8 +114,8 @@ export default function DealDrawer({ id, onClose, onChanged }) {
 
   return (
     <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl animate-slide-in flex flex-col">
+      <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} aria-hidden="true" />
+      <div ref={drawerRef} role="dialog" aria-modal="true" aria-label={tr('Affär')} tabIndex={-1} className="absolute inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl animate-slide-in flex flex-col outline-none">
         {!deal ? <div className="flex-1 grid place-items-center"><Spinner /></div> : (
           <>
             <div className="px-6 pt-5 pb-5 border-b border-slate-100 space-y-4">
@@ -129,7 +129,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                     {lead && <Link to={`/leads/${lead.id}`} className="inline-flex items-center gap-1 hover:text-brand-600">{leadName(lead)}<ArrowUpRight className="size-3.5" /></Link>}
                   </p>
                 </div>
-                <button onClick={onClose} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"><X className="size-5" /></button>
+                <button onClick={onClose} aria-label={tr('Stäng')} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="size-5" /></button>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -144,7 +144,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                 <div className="rounded-lg bg-slate-50 px-3 py-2">
                   <p className="text-[11px] text-slate-500">{tr("Förväntat avslut")}</p>
                   <InlineEdit type="date" value={deal.expected_close || ''} disabled={!editable} onSave={(v) => patch({ expected_close: v || null })}
-                    render={(v) => v ? formatDate(v) : <span className="text-slate-400">{tr("Sätt datum")}</span>} className="text-sm font-medium text-slate-800" />
+                    render={(v) => v ? formatDate(v) : <span className="text-slate-500">{tr("Sätt datum")}</span>} className="text-sm font-medium text-slate-800" />
                 </div>
                 <div className={cx('rounded-lg px-3 py-2', isOpen && inStage >= 14 ? 'bg-amber-50' : 'bg-slate-50')}>
                   <p className="text-[11px] text-slate-500">{tr("I steget")}</p>
@@ -155,7 +155,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
               <div className="space-y-2">
                 <StageBar stage={deal.stage} onChange={setStage} disabled={!editable} />
                 <div className="flex items-center gap-2">
-                  {deal.stage === 'won' && <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600"><Trophy className="size-4" />{tr("Vunnen")} {formatDate(deal.closed_at)}</span>}
+                  {deal.stage === 'won' && <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700"><Trophy className="size-4" />{tr("Vunnen")} {formatDate(deal.closed_at)}</span>}
                   {deal.stage === 'lost' && <span className="inline-flex items-center gap-1.5 text-sm font-medium text-rose-600"><XCircle className="size-4" />{tr("Förlorad –")} {deal.lost_reason ? tr(deal.lost_reason) : tr("ingen anledning angiven")}</span>}
                   {editable && (isOpen ? (
                     <div className="ml-auto flex gap-2">
@@ -185,7 +185,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                 ))}
                 {editable && <ActivityComposer onSubmit={addActivity} hint={lead ? tr("Syns även på leadet") : undefined} />}
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje")}</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">{tr("Tidslinje")}</h3>
                   <Timeline activities={deal.activities} onToggleTask={toggleTask} onDelete={deleteActivity} onOutcome={editable ? setOutcome : null} currentDealId={deal.id} />
                 </div>
                 </>}
@@ -206,16 +206,16 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                       <Link to={`/leads/${lead.id}`} className="block text-sm font-medium text-slate-800 hover:text-brand-600">{leadName(lead)}</Link>
                       {lead.title && <p className="text-xs text-slate-500">{lead.title}</p>}
                       <div className="mt-2 space-y-1.5 text-sm">
-                        {lead.phone && <a href={`tel:${lead.phone}`} className="flex items-center gap-2 text-brand-600 hover:underline"><Phone className="size-4 text-slate-400" />{lead.phone}</a>}
-                        {lead.email && <a href={`mailto:${lead.email}`} className="flex items-center gap-2 text-brand-600 hover:underline truncate"><Mail className="size-4 text-slate-400 shrink-0" /><span className="truncate">{lead.email}</span></a>}
-                        {lead.company && <p className="flex items-center gap-2 text-slate-700"><Building2 className="size-4 text-slate-400" />{lead.company}</p>}
-                        {lead.city && <p className="flex items-center gap-2 text-slate-700"><MapPin className="size-4 text-slate-400" />{lead.city}</p>}
+                        {lead.phone && <a href={`tel:${lead.phone}`} className="flex items-center gap-2 text-brand-600 hover:underline"><Phone className="size-4 text-slate-500" />{lead.phone}</a>}
+                        {lead.email && <a href={`mailto:${lead.email}`} className="flex items-center gap-2 text-brand-600 hover:underline truncate"><Mail className="size-4 text-slate-500 shrink-0" /><span className="truncate">{lead.email}</span></a>}
+                        {lead.company && <p className="flex items-center gap-2 text-slate-700"><Building2 className="size-4 text-slate-500" />{lead.company}</p>}
+                        {lead.city && <p className="flex items-center gap-2 text-slate-700"><MapPin className="size-4 text-slate-500" />{lead.city}</p>}
                       </div>
                     </div>
                     <div>
                       <p className="label">{tr("Källa")}</p>
                       <SourceBadge source={lead.source} detail={lead.source_detail} />
-                      <p className="mt-1 text-xs text-slate-400">{tr("Inkom")} {timeAgo(lead.created_at)}</p>
+                      <p className="mt-1 text-xs text-slate-500">{tr("Inkom")} {timeAgo(lead.created_at)}</p>
                     </div>
                     {lead.message && (
                       <div>
@@ -226,7 +226,7 @@ export default function DealDrawer({ id, onClose, onChanged }) {
                     {Object.keys(lead.fields).length > 0 && (
                       <div>
                         <p className="label">{tr("Formulärsvar")}</p>
-                        <dl className="space-y-2">{Object.entries(lead.fields).map(([k, v]) => <div key={k}><dt className="text-[11px] text-slate-400">{k.replace(/_/g, ' ')}</dt><dd className="text-sm text-slate-700 break-words">{v}</dd></div>)}</dl>
+                        <dl className="space-y-2">{Object.entries(lead.fields).map(([k, v]) => <div key={k}><dt className="text-[11px] text-slate-500">{k.replace(/_/g, ' ')}</dt><dd className="text-sm text-slate-700 break-words">{v}</dd></div>)}</dl>
                       </div>
                     )}
                   </>

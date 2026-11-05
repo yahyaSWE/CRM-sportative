@@ -29,7 +29,7 @@ function SettingsModal({ open, onClose, onSaved }) {
       else { toast(tr("Inställningarna sparades")); onClose(); }
     } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
   };
-  const Result = ({ r }) => r && <p className={cx('mt-1 text-xs', r.ok ? 'text-emerald-600' : 'text-rose-600')}>{r.ok ? '✓ ' : '✗ '}{r.message}</p>;
+  const Result = ({ r }) => r && <p className={cx('mt-1 text-xs', r.ok ? 'text-emerald-700' : 'text-rose-600')}>{r.ok ? '✓ ' : '✗ '}{r.message}</p>;
   return (
     <Modal open={open} onClose={onClose} wide title={tr("Datakällor för prospektering")} description={tr("Nycklar lagras krypterat.")}
       footer={<><Button variant="secondary" onClick={() => save(false)} loading={busy}>{tr("Spara")}</Button><Button onClick={() => save(true)} loading={busy}>{tr("Spara och testa")}</Button></>}>
@@ -51,7 +51,7 @@ function SettingsModal({ open, onClose, onSaved }) {
           <Result r={test?.bolagsverket} />
         </section>
         <div className="flex gap-3 rounded-xl bg-slate-50 p-4 text-xs text-slate-600">
-          <Info className="size-4 shrink-0 text-slate-400" />
+          <Info className="size-4 shrink-0 text-slate-500" />
           <p>{tr("Allabolag och Google Maps tillåter inte skrapning, därför används officiella API:er. Google tillåter inte att platsdata sparas permanent – företag du inte importerar rensas automatiskt efter")} {cfg.retentionDays} {tr("dagar.")}</p>
         </div>
       </div>
@@ -86,7 +86,7 @@ function SearchForm({ onDone }) {
           <Button type="submit" icon={Search} loading={busy} className="h-[38px]">{tr("Sök företag")}</Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-400">{tr("Exempel:")}</span>
+          <span className="text-xs text-slate-500">{tr("Exempel:")}</span>
           {EXAMPLES.map(([q, l]) => <button key={q} type="button" onClick={() => setF({ ...f, query: q, location: l })} className="rounded-full border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600 hover:border-brand-300 hover:text-brand-700">{q} i {l}</button>)}
           <button type="button" onClick={() => setAdv(!adv)} className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900"><SlidersHorizontal className="size-3.5" />{tr("Filter")}{adv ? ' ▴' : ' ▾'}</button>
         </div>
@@ -118,8 +118,8 @@ function OrgNrInput({ p, onSaved }) {
   };
   return (
     <form onSubmit={(e) => { e.preventDefault(); save(); }} className="flex gap-1">
-      <input autoFocus value={v} onChange={(e) => setV(e.target.value)} onBlur={() => !v && setEdit(false)} placeholder={tr("556xxx-xxxx")} className="input !py-0.5 !px-2 text-xs w-28" />
-      <button className="text-brand-600"><Check className="size-4" /></button>
+      <input autoFocus value={v} onChange={(e) => setV(e.target.value)} onBlur={() => !v && setEdit(false)} placeholder={tr("556xxx-xxxx")} aria-label={tr("Organisationsnummer")} className="input !py-0.5 !px-2 text-xs w-28" />
+      <button className="rounded p-1 text-brand-700" aria-label={tr("Spara org.nr")}><Check className="size-4" /></button>
     </form>
   );
 }
@@ -134,13 +134,13 @@ function ProspectRow({ p, checked, onToggle, reload }) {
       <td className="px-4 py-3 min-w-56">
         <p className="font-medium text-slate-800">{p.name}</p>
         <p className="text-xs text-slate-500">{p.category}{p.city && ` · ${p.city}`}</p>
-        {p.rating != null && <p className="mt-1 inline-flex items-center gap-1 text-xs text-slate-600"><Star className="size-3 fill-amber-400 text-amber-400" />{String(p.rating).replace('.', ',')} <span className="text-slate-400">({p.reviews})</span></p>}
+        {p.rating != null && <p className="mt-1 inline-flex items-center gap-1 text-xs text-slate-600"><Star className="size-3 fill-amber-400 text-amber-400" />{String(p.rating).replace('.', ',')} <span className="text-slate-500">({p.reviews})</span></p>}
         {p.demo && <Badge className="ml-2 bg-amber-50 text-amber-700 ring-amber-600/20">{tr("Exempel")}</Badge>}
       </td>
       <td className="px-4 py-3 text-xs space-y-1 min-w-48">
-        {p.phone && <p className="flex items-center gap-1.5 text-slate-700"><Phone className="size-3 text-slate-400" />{p.phone}</p>}
-        {p.email ? <p className="flex items-center gap-1.5 text-slate-700"><Mail className="size-3 text-slate-400" />{p.email}</p>
-          : enriching ? <p className="flex items-center gap-1.5 text-slate-400"><Loader2 className="size-3 animate-spin" />{tr("Söker e-post…")}</p> : <p className="text-slate-400">{tr("Ingen e-post hittad")}</p>}
+        {p.phone && <p className="flex items-center gap-1.5 text-slate-700"><Phone className="size-3 text-slate-500" />{p.phone}</p>}
+        {p.email ? <p className="flex items-center gap-1.5 text-slate-700"><Mail className="size-3 text-slate-500" />{p.email}</p>
+          : enriching ? <p className="flex items-center gap-1.5 text-slate-500"><Loader2 className="size-3 animate-spin" />{tr("Söker e-post…")}</p> : <p className="text-slate-500">{tr("Ingen e-post hittad")}</p>}
         {p.website && <a href={p.website} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-brand-600 hover:underline truncate max-w-56"><Globe className="size-3" />{p.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</a>}
       </td>
       <td className="px-4 py-3 text-xs min-w-52">
@@ -149,20 +149,20 @@ function ProspectRow({ p, checked, onToggle, reload }) {
             <p className="font-medium text-slate-700 tabular-nums">{p.org_nr}</p>
             {c.form && <p className="text-slate-500">{c.form}{c.registered && ` · sedan ${String(c.registered).slice(0, 4)}`}</p>}
             {c.sni?.[0] && <p className="text-slate-500 truncate max-w-52" title={c.sni.map((s) => `${s.kod} ${s.text}`).join(', ')}>{c.sni[0].text}</p>}
-            {c.source === 'bolagsverket' && <p className="inline-flex items-center gap-1 text-emerald-600"><ShieldCheck className="size-3" />{tr("Verifierad hos Bolagsverket")}</p>}
+            {c.source === 'bolagsverket' && <p className="inline-flex items-center gap-1 text-emerald-700"><ShieldCheck className="size-3" />{tr("Verifierad hos Bolagsverket")}</p>}
             {c.deregistered && <p className="text-rose-600 font-medium">{tr("Avregistrerat bolag")}</p>}
           </>
-        ) : enriching ? <span className="text-slate-400">{tr("Letar…")}</span> : p.status === 'new' ? <OrgNrInput p={p} onSaved={reload} /> : <span className="text-slate-300">—</span>}
-        {p.enrich_note && !enriching && <p className="mt-1 text-[11px] text-slate-400">{p.enrich_note}</p>}
+        ) : enriching ? <span className="text-slate-500">{tr("Letar…")}</span> : p.status === 'new' ? <OrgNrInput p={p} onSaved={reload} /> : <span className="text-slate-400">—</span>}
+        {p.enrich_note && !enriching && <p className="mt-1 text-[11px] text-slate-500">{p.enrich_note}</p>}
       </td>
       <td className="px-4 py-3 text-xs min-w-40">
-        {p.status === 'imported' && p.lead_id && <Link to={`/leads/${p.lead_id}`} className="inline-flex items-center gap-1 font-medium text-emerald-600 hover:underline"><Check className="size-3.5" />{tr("Importerad")}</Link>}
+        {p.status === 'imported' && p.lead_id && <Link to={`/leads/${p.lead_id}`} className="inline-flex items-center gap-1 font-medium text-emerald-700 hover:underline"><Check className="size-3.5" />{tr("Importerad")}</Link>}
         {dup && p.status !== 'imported' && (
           <Link to={`/leads/${dup}`} className="inline-flex items-start gap-1 text-amber-700 hover:underline">
             <AlertTriangle className="size-3.5 mt-px shrink-0" /><span>{tr("Finns redan")}{p.dup_owner ? ` · ${p.dup_owner}` : ''}</span>
           </Link>
         )}
-        {p.status === 'rejected' && <span className="text-slate-400">{tr("Avvisad")}</span>}
+        {p.status === 'rejected' && <span className="text-slate-500">{tr("Avvisad")}</span>}
         {p.maps_url && <a href={p.maps_url} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-slate-500 hover:text-brand-600">{tr("Google Maps")}<ExternalLink className="size-3" /></a>}
       </td>
     </tr>
@@ -234,7 +234,7 @@ export default function Prospecting() {
 
       <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
         <aside className="space-y-2">
-          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Sökningar")}</h3>
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{tr("Sökningar")}</h3>
           <button onClick={() => setSp({})} className={cx('w-full rounded-lg px-3 py-2 text-left text-sm', !searchId ? 'bg-white shadow-sm ring-1 ring-slate-200 font-medium' : 'text-slate-600 hover:bg-white/60')}>{tr("Alla sökningar")}</button>
           {!searches.data ? <Spinner /> : searches.data.map((s) => (
             <div key={s.id} className={cx('group rounded-lg px-3 py-2.5 cursor-pointer', String(s.id) === searchId ? 'bg-white shadow-sm ring-1 ring-slate-200' : 'hover:bg-white/60')} onClick={() => setSp({ search: String(s.id) })}>
@@ -246,11 +246,11 @@ export default function Prospecting() {
               <p className="mt-0.5 text-xs text-slate-500">{s.imported} {tr("importerade ·")} {s.last_run_at ? timeAgo(s.last_run_at) : tr("aldrig körd")}</p>
               {s.status === 'error' && <p className="text-xs text-rose-600 truncate" title={s.last_error}>{s.last_error}</p>}
               <div className="mt-1.5 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                <button onClick={() => toggleWeekly(s)} className={cx('inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px]', s.schedule === 'weekly' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-400 hover:bg-slate-100')} title={tr("Kör automatiskt varje vecka")}>
+                <button onClick={() => toggleWeekly(s)} className={cx('inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px]', s.schedule === 'weekly' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500 hover:bg-slate-100')} title={tr("Kör automatiskt varje vecka")}>
                   <Repeat className="size-3" />{s.schedule === 'weekly' ? tr("Veckobevakning") : tr("Bevaka")}
                 </button>
-                <button onClick={() => rerun(s)} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" title={tr("Kör igen")}><Play className="size-3" /></button>
-                <button onClick={() => setDel(s)} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 ml-auto opacity-0 group-hover:opacity-100" title={tr("Ta bort")}><Trash2 className="size-3" /></button>
+                <button onClick={() => rerun(s)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700" title={tr("Kör igen")}><Play className="size-3" /></button>
+                <button onClick={() => setDel(s)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-rose-600 ml-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100" title={tr("Ta bort")}><Trash2 className="size-3" /></button>
               </div>
             </div>
           ))}
@@ -295,7 +295,7 @@ export default function Prospecting() {
       </div>
 
       <p className="flex items-start gap-2 text-xs text-slate-500 max-w-3xl">
-        <ShieldCheck className="size-4 shrink-0 text-slate-400" />
+        <ShieldCheck className="size-4 shrink-0 text-slate-500" />
         {tr("Kalla leads från prospektering märks \"Kall lead\" och får lägre startpoäng än förfrågningar. Kontaktar du enskilda firmor eller namngivna personer gäller GDPR: informera om var uppgifterna kommer ifrån vid första kontakten och respektera önskemål om att inte bli kontaktad.")}
       </p>
 

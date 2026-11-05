@@ -33,7 +33,7 @@ function SignaturePad({ onChange }) {
     <div>
       <div className="relative rounded-xl border-2 border-dashed border-slate-300 bg-white">
         <canvas ref={ref} width={600} height={180} className="block w-full h-36 touch-none cursor-crosshair" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up} />
-        {empty && <span className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-slate-400">Rita din signatur här</span>}
+        {empty && <span className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-slate-500">Rita din signatur här</span>}
         <span className="pointer-events-none absolute bottom-6 left-6 right-6 border-b border-slate-200" />
       </div>
       {!empty && <button type="button" onClick={clear} className="mt-1 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"><Eraser className="size-3" />Rensa</button>}
@@ -71,8 +71,8 @@ export default function PublicQuote() {
     catch (err) { setFormError(err.message); } finally { setBusy(false); }
   };
 
-  if (error) return <div className="min-h-full grid place-items-center p-6 text-center"><div><XCircle className="mx-auto size-10 text-slate-300" /><p className="mt-3 font-semibold text-slate-800">{error}</p><p className="text-sm text-slate-500">Kontakta din kontaktperson för en ny länk.</p></div></div>;
-  if (!q) return <div className="min-h-full grid place-items-center"><Loader2 className="size-6 animate-spin text-slate-400" /></div>;
+  if (error) return <div className="min-h-full grid place-items-center p-6 text-center"><div><XCircle className="mx-auto size-10 text-slate-400" /><p className="mt-3 font-semibold text-slate-800">{error}</p><p className="text-sm text-slate-500">Kontakta din kontaktperson för en ny länk.</p></div></div>;
+  if (!q) return <div className="min-h-full grid place-items-center"><Loader2 className="size-6 animate-spin text-slate-500" /></div>;
   const c = q.content;
   const open = !['accepted', 'declined', 'expired'].includes(q.status);
 
@@ -97,7 +97,7 @@ export default function PublicQuote() {
               <p className="mt-1 text-sm text-slate-500 whitespace-pre-line">{[c.seller?.address, c.seller?.org_nr && `Org.nr ${c.seller.org_nr}`, c.seller?.website].filter(Boolean).join('\n')}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Offert</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Offert</p>
               <p className="text-lg font-semibold text-slate-900">{q.number}</p>
               <p className="text-sm text-slate-500">Datum {date(q.created_at)}</p>
               <p className="text-sm text-slate-500">Giltig t.o.m. {date(q.valid_until)}</p>
@@ -106,14 +106,14 @@ export default function PublicQuote() {
 
           <div className="grid sm:grid-cols-2 gap-6 px-6 sm:px-10 py-6 text-sm">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Till</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Till</p>
               {c.customer?.company && <p className="font-medium text-slate-900">{c.customer.company}</p>}
               {c.customer?.org_nr && <p className="text-slate-600">Org.nr {c.customer.org_nr}</p>}
               {c.customer?.address && <p className="text-slate-600">{c.customer.address}</p>}
               {c.customer?.name && <p className="text-slate-600">Att: {c.customer.name}</p>}
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Din kontaktperson</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Din kontaktperson</p>
               <p className="font-medium text-slate-900">{c.contact?.name}</p>
               {c.contact?.email && <a href={`mailto:${c.contact.email}`} className="text-brand-600">{c.contact.email}</a>}
               {c.seller?.phone && <p className="text-slate-600">{c.seller.phone}</p>}
@@ -152,18 +152,18 @@ export default function PublicQuote() {
 
           {q.terms && (
             <div className="px-6 sm:px-10 pb-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Villkor</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Villkor</p>
               <p className="text-sm text-slate-600 whitespace-pre-line">{q.terms}</p>
             </div>
           )}
 
           {q.status === 'accepted' && (
             <div className="border-t border-slate-100 px-6 sm:px-10 py-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Signerad</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Signerad</p>
               <img src={q.signed.signature} alt="Signatur" className="h-20" />
               <p className="text-sm text-slate-700">{q.signed.name}{q.signed.title && `, ${q.signed.title}`}</p>
               <p className="text-xs text-slate-500">{q.signed.email} · {dateTime(q.signed.at)}</p>
-              <p className="mt-2 text-[11px] text-slate-400 break-all">Kontrollsumma {q.content_hash}</p>
+              <p className="mt-2 text-[11px] text-slate-500 break-all">Kontrollsumma {q.content_hash}</p>
             </div>
           )}
           {q.branding?.footer && <p className="border-t border-slate-100 px-6 sm:px-10 py-4 text-xs text-slate-500">{q.branding.footer}</p>}
@@ -196,7 +196,7 @@ export default function PublicQuote() {
               <button type="button" onClick={() => setDeclining(true)} className="text-sm text-slate-500 hover:text-slate-700">Tacka nej</button>
               <a href={`/api/public/quotes/${token}/pdf`} className="ml-auto inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><Download className="size-4" />Ladda ner PDF</a>
             </div>
-            <p className="text-[11px] text-slate-400">Elektronisk underskrift. Namn, e-post, tidpunkt, IP-adress och en kontrollsumma av offerten sparas som bevis.</p>
+            <p className="text-[11px] text-slate-500">Elektronisk underskrift. Namn, e-post, tidpunkt, IP-adress och en kontrollsumma av offerten sparas som bevis.</p>
           </form>
         )}
         {open && declining && (
@@ -210,7 +210,7 @@ export default function PublicQuote() {
           </div>
         )}
         {!open && <p className="flex justify-center gap-5 print:hidden"><a href={`/api/public/quotes/${token}/pdf`} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><Download className="size-4" />Ladda ner PDF</a><button onClick={() => window.print()} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><Printer className="size-4" />Skriv ut</button></p>}
-        <p className="text-center text-[11px] text-slate-400 print:hidden">Skickad via LeadFlow CRM</p>
+        <p className="text-center text-[11px] text-slate-500 print:hidden">Skickad via LeadFlow CRM</p>
       </div>
     </div>
   );

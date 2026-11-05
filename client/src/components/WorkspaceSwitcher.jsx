@@ -54,10 +54,10 @@ export default function WorkspaceSwitcher() {
         className={cx('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition', (multiple || canCreate) ? 'hover:bg-white/5' : 'cursor-default')}>
         <span className="grid place-items-center size-7 shrink-0 rounded-md bg-white/10 text-[11px] font-bold text-white">{initials(workspace.name)}</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[11px] text-slate-500">{tr('Arbetsyta')}</span>
+          <span className="block text-[11px] text-slate-400">{tr('Arbetsyta')}</span>
           <span className="block truncate text-sm font-medium text-white">{workspace.name}</span>
         </span>
-        {(multiple || canCreate) && <ChevronsUpDown className="size-4 shrink-0 text-slate-500" />}
+        {(multiple || canCreate) && <ChevronsUpDown className="size-4 shrink-0 text-slate-400" aria-hidden="true" />}
       </button>
       {open && (
         <div className="absolute inset-x-3 top-full z-40 mt-1 overflow-hidden rounded-lg bg-white py-1 shadow-xl ring-1 ring-slate-900/10">

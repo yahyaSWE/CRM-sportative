@@ -50,7 +50,7 @@ export default function Inflow() {
                     <p className="text-xs text-slate-500">{r.integration_name || SOURCES[r.source]?.label || r.source} · <span title={formatDateTime(r.created_at)}>{timeAgo(r.created_at)}</span></p>
                   </div>
                   <Badge className={cls}>{label}</Badge>
-                  <button onClick={async () => setPayload(await api.get(`/ingest-log/${r.id}`))} className="text-slate-400 hover:text-slate-700" title={tr("Visa rådata")}><Code2 className="size-4" /></button>
+                  <button onClick={async () => setPayload(await api.get(`/ingest-log/${r.id}`))} className="text-slate-500 hover:text-slate-700" title={tr("Visa rådata")}><Code2 className="size-4" /></button>
                 </li>
               );
             })}

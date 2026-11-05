@@ -12,7 +12,7 @@ function Section({ icon: Icon, title, count, children }) {
   if (!count) return null;
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100"><Icon className="size-4 text-slate-400" /><h2 className="font-semibold text-slate-900">{title}</h2><span className="text-sm text-slate-400">{count}</span></div>
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100"><Icon className="size-4 text-slate-500" /><h2 className="font-semibold text-slate-900">{title}</h2><span className="text-sm text-slate-500">{count}</span></div>
       <div className="divide-y divide-slate-100">{children}</div>
     </Card>
   );
@@ -44,7 +44,7 @@ export default function SearchResults() {
     <div className="max-w-4xl space-y-5">
       <PageHeader title={tr("Sök")} subtitle={SEARCH_HINT} />
       <form onSubmit={(e) => { e.preventDefault(); setSp({ q: input.trim() }); }} className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-slate-400" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-slate-500" />
         <input autoFocus value={input} onChange={(e) => setInput(e.target.value)} className="input !py-3 !pl-11 text-base" placeholder={tr("Sök kund, lead eller affär…")} />
       </form>
       {q.length >= 2 && !res && <Spinner />}
@@ -54,10 +54,10 @@ export default function SearchResults() {
           <Section icon={Building2} title={tr("Företag")} count={res.counts.companies}>
             {res.companies.map((c) => (
               <button key={c.id} onClick={() => openCompany(c.id)} className="flex w-full items-center gap-4 px-5 py-3 text-left hover:bg-slate-50">
-                <span className={`grid place-items-center size-7 rounded-md ${c.is_customer ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>{c.is_customer ? <Star className="size-4" /> : <Building2 className="size-4" />}</span>
+                <span className={`grid place-items-center size-7 rounded-md ${c.is_customer ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{c.is_customer ? <Star className="size-4" /> : <Building2 className="size-4" />}</span>
                 <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-slate-800 truncate">{c.name}</span>
                   <span className="block text-xs text-slate-500 truncate">{[c.org_nr, c.city, `${c.contact_count} kontakter`].filter(Boolean).join(" · ")}</span></span>
-                {c.is_customer ? <span className="text-xs font-medium text-emerald-600">{tr("Kund")}</span> : null}
+                {c.is_customer ? <span className="text-xs font-medium text-emerald-700">{tr("Kund")}</span> : null}
               </button>
             ))}
           </Section>

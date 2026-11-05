@@ -66,9 +66,9 @@ function RoleMatrix({ roles, permissions, manage, reload }) {
                 <th key={r.id} className="px-4 py-4 text-center min-w-32">
                   <div className="flex items-center justify-center gap-1">
                     <span className="font-semibold text-slate-800">{tr(r.name)}</span>
-                    {manage && r.name !== 'Administratör' && <button onClick={() => setEdit({ ...r })} className="text-slate-400 hover:text-slate-600"><Pencil className="size-3" /></button>}
+                    {manage && r.name !== 'Administratör' && <button onClick={() => setEdit({ ...r })} className="text-slate-500 hover:text-slate-600"><Pencil className="size-3" /></button>}
                   </div>
-                  <p className="text-[11px] font-normal text-slate-400">{r.user_count} {tr("användare")}</p>
+                  <p className="text-[11px] font-normal text-slate-500">{r.user_count} {tr("användare")}</p>
                 </th>
               ))}
               {manage && <th className="px-4"><Button size="sm" variant="ghost" icon={Plus} onClick={() => setEdit({ name: '', description: '' })}>{tr("Roll")}</Button></th>}
@@ -87,7 +87,7 @@ function RoleMatrix({ roles, permissions, manage, reload }) {
                       return (
                         <td key={r.id} className="px-4 py-2.5 text-center">
                           <button disabled={locked} onClick={() => toggle(r, p.key)}
-                            className={cx('inline-grid place-items-center size-6 rounded-md transition', on ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-300', !locked && 'hover:ring-2 hover:ring-brand-200')}>
+                            className={cx('inline-grid place-items-center size-6 rounded-md transition', on ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-400', !locked && 'hover:ring-2 hover:ring-brand-200')}>
                             {on ? <Check className="size-3.5" /> : <Minus className="size-3.5" />}
                           </button>
                         </td>
@@ -146,7 +146,7 @@ export default function Team() {
               <tbody className="divide-y divide-slate-100">
                 {users.data.map((u) => (
                   <tr key={u.id} className={cx(manage && !u.active && 'opacity-50')}>
-                    <td className="px-5 py-3"><div className="flex items-center gap-3"><Avatar name={u.name} color={u.color} /><div><p className="font-medium text-slate-800">{u.name}{u.id === me.id && <span className="ml-2 text-xs text-slate-400">{tr("(du)")}</span>}</p>{u.email && <p className="text-xs text-slate-500">{u.email}</p>}</div></div></td>
+                    <td className="px-5 py-3"><div className="flex items-center gap-3"><Avatar name={u.name} color={u.color} /><div><p className="font-medium text-slate-800">{u.name}{u.id === me.id && <span className="ml-2 text-xs text-slate-500">{tr("(du)")}</span>}</p>{u.email && <p className="text-xs text-slate-500">{u.email}</p>}</div></div></td>
                     <td className="px-5 py-3"><Badge className={u.role === 'Administratör' ? 'bg-violet-50 text-violet-700 ring-violet-600/20' : 'bg-slate-100 text-slate-700 ring-slate-500/20'}><Shield className="size-3" />{tr(u.role)}</Badge>{manage && !u.active && <Badge className="ml-2 bg-rose-50 text-rose-700 ring-rose-600/20">{tr("Inaktiv")}</Badge>}</td>
                     {manage && <>
                       <td className="px-5 py-3 text-right tabular-nums text-slate-600">{u.lead_count}</td>

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { TrendingUp, TrendingDown, Users, Target, Wallet, Clock, Inbox, ArrowRight, CheckCircle2, Circle } from 'lucide-react';
-import { useApp, useFetch, useLive } from '../lib/app.jsx';
+import { useFetch, useLive } from '../lib/app.jsx';
 import { api } from '../api.js';
 import { Card, PageHeader, Tabs, SourceBadge, StatusBadge, Avatar, Spinner, Empty, cx } from '../components/ui.jsx';
 import { SOURCES, STAGES, leadName, sek, num, pct, timeAgo, dueLabel } from '../lib/meta.jsx';
@@ -23,7 +23,7 @@ function Kpi({ label, value, sub, icon: Icon, trend, accent }) {
       <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 tabular-nums">{value}</p>
       <div className="mt-1 flex items-center gap-1.5 text-xs">
         {trend != null && (
-          <span className={cx('inline-flex items-center gap-0.5 font-medium', trend >= 0 ? 'text-emerald-600' : 'text-rose-600')}>
+          <span className={cx('inline-flex items-center gap-0.5 font-medium', trend >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
             {trend >= 0 ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}{Math.abs(Math.round(trend * 100))} %
           </span>
         )}
@@ -78,7 +78,6 @@ function LostReasons({ rows, days }) {
 }
 
 export default function Dashboard() {
-  const { user } = useApp();
   const [days, setDays] = useState(30);
   const { data, reload } = useFetch(days === 'today' ? `/dashboard?days=today&from=${encodeURIComponent(midnightUtc())}` : `/dashboard?days=${days}`);
   useLive(['lead', 'refresh'], () => reload());
@@ -99,20 +98,18 @@ export default function Dashboard() {
   const k = data.kpi;
   const trend = k.prevLeads ? (k.newLeads - k.prevLeads) / k.prevLeads : null;
   const sourceKeys = Object.keys(SOURCES).filter((s) => data.perDay.some((r) => r.source === s));
-  const hour = new Date().getHours();
-  const greeting = hour < 10 ? tr("God morgon") : hour < 17 ? tr("Hej") : tr("God kväll");
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`${greeting}, ${user.name.split(' ')[0]}`}
+      <PageHeader title={tr("Översikt")}
         subtitle={data.team ? tr("Så här går det för teamet.") : tr("Så här går det för dig.")}
         actions={<Tabs value={days} onChange={setDays} tabs={[{ value: 'today', label: 'Idag' }, { value: 7, label: '7 dagar' }, { value: 30, label: '30 dagar' }, { value: 90, label: '90 dagar' }]} />} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label={tr("Nya leads")} value={num(k.newLeads)} sub={days === 'today' ? tr('mot {n} igår', { n: k.prevLeads }) : tr('{n} idag', { n: k.today })} trend={trend} icon={Users} accent="bg-brand-50 text-brand-600" />
-        <Kpi label={tr("Konverteringsgrad")} value={pct(k.conversionRate)} sub={tr("Vinstgrad affärer {0}", { 0: pct(k.winRate) })} icon={Target} accent="bg-emerald-50 text-emerald-600" />
+        <Kpi label={tr("Konverteringsgrad")} value={pct(k.conversionRate)} sub={tr("Vinstgrad affärer {0}", { 0: pct(k.winRate) })} icon={Target} accent="bg-emerald-50 text-emerald-700" />
         <Kpi label={tr("Pipelinevärde")} value={sek(k.pipelineValue)} sub={tr("{0} öppna affärer · {1} vunnet", { 0: k.openDeals, 1: sek(k.wonValue) })} icon={Wallet} accent="bg-violet-50 text-violet-600" />
-        <Kpi label={tr("Svarstid")} value={k.responseHours != null ? `${k.responseHours < 1 ? Math.round(k.responseHours * 60) + ' min' : k.responseHours.toFixed(1) + ' h'}` : '–'} sub="snitt till första kontakt" icon={Clock} accent="bg-amber-50 text-amber-600" />
+        <Kpi label={tr("Svarstid")} value={k.responseHours != null ? `${k.responseHours < 1 ? Math.round(k.responseHours * 60) + ' min' : k.responseHours.toFixed(1) + ' h'}` : '–'} sub="snitt till första kontakt" icon={Clock} accent="bg-amber-50 text-amber-700" />
       </div>
 
       {data.work && <WorkSummary data={data.work} days={days} />}
@@ -161,7 +158,7 @@ export default function Dashboard() {
                 <div key={s.source} className="flex items-center gap-3 text-sm">
                   <SourceBadge source={s.source} compact />
                   <span className="flex-1 text-slate-700">{SOURCES[s.source]?.label}</span>
-                  <span className="text-xs text-slate-400">{pct(s.n ? s.converted / s.n : 0)} {tr("konv.")}</span>
+                  <span className="text-xs text-slate-500">{pct(s.n ? s.converted / s.n : 0)} {tr("konv.")}</span>
                   <span className="w-12 text-right font-medium tabular-nums">{Math.round((s.n / total) * 100)} %</span>
                 </div>
               );
@@ -174,7 +171,7 @@ export default function Dashboard() {
         <Card className="xl:col-span-2 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <div><h3 className="font-semibold text-slate-900">{tr("Senaste leads")}</h3>
-              {k.unassigned > 0 && <p className="text-xs text-amber-600">{k.unassigned} {tr("nya leads väntar på att tilldelas")}</p>}</div>
+              {k.unassigned > 0 && <p className="text-xs text-amber-700">{k.unassigned} {tr("nya leads väntar på att tilldelas")}</p>}</div>
             <Link to="/leads" className="text-sm font-medium text-brand-600 hover:text-brand-700 inline-flex items-center gap-1">{tr("Visa alla")}<ArrowRight className="size-4" /></Link>
           </div>
           {!data.recent.length ? <Empty icon={Inbox} title={tr("Inga leads än")} text={tr("Koppla in en kanal under Integrationer så hämtas leads automatiskt.")} /> : (
@@ -187,7 +184,7 @@ export default function Dashboard() {
                     <p className="text-xs text-slate-500 truncate">{[l.company, l.source_detail].filter(Boolean).join(' · ')}</p>
                   </div>
                   <StatusBadge status={l.status} />
-                  <span className="hidden sm:block w-24 text-right text-xs text-slate-400">{timeAgo(l.created_at)}</span>
+                  <span className="hidden sm:block w-24 text-right text-xs text-slate-500">{timeAgo(l.created_at)}</span>
                   {l.owner_name ? <Avatar name={l.owner_name} color={l.owner_color} size="sm" /> : <span className="size-7 rounded-full border border-dashed border-slate-300" title={tr("Otilldelad")} />}
                 </Link>
               ))}
@@ -204,10 +201,10 @@ export default function Dashboard() {
                   const due = dueLabel(t.due_at);
                   return (
                     <li key={t.id} className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-slate-50">
-                      <button onClick={async () => { await api.patch(`/activities/${t.id}`, { done: true }); reload(); }} className="mt-0.5 text-slate-300 hover:text-emerald-500"><Circle className="size-4" /></button>
+                      <button onClick={async () => { await api.patch(`/activities/${t.id}`, { done: true }); reload(); }} className="mt-0.5 text-slate-500 hover:text-emerald-500"><Circle className="size-4" /></button>
                       <Link to={`/leads/${t.lead_id}`} className="min-w-0 flex-1">
                         <p className="text-sm text-slate-700 truncate">{t.content}</p>
-                        <p className="text-xs"><span className={due.cls}>{due.text}</span>{t.first_name && <span className="text-slate-400"> · {t.first_name} {t.last_name}</span>}</p>
+                        <p className="text-xs"><span className={due.cls}>{due.text}</span>{t.first_name && <span className="text-slate-500"> · {t.first_name} {t.last_name}</span>}</p>
                       </Link>
                     </li>
                   );
@@ -241,7 +238,7 @@ export default function Dashboard() {
             <tbody className="divide-y divide-slate-100">
               {data.leaderboard.map((u, i) => (
                 <tr key={u.id}>
-                  <td className="px-5 py-3"><div className="flex items-center gap-3"><span className="w-4 text-xs text-slate-400">{i + 1}</span><Avatar name={u.name} color={u.color} size="sm" /><span className="font-medium text-slate-800">{u.name}</span>{i === 0 && u.revenue > 0 && <CheckCircle2 className="size-4 text-amber-400" />}</div></td>
+                  <td className="px-5 py-3"><div className="flex items-center gap-3"><span className="w-4 text-xs text-slate-500">{i + 1}</span><Avatar name={u.name} color={u.color} size="sm" /><span className="font-medium text-slate-800">{u.name}</span>{i === 0 && u.revenue > 0 && <CheckCircle2 className="size-4 text-amber-400" />}</div></td>
                   <td className="px-5 py-3 text-right tabular-nums">{u.leads}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{u.won}</td>
                   <td className="px-5 py-3 text-right tabular-nums font-medium">{sek(u.revenue)}</td>

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { ToastProvider } from './components/ui.jsx';
 import { AppProvider } from './lib/app.jsx';
+import '@fontsource-variable/inter';
 import './styles.css';
 
 createRoot(document.getElementById('root')).render(

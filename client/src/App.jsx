@@ -1,27 +1,31 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useApp } from './lib/app.jsx';
 import { Spinner } from './components/ui.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
-import Dashboard from './pages/Dashboard.jsx';
 import MyDay from './pages/MyDay.jsx';
-import Companies from './pages/Companies.jsx';
-import PublicQuote from './pages/PublicQuote.jsx';
-import OAuthConsent from './pages/OAuthConsent.jsx';
-import Products from './pages/Products.jsx';
-import Templates from './pages/Templates.jsx';
-import SearchResults from './pages/SearchResults.jsx';
-import Leads from './pages/Leads.jsx';
-import Pipeline from './pages/Pipeline.jsx';
-import Tasks from './pages/Tasks.jsx';
-import Calendar from './pages/Calendar.jsx';
-import Inflow from './pages/Inflow.jsx';
-import Integrations from './pages/Integrations.jsx';
-import Automations from './pages/Automations.jsx';
-import Prospecting from './pages/Prospecting.jsx';
-import Team from './pages/Team.jsx';
-import Audit from './pages/Audit.jsx';
-import Settings from './pages/Settings.jsx';
+
+// Övriga sidor laddas först när man går till dem, så att första laddningen blir liten.
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
+const Companies = lazy(() => import('./pages/Companies.jsx'));
+const PublicQuote = lazy(() => import('./pages/PublicQuote.jsx'));
+const OAuthConsent = lazy(() => import('./pages/OAuthConsent.jsx'));
+const Products = lazy(() => import('./pages/Products.jsx'));
+const Templates = lazy(() => import('./pages/Templates.jsx'));
+const SearchResults = lazy(() => import('./pages/SearchResults.jsx'));
+const Leads = lazy(() => import('./pages/Leads.jsx'));
+const Pipeline = lazy(() => import('./pages/Pipeline.jsx'));
+const Tasks = lazy(() => import('./pages/Tasks.jsx'));
+const Calendar = lazy(() => import('./pages/Calendar.jsx'));
+const Inflow = lazy(() => import('./pages/Inflow.jsx'));
+const Integrations = lazy(() => import('./pages/Integrations.jsx'));
+const Automations = lazy(() => import('./pages/Automations.jsx'));
+const Prospecting = lazy(() => import('./pages/Prospecting.jsx'));
+const Team = lazy(() => import('./pages/Team.jsx'));
+const Audit = lazy(() => import('./pages/Audit.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const PageSpinner = () => <div className="h-full grid place-items-center"><Spinner className="size-8" /></div>;
 
 function Guard({ perm, children }) {
   const { can } = useApp();
@@ -32,11 +36,11 @@ export default function App() {
   const { loading, user } = useApp();
   const location = useLocation();
   // Kundens offertsida är publik och visas utan inloggning och utan appens meny.
-  if (location.pathname.startsWith('/q/')) return <Routes><Route path="/q/:token" element={<PublicQuote />} /></Routes>;
+  if (location.pathname.startsWith('/q/')) return <Suspense fallback={<PageSpinner />}><Routes><Route path="/q/:token" element={<PublicQuote />} /></Routes></Suspense>;
   if (loading) return <div className="h-full grid place-items-center"><Spinner className="size-8" /></div>;
   if (!user) return <Login />;
   // Godkännande av en AI-koppling (MCP) visas utan appens meny, efter inloggning.
-  if (location.pathname === '/oauth/consent') return <OAuthConsent />;
+  if (location.pathname === '/oauth/consent') return <Suspense fallback={<PageSpinner />}><OAuthConsent /></Suspense>;
   return (
     <Routes>
       <Route element={<Layout />}>

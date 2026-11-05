@@ -22,7 +22,7 @@ const isoWeek = (d) => {
 };
 
 function eventStyle(m, teamView) {
-  if (m.status === 'cancelled') return { cls: 'bg-slate-100 text-slate-400 line-through border-slate-300' };
+  if (m.status === 'cancelled') return { cls: 'bg-slate-100 text-slate-600 line-through border-slate-300' };
   if (teamView && m.owner_color) return { cls: 'text-white border-transparent', style: { background: m.owner_color } };
   if (m.status === 'done' || m.status === 'no_show') return { cls: 'bg-emerald-50 text-emerald-800 border-emerald-400' };
   if (m.source === 'google' && !m.lead_id) return { cls: 'bg-blue-50 text-blue-800 border-blue-400' };
@@ -66,7 +66,7 @@ function WeekView({ days, meetings, teamView, onOpen, onCreate }) {
       </div>
       <div ref={scroller} className="overflow-y-auto scroll-thin max-h-[calc(100vh-17rem)]">
         <div className="relative grid grid-cols-[56px_repeat(7,1fr)]" style={{ height: hours.length * HOUR_PX }}>
-          <div>{hours.map((h) => <div key={h} style={{ height: HOUR_PX }} className="pr-2 text-right text-[11px] text-slate-400 -mt-1.5">{String(h).padStart(2, '0')}:00</div>)}</div>
+          <div>{hours.map((h) => <div key={h} style={{ height: HOUR_PX }} className="pr-2 text-right text-[11px] text-slate-500 -mt-1.5">{String(h).padStart(2, '0')}:00</div>)}</div>
           {days.map((d) => {
             const events = layoutDay(meetings.filter((m) => !m.all_day && sameDay(parseUtc(m.start_at), d)).map((m) => {
               const s = parseUtc(m.start_at), e = parseUtc(m.end_at);
@@ -123,8 +123,10 @@ function MonthView({ cursor, meetings, teamView, onOpen, onCreate }) {
           const inMonth = d.getMonth() === cursor.getMonth();
           return (
             <div key={d} onClick={() => { const t = new Date(d); t.setHours(10, 0, 0, 0); onCreate(t); }}
+              role="button" tabIndex={0} aria-label={tr('Boka möte {d}', { d: d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' }) })}
+              onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const t = new Date(d); t.setHours(10, 0, 0, 0); onCreate(t); } }}
               className={cx('min-h-28 border-b border-l border-slate-100 p-1.5 cursor-pointer hover:bg-slate-50/80', !inMonth && 'bg-slate-50/50')}>
-              <p className={cx('mb-1 grid place-items-center size-6 rounded-full text-xs font-medium', sameDay(d, now) ? 'bg-brand-600 text-white' : inMonth ? 'text-slate-700' : 'text-slate-300')}>{d.getDate()}</p>
+              <p className={cx('mb-1 grid place-items-center size-6 rounded-full text-xs font-medium', sameDay(d, now) ? 'bg-brand-600 text-white' : inMonth ? 'text-slate-700' : 'text-slate-500')}>{d.getDate()}</p>
               {list.slice(0, 3).map((m) => {
                 const st = eventStyle(m, teamView);
                 return (
@@ -194,7 +196,7 @@ function SyncPanel({ status, reloadStatus, onSynced }) {
         <div className="flex items-center gap-2 mb-2">
           <svg viewBox="0 0 24 24" className="size-5"><rect x="3" y="4" width="18" height="17" rx="3" fill="#fff" stroke="#4285F4" strokeWidth="2" /><path d="M3 9h18" stroke="#4285F4" strokeWidth="2" /><text x="12" y="18.5" textAnchor="middle" fontSize="8" fontWeight="700" fill="#4285F4">31</text></svg>
           <h3 className="font-semibold text-slate-900">{tr("Google Kalender")}</h3>
-          {can('integrations.manage') && <button onClick={() => setConfig(true)} className="ml-auto text-slate-400 hover:text-slate-700" title={tr("Inställningar för teamet")}><Settings2 className="size-4" /></button>}
+          {can('integrations.manage') && <button onClick={() => setConfig(true)} className="ml-auto text-slate-500 hover:text-slate-700" title={tr("Inställningar för teamet")}><Settings2 className="size-4" /></button>}
         </div>
         {!status.googleConfigured ? (
           <p className="text-sm text-slate-600">{can('integrations.manage') ? <>{tr("Inte uppsatt ännu.")} <button onClick={() => setConfig(true)} className="text-brand-600 underline">{tr("Lägg in Google-uppgifterna")}</button> {tr("så kan alla koppla sin kalender.")}</> : tr("En administratör behöver koppla Google först. Använd iCal-länken nedan så länge.")}</p>
@@ -211,7 +213,7 @@ function SyncPanel({ status, reloadStatus, onSynced }) {
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-slate-600">{tr("Möten du bokar här hamnar i Google, och möten du bokar i Google syns här och kopplas till rätt kund.")}</p>
-            <a href="/api/calendar/google/connect"><Button icon={Link2} className="w-full">{tr("Koppla Google Kalender")}</Button></a>
+            <Button icon={Link2} className="w-full" href="/api/calendar/google/connect">{tr("Koppla Google Kalender")}</Button>
           </div>
         )}
       </Card>
@@ -222,7 +224,7 @@ function SyncPanel({ status, reloadStatus, onSynced }) {
           <input readOnly value={status.icalUrl} className="input font-mono text-[11px] bg-slate-50" onFocus={(e) => e.target.select()} />
           <Button variant="secondary" icon={copied ? Check : Copy} onClick={() => { navigator.clipboard.writeText(status.icalUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); }} />
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">{tr("Google Kalender: Andra kalendrar → + → Från webbadress. Länken är personlig.")} <button onClick={regenerate} className="underline hover:text-slate-600">{tr("Skapa ny länk")}</button></p>
+        <p className="mt-2 text-[11px] text-slate-500">{tr("Google Kalender: Andra kalendrar → + → Från webbadress. Länken är personlig.")} <button onClick={regenerate} className="underline hover:text-slate-600">{tr("Skapa ny länk")}</button></p>
       </Card>
       <GoogleConfigModal open={config} onClose={() => setConfig(false)} status={status} onSaved={reloadStatus} />
     </div>
@@ -295,7 +297,7 @@ export default function Calendar() {
         <aside className="space-y-4">
           {pending.data?.length > 0 && (
             <Card className="p-5 border-amber-200">
-              <h3 className="flex items-center gap-2 font-semibold text-slate-900"><CalendarClock className="size-4 text-amber-500" />{tr("Väntar på utfall")}</h3>
+              <h3 className="flex items-center gap-2 font-semibold text-slate-900"><CalendarClock className="size-4 text-amber-600" />{tr("Väntar på utfall")}</h3>
               <p className="text-xs text-slate-500 mb-3">{tr("Logga hur det gick och boka nästa steg.")}</p>
               <ul className="space-y-1">
                 {pending.data.slice(0, 6).map((m) => (

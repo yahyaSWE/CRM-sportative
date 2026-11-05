@@ -34,6 +34,8 @@ export default function WorkSummary({ data, days }) {
   const today = days === 'today';
   const w = data.mine;
   const total = TILES.reduce((n, t) => n + (w[t.key] || 0), 0);
+  const shown = TILES.filter((t) => w[t.key] > 0);
+  const zero = TILES.filter((t) => !w[t.key]);
 
   return (
     <Card className="p-5">
@@ -43,24 +45,28 @@ export default function WorkSummary({ data, days }) {
       </div>
 
       <div className={cx('grid gap-5', today && 'xl:grid-cols-[2fr_1fr]')}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 content-start">
-          {TILES.map(({ key, label, icon: Icon, sub }) => {
-            const v = w[key] || 0;
-            return (
-              <div key={key} className={cx('rounded-lg border px-3 py-2.5', v ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50/60')}>
-                <div className="flex items-center gap-1.5 text-xs text-slate-500"><Icon className={cx('size-3.5', v ? 'text-brand-600' : 'text-slate-400')} />{tr(label)}</div>
-                <p className={cx('mt-1 text-xl font-semibold tabular-nums', v ? 'text-slate-900' : 'text-slate-300')}>{num(v)}</p>
-                {sub && v > 0 && <p className="text-[11px] text-slate-500">{sub(w)}</p>}
-              </div>
-            );
-          })}
+        <div className="min-w-0 content-start">
+          {total === 0 ? (
+            <p className="rounded-lg bg-slate-50 px-4 py-6 text-sm text-slate-600">{today ? tr('Inget loggat än idag. Ring, mejla eller bocka av en uppgift så syns det här.') : tr('Inget loggat under perioden.')}</p>
+          ) : (
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+              {shown.map(({ key, label, icon: Icon, sub }) => (
+                <div key={key}>
+                  <dt className="flex items-center gap-1.5 text-xs text-slate-600"><Icon className="size-3.5 text-brand-600" aria-hidden="true" />{tr(label)}</dt>
+                  <dd className="mt-0.5 text-2xl font-semibold tabular-nums text-slate-900">{num(w[key])}</dd>
+                  {sub && <dd className="text-xs text-slate-500">{sub(w)}</dd>}
+                </div>
+              ))}
+            </dl>
+          )}
+          {total > 0 && zero.length > 0 && <p className="mt-4 text-xs text-slate-500">{tr('Inget ännu:')} {zero.map((t) => tr(t.label).toLowerCase()).join(', ')}</p>}
         </div>
 
         {today && (
           <div className="min-w-0">
-            <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wide text-slate-400">{tr('Dagens logg')}</p>
+            <h4 className="mb-1 px-2 text-sm font-medium text-slate-700">{tr('Dagens logg')}</h4>
             {!data.log.length ? (
-              <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">{tr('Inget loggat än idag. Ring, mejla eller bocka av en uppgift så syns det här.')}</p>
+              <p className="px-2 text-sm text-slate-500">{tr('Här listas det du gör under dagen.')}</p>
             ) : (
               <ul className="max-h-72 space-y-0.5 overflow-y-auto overflow-x-hidden">
                 {data.log.map((a) => {
@@ -68,11 +74,11 @@ export default function WorkSummary({ data, days }) {
                   const name = a.lead_id ? leadName(a) : null;
                   const row = (
                     <>
-                      <span className="w-11 shrink-0 pt-0.5 text-xs tabular-nums text-slate-400">{clock(a.at)}</span>
-                      <Icon className={cx('mt-0.5 size-4 shrink-0', a.outcome === 'answered' ? 'text-emerald-500' : 'text-slate-400')} />
+                      <span className="w-11 shrink-0 pt-0.5 text-xs tabular-nums text-slate-500">{clock(a.at)}</span>
+                      <Icon className={cx('mt-0.5 size-4 shrink-0', a.outcome === 'answered' ? 'text-emerald-600' : 'text-slate-500')} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-slate-700">{logText(a)}</span>
-                        {name && <span className="block truncate text-xs text-slate-400">{[name, a.company && a.company !== name ? a.company : null].filter(Boolean).join(' · ')}</span>}
+                        {name && <span className="block truncate text-xs text-slate-500">{[name, a.company && a.company !== name ? a.company : null].filter(Boolean).join(' · ')}</span>}
                       </span>
                     </>
                   );
@@ -91,7 +97,9 @@ export default function WorkSummary({ data, days }) {
       </div>
 
       {data.perUser.length > 0 && (
-        <div className="mt-5 overflow-x-auto">
+        <details className="group mt-5 border-t border-slate-100 pt-3">
+          <summary className="cursor-pointer select-none rounded-md py-1 text-sm font-medium text-brand-700 hover:text-brand-800">{tr('Visa per säljare ({n})', { n: data.perUser.length })}</summary>
+        <div className="mt-2 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
@@ -103,14 +111,14 @@ export default function WorkSummary({ data, days }) {
               {data.perUser.map((u) => (
                 <tr key={u.id}>
                   <td className="py-2.5 pr-3"><div className="flex items-center gap-2"><Avatar name={u.name} color={u.color} size="sm" /><span className="font-medium text-slate-800 whitespace-nowrap">{u.name}</span></div></td>
-                  {COLUMNS.map((c) => <td key={c} className={cx('px-3 py-2.5 text-right tabular-nums', u[c] ? 'text-slate-800' : 'text-slate-300')}>{u[c]}</td>)}
+                  {COLUMNS.map((c) => <td key={c} className={cx('px-3 py-2.5 text-right tabular-nums', u[c] ? 'text-slate-800' : 'text-slate-500')}>{u[c]}</td>)}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        </details>
       )}
-      {!today && total === 0 && !data.perUser.length && <p className="mt-3 text-sm text-slate-500">{tr('Inget loggat under perioden.')}</p>}
     </Card>
   );
 }

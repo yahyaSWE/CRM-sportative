@@ -22,7 +22,7 @@ export default function LeadMeetings({ leadId, dealId, preset, canBook, onChange
         <p className="label !mb-0">{tr("Möten")}</p>
         {canBook && <button onClick={() => setModal({ preset })} className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700"><CalendarPlus className="size-3.5" />{tr("Boka")}</button>}
       </div>
-      {!list.length ? <p className="text-xs text-slate-400">{tr("Inga bokade möten")}</p> : (
+      {!list.length ? <p className="text-xs text-slate-500">{tr("Inga bokade möten")}</p> : (
         <ul className="space-y-1.5">
           {list.map((m) => {
             const past = parseUtc(m.end_at) < now;

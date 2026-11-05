@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, KanbanSquare, CheckSquare, Plug, Zap, Shield, ScrollText, Settings, Bell, LogOut,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp, useLive } from '../lib/app.jsx';
 import { api } from '../api.js';
-import { Avatar, cx } from './ui.jsx';
+import { Avatar, Button, Spinner, cx } from './ui.jsx';
 import { timeAgo } from '../lib/meta.jsx';
 import LeadForm from './LeadForm.jsx';
 import GlobalSearch from './GlobalSearch.jsx';
@@ -43,8 +43,8 @@ function Sidebar({ onNavigate }) {
   return (
     <div className="flex h-full flex-col bg-slate-950 text-slate-300">
       <div className="flex items-center gap-2.5 px-5 h-16 shrink-0">
-        <div className="grid place-items-center size-8 rounded-lg bg-gradient-to-br from-brand-500 to-violet-500 shadow-lg shadow-brand-600/30">
-          <svg viewBox="0 0 32 32" className="size-5"><path d="M7 22l6-7 4 3 8-9" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <div className="grid place-items-center size-8 rounded-lg bg-brand-600">
+          <svg viewBox="0 0 32 32" className="size-5" aria-hidden="true"><path d="M7 22l6-7 4 3 8-9" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
         <span className="text-[15px] font-semibold text-white tracking-tight">{tr("LeadFlow")}</span>
       </div>
@@ -55,12 +55,12 @@ function Sidebar({ onNavigate }) {
           if (!items.length) return null;
           return (
             <div key={g.group}>
-              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{tr(g.group)}</p>
+              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{tr(g.group)}</p>
               {items.map(({ to, label, icon: Icon, end }) => (
                 <NavLink key={to} to={to} end={end} onClick={onNavigate}
                   className={({ isActive }) => cx('group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
                     isActive ? 'bg-white/10 text-white' : 'hover:bg-white/5 hover:text-white')}>
-                  {({ isActive }) => <><Icon className={cx('size-[18px]', isActive ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300')} />{label}</>}
+                  {({ isActive }) => <><Icon className={cx('size-[18px]', isActive ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-300')} />{label}</>}
                 </NavLink>
               ))}
             </div>
@@ -78,10 +78,10 @@ function LiveIndicator() {
   return (
     <div className="m-3 rounded-xl bg-white/5 p-3.5">
       <div className="flex items-center gap-2 text-xs font-medium text-slate-200">
-        <span className="relative flex size-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex size-2 rounded-full bg-emerald-400" /></span>
+        <span className="relative flex size-2"><span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex size-2 rounded-full bg-emerald-400" /></span>
         {tr("Automatisk insamling aktiv")}
       </div>
-      <p className="mt-1 text-xs text-slate-500">{count ? tr("{0} nya leads sedan du loggade in", { 0: count }) : tr("Nya leads visas i realtid")}</p>
+      <p className="mt-1 text-xs text-slate-400">{count ? tr("{0} nya leads sedan du loggade in", { 0: count }) : tr("Nya leads visas i realtid")}</p>
     </div>
   );
 }
@@ -99,9 +99,9 @@ function Notifications() {
   };
   return (
     <div className="relative">
-      <button onClick={toggle} className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+      <button onClick={toggle} aria-label={data.unread ? tr('Notiser, {n} olästa', { n: data.unread }) : tr('Notiser')} aria-expanded={open} className="relative rounded-lg p-2.5 text-slate-500 hover:bg-slate-100">
         <Bell className="size-5" />
-        {data.unread > 0 && <span className="absolute top-1 right-1 grid place-items-center min-w-4 h-4 px-1 rounded-full bg-rose-500 text-[10px] font-semibold text-white">{data.unread}</span>}
+        {data.unread > 0 && <span className="absolute top-1 right-1 grid place-items-center min-w-4 h-4 px-1 rounded-full bg-rose-600 text-[10px] font-semibold text-white">{data.unread}</span>}
       </button>
       {open && (
         <>
@@ -113,7 +113,7 @@ function Notifications() {
               {data.items.map((n) => (
                 <button key={n.id} onClick={() => { setOpen(false); n.link && nav(n.link); }} className="block w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50">
                   <p className="text-sm text-slate-700">{translateStored(n.text)}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{timeAgo(n.created_at)}</p>
                 </button>
               ))}
             </div>
@@ -130,7 +130,7 @@ function UserMenu() {
   const nav = useNavigate();
   return (
     <div className="relative">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-2 hover:bg-slate-100">
+      <button onClick={() => setOpen(!open)} aria-label={tr('Kontomeny')} aria-expanded={open} className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-2 hover:bg-slate-100">
         <Avatar name={user.name} color={user.color} />
         <span className="hidden md:block text-left">
           <span className="block text-sm font-medium text-slate-800 leading-tight">{user.name}</span>
@@ -159,32 +159,42 @@ export default function Layout() {
   const loc = useLocation();
   const nav = useNavigate();
   useEffect(() => setMobile(false), [loc.pathname]);
+  // Kortkommando: N = ny lead (inte när man skriver i ett fält).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'n' || e.ctrlKey || e.metaKey || e.altKey || !can('leads.edit_own')) return;
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
+      e.preventDefault(); setNewLead(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [can]);
   return (
     <div className="flex h-full">
       <aside className="hidden lg:block w-64 shrink-0"><div className="fixed inset-y-0 w-64"><Sidebar /></div></aside>
       {mobile && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={tr('Meny')}>
           <div className="absolute inset-0 bg-slate-900/50" onClick={() => setMobile(false)} />
           <div className="absolute inset-y-0 left-0 w-64 animate-fade-in"><Sidebar onNavigate={() => setMobile(false)} /></div>
-          <button className="absolute top-4 left-64 ml-2 text-white" onClick={() => setMobile(false)}><X /></button>
+          <button className="absolute top-3 left-64 ml-2 rounded-lg p-2 text-white" aria-label={tr('Stäng menyn')} onClick={() => setMobile(false)}><X /></button>
         </div>
       )}
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/85 backdrop-blur px-4 sm:px-6">
-          <button className="lg:hidden rounded-lg p-2 text-slate-500 hover:bg-slate-100" onClick={() => setMobile(true)}><Menu className="size-5" /></button>
+          <button className="lg:hidden rounded-lg p-2.5 text-slate-500 hover:bg-slate-100" aria-label={tr('Öppna menyn')} onClick={() => setMobile(true)}><Menu className="size-5" /></button>
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {can('leads.edit_own') && (
-              <button onClick={() => setNewLead(true)} className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700">
-                <Plus className="size-4" />{tr("Ny lead")}
-              </button>
+              <Button onClick={() => setNewLead(true)} icon={Plus} aria-label={tr("Ny lead")} title={tr("Ny lead (N)")} className="max-sm:px-2.5">
+                <span className="hidden sm:inline">{tr("Ny lead")}</span>
+              </Button>
             )}
             <Notifications />
             <UserMenu />
           </div>
         </header>
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-[1600px] w-full mx-auto">
-          <Outlet />
+          <Suspense fallback={<div className="grid place-items-center h-64"><Spinner /></div>}><Outlet /></Suspense>
         </main>
       </div>
       <LeadForm open={newLead} onClose={() => setNewLead(false)} onSaved={(l) => { setNewLead(false); nav(`/leads/${l.id}`); }} />

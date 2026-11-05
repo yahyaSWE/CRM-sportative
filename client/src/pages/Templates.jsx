@@ -98,8 +98,8 @@ function TemplateCard({ t, onEdit, onDuplicate, onDelete, onCopied }) {
         </div>
         {t.canEdit && (
           <div className="flex shrink-0 gap-0.5">
-            <button onClick={onEdit} title={tr('Redigera')} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Pencil className="size-4" /></button>
-            <button onClick={onDelete} title={tr('Radera')} className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="size-4" /></button>
+            <button onClick={onEdit} title={tr('Redigera')} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><Pencil className="size-4" /></button>
+            <button onClick={onDelete} title={tr('Radera')} className="rounded-md p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="size-4" /></button>
           </div>
         )}
       </div>
@@ -108,9 +108,9 @@ function TemplateCard({ t, onEdit, onDuplicate, onDelete, onCopied }) {
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
         <Button size="sm" icon={Copy} onClick={() => copy(t.body, tr('Texten är kopierad'))}>{tr('Kopiera text')}</Button>
         {t.subject && <Button size="sm" variant="secondary" onClick={() => copy(t.subject, tr('Ämnesraden är kopierad'))}>{tr('Kopiera ämne')}</Button>}
-        {onDuplicate && <button onClick={onDuplicate} title={tr('Duplicera')} className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><CopyPlus className="size-4" /></button>}
+        {onDuplicate && <button onClick={onDuplicate} title={tr('Duplicera')} className="ml-auto rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><CopyPlus className="size-4" /></button>}
       </div>
-      <p className="mt-2 text-[11px] text-slate-400">{t.updated_by_name || t.created_by_name ? tr('Uppdaterad {when} av {name}', { when: timeAgo(t.updated_at), name: t.updated_by_name || t.created_by_name }) : tr('Exempelmall')}</p>
+      <p className="mt-2 text-[11px] text-slate-500">{t.updated_by_name || t.created_by_name ? tr('Uppdaterad {when} av {name}', { when: timeAgo(t.updated_at), name: t.updated_by_name || t.created_by_name }) : tr('Exempelmall')}</p>
     </Card>
   );
 }
@@ -151,7 +151,7 @@ export default function Templates() {
           ...Object.entries(TEMPLATE_TYPES).map(([k, v]) => ({ value: k, label: v.label, count: count(k) })),
         ]} />
         <div className="relative w-full sm:w-72 sm:ml-auto">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <input className="input !pl-9" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Sök mallar…')} />
         </div>
       </div>

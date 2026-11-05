@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, CalendarDays, Clock, AlertTriangle, Search, ArrowUpDown } from 'lucide-react';
+import { Plus, CalendarDays, Clock, AlertTriangle, Search, ArrowUpDown, MoveRight } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useFetch, useLive } from '../lib/app.jsx';
 import { Avatar, Button, PageHeader, Modal, Field, Input, Select, Spinner, SourceBadge, Tabs, useToast, cx } from '../components/ui.jsx';
@@ -10,7 +10,7 @@ import { tr } from '../lib/i18n.js';
 
 const STALE_DAYS = 14;
 
-function DealCard({ d, dragging, onDragStart, onDragEnd, onOpen }) {
+function DealCard({ d, dragging, onDragStart, onDragEnd, onOpen, onMove }) {
   const open = !['won', 'lost'].includes(d.stage);
   const inStage = daysSince(d.stage_changed_at || d.updated_at);
   const due = d.next_task ? dueLabel(d.next_task.due_at) : null;
@@ -18,10 +18,24 @@ function DealCard({ d, dragging, onDragStart, onDragEnd, onOpen }) {
   const contact = [d.first_name, d.last_name].filter(Boolean).join(' ');
   return (
     <div draggable onDragStart={onDragStart} onDragEnd={onDragEnd} onClick={onOpen}
-      className={cx('card p-3 cursor-pointer active:cursor-grabbing hover:shadow-md hover:border-slate-300 transition', dragging && 'opacity-40', overdue && 'border-rose-200')}>
+      role="button" tabIndex={0} aria-label={`${d.title}, ${sek(d.value)}`} aria-keyshortcuts="Enter Alt+ArrowLeft Alt+ArrowRight"
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); }
+        const i = STAGES.findIndex((s) => s.key === d.stage);
+        if (e.altKey && e.key === 'ArrowRight' && STAGES[i + 1]) { e.preventDefault(); onMove(STAGES[i + 1].key); }
+        if (e.altKey && e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); onMove(STAGES[i - 1].key); }
+      }}
+      className={cx('card p-3 cursor-pointer active:cursor-grabbing hover:shadow-md hover:border-slate-300 transition', dragging && 'opacity-40')}>
       <div className="flex items-start gap-2">
         <p className="flex-1 text-sm font-medium text-slate-800 leading-snug">{d.title}</p>
         {d.owner_name && <Avatar name={d.owner_name} color={d.owner_color} size="xs" />}
+        <label className="relative -m-1 grid size-7 shrink-0 place-items-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-within:ring-2 focus-within:ring-brand-500" onClick={(e) => e.stopPropagation()} title={tr("Flytta till steg")}>
+          <MoveRight className="size-4" aria-hidden="true" />
+          <select value={d.stage} onChange={(e) => onMove(e.target.value)} onKeyDown={(e) => e.stopPropagation()} aria-label={tr("Flytta {t} till steg", { t: d.title })} className="absolute inset-0 cursor-pointer opacity-0">
+            {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+        </label>
       </div>
       {(contact || d.company) && (
         <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 min-w-0">
@@ -39,8 +53,8 @@ function DealCard({ d, dragging, onDragStart, onDragEnd, onOpen }) {
             <p className={cx('flex items-center gap-1.5 text-xs min-w-0', overdue ? 'text-rose-600 font-medium' : 'text-slate-600')}>
               <Clock className="size-3 shrink-0" /><span className="truncate">{d.next_task.content}</span><span className={cx('ml-auto whitespace-nowrap', due.cls)}>{due.short}</span>
             </p>
-          ) : <p className="flex items-center gap-1.5 text-xs text-amber-600"><AlertTriangle className="size-3" />{tr("Inget nästa steg")}</p>}
-          {inStage >= STALE_DAYS && <p className="text-[11px] text-amber-600">{inStage} {tr("dagar i steget")}</p>}
+          ) : <p className="flex items-center gap-1.5 text-xs text-amber-700"><AlertTriangle className="size-3" aria-hidden="true" />{tr("Inget nästa steg")}</p>}
+          {inStage >= STALE_DAYS && <p className="text-[11px] text-amber-700">{inStage} {tr("dagar i steget")}</p>}
         </div>
       )}
       {d.stage === 'lost' && d.lost_reason && <p className="mt-2 text-xs text-rose-600">{tr(d.lost_reason)}</p>}
@@ -91,9 +105,9 @@ function DealList({ deals, stage, setStage, sort, setSort, onOpen }) {
                     <td className="px-4 py-3 text-right font-medium tabular-nums">{sek(d.value)}</td>
                     <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 text-xs text-slate-700"><span className="size-2 rounded-full" style={{ background: st?.color }} />{st?.label}</span>{d.stage === 'lost' && d.lost_reason && <p className="text-[11px] text-rose-600">{tr(d.lost_reason)}</p>}</td>
                     <td className="px-4 py-3 text-xs max-w-56">
-                      {closed ? <span className="text-slate-400">{tr("Avslutad")} {formatDate(d.closed_at, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      {closed ? <span className="text-slate-500">{tr("Avslutad")} {formatDate(d.closed_at, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         : d.next_task ? <><p className="truncate text-slate-700">{d.next_task.content}</p><p className={due.cls}>{due.short}</p></>
-                          : <span className="inline-flex items-center gap-1 text-amber-600"><AlertTriangle className="size-3" />{tr("Inget nästa steg")}</span>}
+                          : <span className="inline-flex items-center gap-1 text-amber-700"><AlertTriangle className="size-3" />{tr("Inget nästa steg")}</span>}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{d.expected_close ? formatDate(d.expected_close, { day: 'numeric', month: 'short' }) : '—'}</td>
                     <td className="px-4 py-3">{d.owner_name && <span className="flex items-center gap-2"><Avatar name={d.owner_name} color={d.owner_color} size="xs" /><span className="text-xs text-slate-600">{d.owner_name.split(' ')[0]}</span></span>}</td>
@@ -130,9 +144,13 @@ export default function Pipeline() {
     if (deal.stage === stage) return;
     if (stage === 'lost' && !extra.lost_reason) return setLostDeal(deal);
     setData((ds) => ds.map((d) => (d.id === deal.id ? { ...d, stage, ...extra, stage_changed_at: new Date().toISOString() } : d)));
+    const from = deal.stage;
+    const undo = { action: { label: tr('Ångra'), onClick: () => move({ ...deal, stage }, from, from === 'lost' ? { lost_reason: deal.lost_reason || 'Annat' } : {}) } };
     try {
       await api.patch(`/deals/${deal.id}`, { stage, ...extra });
-      if (stage === 'won') toast(tr("{0} är vunnen!", { 0: deal.title }), 'success', { title: tr("Grattis! 🎉") });
+      const label = STAGES.find((s) => s.key === stage)?.label;
+      if (stage === 'won') toast(tr("{0} är vunnen!", { 0: deal.title }), 'success', { title: tr("Grattis! 🎉"), ...undo });
+      else toast(tr('{t} flyttad till {s}', { t: deal.title, s: label }), 'success', undo);
     } catch (e) { toast(e.message, 'error'); }
     reload();
   };
@@ -160,11 +178,11 @@ export default function Pipeline() {
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <PageHeader title={tr("Pipeline")}
         subtitle={<>{open.length} {tr("öppna affärer ·")} {sek(open.reduce((s, d) => s + d.value, 0))} {tr("totalt ·")} {sek(weighted)} {tr("viktat")}
-          {needsAction > 0 && <span className="text-amber-600"> · {needsAction} {tr("behöver ett nästa steg")}</span>}</>}
+          {needsAction > 0 && <span className="text-amber-700"> · {needsAction} {tr("behöver ett nästa steg")}</span>}</>}
         actions={<>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr("Sök affär, kund, telefon…")} className="input !w-60 pl-9" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" aria-hidden="true" />
+            <input type="search" aria-label={tr("Sök affärer")} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr("Sök affär, kund, telefon…")} className="input sm:!w-60 pl-9" />
           </div>
           <Tabs value={mode} onChange={switchMode} tabs={[{ value: 'board', label: tr("Tavla") }, { value: 'list', label: tr("Lista") }]} />
           {can('leads.view_all') && <Tabs value={scope} onChange={setScope} tabs={[{ value: 'all', label: tr("Alla") }, { value: 'mine', label: tr("Mina") }]} />}
@@ -182,16 +200,16 @@ export default function Pipeline() {
               onDrop={() => { if (drag) move(drag, s.key); setDrag(null); setOver(null); }}
               className={cx('flex flex-col w-72 shrink-0 rounded-xl bg-slate-100/70 transition', over === s.key && (s.key === 'lost' ? 'ring-2 ring-rose-300 bg-rose-50/60' : 'ring-2 ring-brand-400 bg-brand-50/60'))}>
               <div className="px-3 pt-3 pb-2">
-                <div className="flex items-center gap-2"><span className="size-2 rounded-full" style={{ background: s.color }} /><h3 className="text-sm font-semibold text-slate-800">{s.label}</h3><span className="ml-auto rounded-full bg-white px-2 text-xs font-medium text-slate-500">{list.length}</span></div>
-                <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{sek(total)}{!['won', 'lost'].includes(s.key) && total > 0 && ` · ${Math.round(s.prob * 100)} % sannolikhet`}</p>
+                <div className="flex items-center gap-2"><span className="size-2 rounded-full" style={{ background: s.color }} aria-hidden="true" /><h3 className="text-sm font-semibold text-slate-800">{s.label}</h3><span className="ml-auto rounded-full bg-white px-2 text-xs font-medium text-slate-600">{list.length}</span></div>
+                <p className="mt-0.5 text-xs text-slate-600 tabular-nums">{sek(total)}{!['won', 'lost'].includes(s.key) && total > 0 && ` · ${Math.round(s.prob * 100)} % sannolikhet`}</p>
               </div>
               <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2 scroll-thin">
                 {list.map((d) => (
-                  <DealCard key={d.id} d={d} dragging={drag?.id === d.id} onDragStart={() => setDrag(d)} onDragEnd={() => setDrag(null)} onOpen={() => nav(`/pipeline/${d.id}`)} />
+                  <DealCard key={d.id} d={d} dragging={drag?.id === d.id} onDragStart={() => setDrag(d)} onDragEnd={() => setDrag(null)} onOpen={() => nav(`/pipeline/${d.id}`)} onMove={(stage) => move(d, stage)} />
                 ))}
-                {!list.length && <div className="rounded-lg border-2 border-dashed border-slate-200 py-8 text-center text-xs text-slate-400">{term ? tr("Inga träffar") : tr("Dra hit en affär")}</div>}
+                {!list.length && <div className="rounded-lg border-2 border-dashed border-slate-200 py-8 text-center text-xs text-slate-500">{term ? tr("Inga träffar") : tr("Dra hit en affär")}</div>}
                 {s.key === 'lost' && olderClosed > 0 && (
-                  <button onClick={() => { switchMode('list'); setListStage('closed'); }} className="w-full rounded-lg py-2 text-xs text-slate-500 hover:bg-white hover:text-slate-700">
+                  <button onClick={() => { switchMode('list'); setListStage('closed'); }} className="w-full rounded-lg py-2 text-xs text-slate-600 hover:bg-white hover:text-slate-900">
                     {olderClosed} {tr("äldre avslutade · visa i listan")}
                   </button>
                 )}

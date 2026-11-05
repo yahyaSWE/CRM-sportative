@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { X, Building2, Globe, Phone, Mail, MapPin, Briefcase, UserPlus, Plus, Trash2, Merge, ShieldCheck, Factory, Hash, Star, Sparkles, ShoppingCart } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
-import { Avatar, Button, Select, Spinner, Modal, Field, Input, Confirm, Badge, useToast, cx } from './ui.jsx';
+import { Avatar, Button, Select, Spinner, Modal, Field, Input, Confirm, Badge, useToast, drawerRef, cx } from './ui.jsx';
 import { ActivityComposer, Timeline } from './Activity.jsx';
 import { EditableField } from './LeadDrawer.jsx';
 import { STAGES, sek, formatDate, leadName } from '../lib/meta.jsx';
@@ -96,8 +96,8 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
 
   return (
     <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 w-full max-w-4xl bg-white shadow-2xl animate-slide-in flex flex-col">
+      <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} aria-hidden="true" />
+      <div ref={drawerRef} role="dialog" aria-modal="true" aria-label={tr('Företag')} tabIndex={-1} className="absolute inset-y-0 right-0 w-full max-w-4xl bg-white shadow-2xl animate-slide-in flex flex-col outline-none">
         {!c ? <div className="flex-1 grid place-items-center"><Spinner /></div> : (
           <>
             <div className="px-6 pt-5 pb-4 border-b border-slate-100 space-y-4">
@@ -110,12 +110,12 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
                   </div>
                   <p className="text-sm text-slate-500 truncate">{[c.org_nr, c.city, c.industry].filter(Boolean).join(' · ') || tr("Inga företagsuppgifter än")}</p>
                 </div>
-                <button onClick={onClose} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"><X className="size-5" /></button>
+                <button onClick={onClose} aria-label={tr('Stäng')} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="size-5" /></button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[[tr("Vunnet"), sek(c.won_value), tr("{0} affärer", { 0: c.won_count })], [tr("Pågående"), sek(c.open_value), tr("{0} öppna", { 0: c.open_count })],
                   [tr("Kontaktpersoner"), c.contact_count, c.hiddenContacts ? tr("{0} dolda för dig", { 0: c.hiddenContacts }) : ''], [tr("Kund sedan"), c.customer_since ? formatDate(c.customer_since) : '—', '']].map(([l, v, sub]) => (
-                  <div key={l} className="rounded-lg bg-slate-50 px-3 py-2"><p className="text-[11px] text-slate-500">{l}</p><p className="text-base font-semibold text-slate-900 tabular-nums">{v}</p>{sub && <p className="text-[11px] text-slate-400">{sub}</p>}</div>
+                  <div key={l} className="rounded-lg bg-slate-50 px-3 py-2"><p className="text-[11px] text-slate-500">{l}</p><p className="text-base font-semibold text-slate-900 tabular-nums">{v}</p>{sub && <p className="text-[11px] text-slate-500">{sub}</p>}</div>
                 ))}
               </div>
             </div>
@@ -123,21 +123,21 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
             <div className="flex-1 overflow-y-auto scroll-thin grid md:grid-cols-[1fr_300px]">
               <div className="px-6 py-5 md:border-r border-slate-100 min-w-0 space-y-6">
                 <section>
-                  <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400"><ShoppingCart className="size-3.5" />{tr("Inköpsinformation")}</h3>
+                  <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><ShoppingCart className="size-3.5" />{tr("Inköpsinformation")}</h3>
                   <Purchasing purchasing={c.purchasing} contacts={c.contacts} canEdit={editable}
                     onSave={async (data) => { await api.put(`/companies/${c.id}/purchasing`, data); await load(); }} />
                 </section>
                 <section>
-                  <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400"><Sparkles className="size-3.5" />{tr("Företagsinfo")}</h3>
+                  <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><Sparkles className="size-3.5" />{tr("Företagsinfo")}</h3>
                   <CompanyInsight enrichment={c.enrichment} companyName={c.name} configured={c.aiConfigured} canEnrich={editable} busy={enriching} onEnrich={enrich} />
                 </section>
                 <section>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Kontaktpersoner")}</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{tr("Kontaktpersoner")}</h3>
                     {editable && !adding && <Button size="sm" variant="ghost" icon={UserPlus} onClick={() => setAdding(true)}>{tr("Lägg till")}</Button>}
                   </div>
                   {adding && <div className="mb-3"><NewContact companyId={c.id} onCancel={() => setAdding(false)} onSaved={() => { setAdding(false); load(); }} /></div>}
-                  {!c.contacts.length ? <p className="text-sm text-slate-400">{tr("Inga kontaktpersoner än.")}</p> : (
+                  {!c.contacts.length ? <p className="text-sm text-slate-500">{tr("Inga kontaktpersoner än.")}</p> : (
                     <div className="card divide-y divide-slate-100">
                       {c.contacts.map((l) => (
                         <div key={l.id} className="flex items-center gap-3 px-3 py-2.5">
@@ -146,8 +146,8 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
                             <p className="text-xs text-slate-500 truncate">{[l.title, l.email].filter(Boolean).join(' · ')}</p>
                           </Link>
                           <div className="hidden sm:block w-44"><NextStepCell step={l.next_step} lastContact={l.last_contact_at} status={l.status} /></div>
-                          {l.phone && <a href={`tel:${l.phone}`} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand-600" title={l.phone}><Phone className="size-4" /></a>}
-                          {l.email && <a href={`mailto:${l.email}`} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand-600" title={l.email}><Mail className="size-4" /></a>}
+                          {l.phone && <a href={`tel:${l.phone}`} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-600" title={l.phone}><Phone className="size-4" /></a>}
+                          {l.email && <a href={`mailto:${l.email}`} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-600" title={l.email}><Mail className="size-4" /></a>}
                           {l.owner_name && <Avatar name={l.owner_name} color={l.owner_color} size="xs" />}
                         </div>
                       ))}
@@ -157,10 +157,10 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
 
                 <section>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Affärer")}</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{tr("Affärer")}</h3>
                     {editable && <Button size="sm" variant="ghost" icon={Plus} onClick={() => setNewDeal({ title: `${c.name} – `, value: '', lead_id: c.contacts[0]?.id || '' })}>{tr("Ny affär")}</Button>}
                   </div>
-                  {!c.deals.length ? <p className="text-sm text-slate-400">{tr("Inga affärer än.")}</p> : (
+                  {!c.deals.length ? <p className="text-sm text-slate-500">{tr("Inga affärer än.")}</p> : (
                     <div className="space-y-1.5">
                       {[...openDeals, ...closedDeals].map((d) => {
                         const st = STAGES.find((s) => s.key === d.stage);
@@ -179,7 +179,7 @@ export default function CompanyDrawer({ id, onClose, onChanged }) {
                 </section>
 
                 <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje för hela företaget")}</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">{tr("Tidslinje för hela företaget")}</h3>
                   {editable && <div className="mb-5"><ActivityComposer onSubmit={addActivity} hint={tr("Anteckning på företaget")} /></div>}
                   <Timeline activities={c.activities} onToggleTask={toggleTask} onDelete={deleteActivity} onOutcome={editable ? setOutcome : null} showContact />
                 </section>

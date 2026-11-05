@@ -48,11 +48,11 @@ export default function GlobalSearch() {
   let lastGroup = null;
   return (
     <div className="relative w-full max-w-lg">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-      <input ref={ref} value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" aria-hidden="true" />
+      <input ref={ref} type="search" aria-label={tr("Sök kund, lead eller affär")} value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={onKeyDown} placeholder={tr("Sök kund, lead eller affär…")}
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-14 text-sm outline-none focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-100" />
-      <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 text-[10px] font-medium text-slate-400">Ctrl K</kbd>
+        className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 sm:pr-14 text-sm outline-none focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-100" />
+      <kbd aria-hidden="true" className="max-sm:hidden absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 text-[10px] font-medium text-slate-500">Ctrl K</kbd>
       {open && q.trim().length < 2 && (
         <div className="absolute z-40 mt-2 w-full card shadow-xl px-4 py-3 text-xs text-slate-500 animate-fade-in">{tr("Sök på")} {SEARCH_HINT.toLowerCase()}.</div>
       )}
@@ -67,12 +67,12 @@ export default function GlobalSearch() {
             const stage = it.kind === 'deal' && STAGES.find((s) => s.key === x.stage);
             return (
               <div key={`${it.kind}-${x.id}`}>
-                {header && <p className="flex justify-between px-4 pt-2 pb-1 text-[11px] font-semibold uppercase text-slate-400"><span>{tr(it.group)}</span><span className="font-normal normal-case">{n} {tr("st")}</span></p>}
+                {header && <p className="flex justify-between px-4 pt-2 pb-1 text-[11px] font-semibold uppercase text-slate-500"><span>{tr(it.group)}</span><span className="font-normal normal-case">{n} {tr("st")}</span></p>}
                 <button onMouseDown={() => go(it.path)} onMouseEnter={() => setActive(i)}
                   className={cx('flex w-full items-center gap-3 px-4 py-2 text-left', active === i ? 'bg-brand-50' : 'hover:bg-slate-50')}>
                   {it.kind === 'deal'
                     ? <span className="grid place-items-center size-6 rounded-md bg-violet-50 text-violet-600"><Briefcase className="size-3.5" /></span>
-                    : it.kind === 'company' ? <span className={cx('grid place-items-center size-6 rounded-md', x.is_customer ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500')}>{x.is_customer ? <Star className="size-3.5" /> : <Building2 className="size-3.5" />}</span>
+                    : it.kind === 'company' ? <span className={cx('grid place-items-center size-6 rounded-md', x.is_customer ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600')}>{x.is_customer ? <Star className="size-3.5" /> : <Building2 className="size-3.5" />}</span>
                       : <SourceBadge source={x.source} compact />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-slate-800 truncate">{it.kind === 'deal' ? x.title : it.kind === 'company' ? x.name : leadName(x)}{it.kind === 'lead' && x.status === 'unqualified' && <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-px text-[10px] font-medium text-slate-500">{tr('Arkiverad')}</span>}</span>
@@ -83,7 +83,7 @@ export default function GlobalSearch() {
                         : [x.company !== leadName(x) && x.company, x.phone, x.city].filter(Boolean).join(' · ')}
                     </span>
                   </span>
-                  {it.kind === 'deal' && <span className="text-right text-xs"><span className="block font-medium text-slate-700">{sek(x.value)}</span><span className="text-slate-400">{stage?.label}</span></span>}
+                  {it.kind === 'deal' && <span className="text-right text-xs"><span className="block font-medium text-slate-700">{sek(x.value)}</span><span className="text-slate-500">{stage?.label}</span></span>}
                 </button>
               </div>
             );
@@ -91,7 +91,7 @@ export default function GlobalSearch() {
           {total > 0 && (
             <button onMouseDown={showAll} onMouseEnter={() => setActive(items.length)}
               className={cx('mt-1 flex w-full items-center justify-between border-t border-slate-100 px-4 py-2.5 text-sm font-medium text-brand-600', active === items.length ? 'bg-brand-50' : 'hover:bg-slate-50')}>
-              {tr("Visa alla")} {total} {tr("resultat")}<span className="flex items-center gap-1 text-xs text-slate-400">{tr("Enter")}<ArrowRight className="size-3.5" /></span>
+              {tr("Visa alla")} {total} {tr("resultat")}<span className="flex items-center gap-1 text-xs text-slate-500">{tr("Enter")}<ArrowRight className="size-3.5" /></span>
             </button>
           )}
         </div>

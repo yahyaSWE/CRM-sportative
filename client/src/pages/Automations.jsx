@@ -60,7 +60,7 @@ function RuleEditor({ rule, setRule, team }) {
               {!noValue(c.op) && (c.field === 'source' ? (
                 <Select value={c.value} onChange={(e) => upd('conditions', i, { value: e.target.value })}><option value="">{tr("Välj…")}</option>{Object.entries(SOURCES).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}</Select>
               ) : <Input value={c.value} onChange={(e) => upd('conditions', i, { value: e.target.value })} />)}
-              <button onClick={() => rm('conditions', i)} className="p-1.5 text-slate-400 hover:text-rose-500"><X className="size-4" /></button>
+              <button onClick={() => rm('conditions', i)} className="p-1.5 text-slate-500 hover:text-rose-500"><X className="size-4" /></button>
             </div>
           ))}
           {!rule.conditions.length && <p className="text-xs text-slate-500">{tr("Inga villkor – regeln körs för alla nya leads.")}</p>}
@@ -89,7 +89,7 @@ function RuleEditor({ rule, setRule, team }) {
                 {a.type === 'add_score' && <Input type="number" value={a.value} onChange={(e) => upd('actions', i, { value: Number(e.target.value) })} placeholder={tr("+10 eller -10")} />}
                 {a.type === 'create_task' && <div className="flex gap-2"><Input value={a.value} onChange={(e) => upd('actions', i, { value: e.target.value })} placeholder={tr("Ring upp leadet")} /><Input type="number" className="input !w-24" value={a.hours || 24} onChange={(e) => upd('actions', i, { hours: Number(e.target.value) })} title={tr("Inom antal timmar")} /></div>}
               </div>
-              <button onClick={() => rm('actions', i)} className="p-1.5 text-slate-400 hover:text-rose-500"><X className="size-4" /></button>
+              <button onClick={() => rm('actions', i)} className="p-1.5 text-slate-500 hover:text-rose-500"><X className="size-4" /></button>
             </div>
           ))}
           <Button size="sm" variant="ghost" icon={Plus} onClick={() => setRule({ ...rule, actions: [...rule.actions, { type: 'add_tag', value: '' }] })}>{tr("Lägg till åtgärd")}</Button>
@@ -126,13 +126,13 @@ export default function Automations() {
             return (
               <Card key={r.id} className="p-5">
                 <div className="flex items-start gap-4">
-                  <span className="grid place-items-center size-9 rounded-lg bg-amber-50 text-amber-600 shrink-0 text-sm font-semibold">{idx + 1}</span>
+                  <span className="grid place-items-center size-9 rounded-lg bg-amber-50 text-amber-700 shrink-0 text-sm font-semibold">{idx + 1}</span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2"><h3 className="font-semibold text-slate-900">{r.name}</h3><span className="text-xs text-slate-400">{tr("körts")} {r.runs} {tr("gånger")}</span></div>
+                    <div className="flex items-center gap-2"><h3 className="font-semibold text-slate-900">{r.name}</h3><span className="text-xs text-slate-500">{tr("körts")} {r.runs} {tr("gånger")}</span></div>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                       <span className="text-slate-500">{tr("Om")}</span>
-                      {d.conds.length ? d.conds.map((c, i) => <span key={i} className="flex items-center gap-2">{i > 0 && <span className="text-slate-400">{r.match === 'any' ? 'eller' : 'och'}</span>}<span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">{c}</span></span>) : <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">{tr("alla nya leads")}</span>}
-                      <ArrowRight className="size-3.5 text-slate-400" />
+                      {d.conds.length ? d.conds.map((c, i) => <span key={i} className="flex items-center gap-2">{i > 0 && <span className="text-slate-500">{r.match === 'any' ? 'eller' : 'och'}</span>}<span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">{c}</span></span>) : <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">{tr("alla nya leads")}</span>}
+                      <ArrowRight className="size-3.5 text-slate-500" />
                       {d.acts.map((a, i) => (
                         <span key={i} className="inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2 py-1 text-brand-700">{a.text}
                           {a.users && <span className="flex -space-x-1">{a.users.map((id) => { const u = team.find((x) => x.id === id); return u && <Avatar key={id} name={u.name} color={u.color} size="xs" />; })}</span>}

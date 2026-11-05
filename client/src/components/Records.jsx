@@ -39,15 +39,15 @@ export function NextStepCell({ step, lastContact, status }) {
       {step ? (
         <p className={cx('flex items-center gap-1.5 truncate', dueLabel(step.due_at).cls === 'text-rose-600' ? 'text-rose-600 font-medium' : 'text-slate-700')}>
           {step.kind === 'meeting' ? <CalendarClock className="size-3.5 shrink-0 text-violet-500" />
-            : step.kind === 'followup' ? <RotateCcw className="size-3.5 shrink-0 text-amber-500" />
-            : step.kind === 'close' ? <XCircle className="size-3.5 shrink-0 text-slate-400" />
+            : step.kind === 'followup' ? <RotateCcw className="size-3.5 shrink-0 text-amber-600" />
+            : step.kind === 'close' ? <XCircle className="size-3.5 shrink-0 text-slate-500" />
             : <CheckSquare className="size-3.5 shrink-0 text-brand-500" />}
           <span className="truncate">{followupText(step)}</span>
         </p>
       ) : active && status !== 'new' ? (
-        <p className="flex items-center gap-1.5 text-amber-600"><AlertTriangle className="size-3.5" />{tr("Inget nästa steg")}</p>
-      ) : <p className="text-slate-300">—</p>}
-      <p className="mt-0.5 text-slate-400 truncate">
+        <p className="flex items-center gap-1.5 text-amber-700"><AlertTriangle className="size-3.5" />{tr("Inget nästa steg")}</p>
+      ) : <p className="text-slate-500">—</p>}
+      <p className="mt-0.5 text-slate-500 truncate">
         {step && <span className={dueLabel(step.due_at).cls}>{dueLabel(step.due_at).short}</span>}
         {step && lastContact && ' · '}
         {lastContact ? tr('kontakt {0}', { 0: timeAgo(lastContact) }) : !step && status && status !== 'new' ? tr("ingen kontakt loggad") : ''}

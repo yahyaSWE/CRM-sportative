@@ -44,7 +44,7 @@ function BrandingFields({ p, setP, ro }) {
       <div><h3 className="text-sm font-semibold text-slate-900">{tr("Logga och utseende")}</h3><p className="text-xs text-slate-500">{tr("Visas på kundens offertsida och i PDF:en.")}</p></div>
       <div className="flex flex-wrap items-center gap-4">
         <div className="grid h-20 w-48 place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-2">
-          {p.logo ? <img src={p.logo} alt={tr("Logga")} className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-slate-400">{tr("Ingen logga")}</span>}
+          {p.logo ? <img src={p.logo} alt={tr("Logga")} className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-slate-500">{tr("Ingen logga")}</span>}
         </div>
         {!ro && (
           <div className="flex flex-wrap gap-2">
@@ -138,7 +138,7 @@ export default function Products() {
               <tbody className="divide-y divide-slate-100">
                 {data.map((p) => (
                   <tr key={p.id} className={cx(!p.active && 'opacity-50')}>
-                    <td className="px-5 py-3"><p className="font-medium text-slate-800">{p.name}{!p.active && <Badge className="ml-2 bg-slate-100 text-slate-500 ring-slate-400/20">{tr("Arkiverad")}</Badge>}</p>{p.description && <p className="text-xs text-slate-500">{p.description}</p>}</td>
+                    <td className="px-5 py-3"><p className="font-medium text-slate-800">{p.name}{!p.active && <Badge className="ml-2 bg-slate-100 text-slate-600 ring-slate-400/20">{tr("Arkiverad")}</Badge>}</p>{p.description && <p className="text-xs text-slate-500">{p.description}</p>}</td>
                     <td className="px-5 py-3 text-slate-500 font-mono text-xs">{p.sku || '—'}</td>
                     <td className="px-5 py-3 text-right tabular-nums"><span className="font-medium">{kr(p.price)} {tr("kr")}</span><span className="text-slate-500"> / {p.unit}{RECURRING_SV[p.recurring] && p.unit.includes('/') ? '' : RECURRING_SV[p.recurring]}</span></td>
                     <td className="px-5 py-3 text-slate-500">{p.vat_rate} %</td>

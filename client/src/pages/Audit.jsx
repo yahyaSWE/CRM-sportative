@@ -35,13 +35,13 @@ export default function Audit() {
                   {a.user_name ? <Avatar name={a.user_name} color={a.user_color} size="sm" /> : <span className="grid place-items-center size-7 rounded-full bg-brand-50 text-[10px] font-bold text-brand-600">{tr("LF")}</span>}
                   <p className="flex-1 min-w-0 text-slate-700 truncate">
                     <span className="font-medium text-slate-900">{a.user_name || tr("LeadFlow")}</span> {LABELS[a.action] || a.action}
-                    {a.entity_id && <span className="text-slate-400"> #{a.entity_id}</span>}
-                    {details?.source && <span className="text-slate-400"> · {details.source}</span>}
-                    {a.entity === 'template' && details?.name && <span className="text-slate-400"> · {details.name}</span>}
+                    {a.entity_id && <span className="text-slate-500"> #{a.entity_id}</span>}
+                    {details?.source && <span className="text-slate-500"> · {details.source}</span>}
+                    {a.entity === 'template' && details?.name && <span className="text-slate-500"> · {details.name}</span>}
                     {details?.via === 'claude' && <span className="text-orange-600"> · {tr('via Claude')}</span>}
-                    {details?.count != null && <span className="text-slate-400"> · {details.count} {tr("st")}</span>}
+                    {details?.count != null && <span className="text-slate-500"> · {details.count} {tr("st")}</span>}
                   </p>
-                  <span className="text-xs text-slate-400 whitespace-nowrap">{formatDateTime(a.created_at)}</span>
+                  <span className="text-xs text-slate-500 whitespace-nowrap">{formatDateTime(a.created_at)}</span>
                 </li>
               );
             })}

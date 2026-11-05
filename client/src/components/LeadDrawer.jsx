@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { X, Mail, Phone, Building2, MapPin, Briefcase, Trash2, ArrowRightLeft, Check, MessageSquare, ChevronRight, CalendarPlus, FileText, Sparkles, RotateCcw, PhoneOff, MailPlus, XCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
-import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, Tabs, useToast } from './ui.jsx';
+import { Avatar, Button, SourceBadge, StatusBadge, Select, Spinner, Modal, Field, Input, Confirm, Tabs, useToast, drawerRef } from './ui.jsx';
 import CompanyInsight from './CompanyInsight.jsx';
 import Purchasing from './Purchasing.jsx';
 import { followupText } from './Records.jsx';
@@ -22,12 +22,12 @@ export function EditableField({ icon: Icon, value, placeholder, onSave, disabled
   const commit = () => { setEdit(false); if (v !== (value || '')) onSave(v); };
   return (
     <div className="group flex items-center gap-3 py-1.5 min-h-9">
-      <Icon className="size-4 text-slate-400 shrink-0" />
+      <Icon className="size-4 text-slate-500 shrink-0" />
       {edit ? (
         <input autoFocus className="input !py-1" value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setV(value || ''); setEdit(false); } }} />
       ) : (
         <button disabled={disabled} onClick={() => setEdit(true)} className="flex-1 text-left text-sm truncate rounded px-1 -mx-1 hover:bg-slate-50 disabled:hover:bg-transparent">
-          {value ? (href ? <a href={href} onClick={(e) => e.stopPropagation()} className="text-brand-600 hover:underline">{value}</a> : <span className="text-slate-700">{value}</span>) : <span className="text-slate-400">{placeholder}</span>}
+          {value ? (href ? <a href={href} onClick={(e) => e.stopPropagation()} className="text-brand-600 hover:underline">{value}</a> : <span className="text-slate-700">{value}</span>) : <span className="text-slate-500">{placeholder}</span>}
         </button>
       )}
     </div>
@@ -51,21 +51,21 @@ function CompanyField({ lead, disabled, onPatch }) {
         <input autoFocus className="input !py-1" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Sök eller skriv nytt företag…")}
           onKeyDown={(e) => { if (e.key === 'Escape') setEdit(false); if (e.key === 'Enter' && q.trim()) pick(hits[0] && hits[0].name.toLowerCase() === q.trim().toLowerCase() ? { company_id: hits[0].id } : { company: q.trim() }); }} />
         <div className="mt-1 card py-1 shadow-lg">
-          {hits.map((h) => <button key={h.id} onClick={() => pick({ company_id: h.id })} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">{h.name}<span className="text-xs text-slate-400"> {h.city}</span></button>)}
+          {hits.map((h) => <button key={h.id} onClick={() => pick({ company_id: h.id })} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">{h.name}<span className="text-xs text-slate-500"> {h.city}</span></button>)}
           {q.trim().length > 1 && !hits.some((h) => h.name.toLowerCase() === q.trim().toLowerCase()) && <button onClick={() => pick({ company: q.trim() })} className="block w-full px-3 py-1.5 text-left text-sm text-brand-600 hover:bg-slate-50">{tr("+ Nytt företag \"")}{q.trim()}"</button>}
           {lead.company_id && <button onClick={() => pick({ company_id: null })} className="block w-full px-3 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-50">{tr("Ta bort koppling till företag")}</button>}
-          <button onClick={() => setEdit(false)} className="block w-full px-3 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-50">{tr("Avbryt")}</button>
+          <button onClick={() => setEdit(false)} className="block w-full px-3 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-50">{tr("Avbryt")}</button>
         </div>
       </div>
     );
   }
   return (
     <div className="group flex items-center gap-3 py-1.5 min-h-9">
-      <Building2 className="size-4 text-slate-400 shrink-0" />
+      <Building2 className="size-4 text-slate-500 shrink-0" />
       {lead.company_id
         ? <Link to={`/companies/${lead.company_id}`} className="flex-1 truncate text-sm font-medium text-brand-600 hover:underline">{lead.company}</Link>
-        : <span className="flex-1 text-sm text-slate-400">{lead.company || tr("Inget företag")}</span>}
-      {!disabled && <button onClick={() => setEdit(true)} className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 hover:text-slate-600">{tr("Ändra")}</button>}
+        : <span className="flex-1 text-sm text-slate-500">{lead.company || tr("Inget företag")}</span>}
+      {!disabled && <button onClick={() => setEdit(true)} className="text-xs text-slate-500 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-slate-600">{tr("Ändra")}</button>}
     </div>
   );
 }
@@ -178,8 +178,8 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
 
   return (
     <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 w-full max-w-3xl bg-white shadow-2xl animate-slide-in flex flex-col">
+      <div className="absolute inset-0 bg-slate-900/20" onClick={onClose} aria-hidden="true" />
+      <div ref={drawerRef} role="dialog" aria-modal="true" aria-label={tr('Lead')} tabIndex={-1} className="absolute inset-y-0 right-0 w-full max-w-3xl bg-white shadow-2xl animate-slide-in flex flex-col outline-none">
         {!lead ? <div className="flex-1 grid place-items-center"><Spinner /></div> : (
           <>
             <div className="px-6 pt-5 pb-4 border-b border-slate-100">
@@ -193,17 +193,17 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <StatusBadge status={lead.status} />
                     {lead.tags.includes('Kund') && <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">{tr("Kund")}</span>}
-                    <span className="text-xs text-slate-400">{tr("Poäng")} {lead.score} {tr("· Inkom")} {timeAgo(lead.created_at)}</span>
+                    <span className="text-xs text-slate-500">{tr("Poäng")} {lead.score} {tr("· Inkom")} {timeAgo(lead.created_at)}</span>
                   </div>
                 </div>
-                <button onClick={onClose} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"><X className="size-5" /></button>
+                <button onClick={onClose} aria-label={tr('Stäng')} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><X className="size-5" /></button>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {lead.phone && <a href={`tel:${lead.phone}`}><Button size="sm" variant="secondary" icon={Phone}>{tr("Ring")}</Button></a>}
+                {lead.phone && <Button size="sm" variant="secondary" icon={Phone} href={`tel:${lead.phone}`}>{tr("Ring")}</Button>}
                 {/* Med Gmail kopplat skrivs och skickas mejlet i appen; annars öppnas e-postprogrammet. */}
                 {lead.email && (mail?.canSend && editable
                   ? <Button size="sm" variant="secondary" icon={Mail} onClick={() => setTemplates('blank')}>{tr("Mejla")}</Button>
-                  : <a href={`mailto:${lead.email}`}><Button size="sm" variant="secondary" icon={Mail}>{tr("Mejla")}</Button></a>)}
+                  : <Button size="sm" variant="secondary" icon={Mail} href={`mailto:${lead.email}`}>{tr("Mejla")}</Button>)}
                 <Button size="sm" variant="secondary" icon={FileText} onClick={() => setTemplates(true)}>{tr("Mall")}</Button>
                 {editable && <Button size="sm" variant="secondary" icon={CalendarPlus} onClick={() => setBook(true)}>{tr("Boka möte")}</Button>}
                 {editable && lead.company && <Button size="sm" variant="secondary" icon={Sparkles} loading={enriching} onClick={enrich}>{tr("Berika")}</Button>}
@@ -218,7 +218,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
               )}
               {lead.followup && (
                 <div className={`mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 ${new Date(lead.followup.due_at.replace(' ', 'T') + 'Z') <= new Date() ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
-                  <RotateCcw className="size-4 text-amber-600" />
+                  <RotateCcw className="size-4 text-amber-700" />
                   <span className="text-sm text-slate-800"><span className="font-medium">{followupText(lead.followup)}</span> <span className="text-slate-500">· {dueText(lead.followup.due_at)}</span></span>
                   {editable && (
                     <span className="ml-auto flex flex-wrap gap-1.5">
@@ -239,7 +239,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                         <Briefcase className="size-4 text-violet-600" />
                         <span className="min-w-0 flex-1 text-sm"><span className="font-medium text-slate-800">{d.title}</span><span className="text-slate-500"> · {sek(d.value)}</span></span>
                         <span className="inline-flex items-center gap-1.5 text-xs text-slate-600"><span className="size-2 rounded-full" style={{ background: st?.color }} />{st?.label}</span>
-                        <ChevronRight className="size-4 text-slate-400" />
+                        <ChevronRight className="size-4 text-slate-500" />
                       </Link>
                     );
                   })}
@@ -253,7 +253,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 {tab === 'company' ? (
                   !info ? <div className="grid place-items-center py-10"><Spinner /></div> : (<div className="space-y-5">
                     <section>
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Inköpsinformation")}</h3>
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{tr("Inköpsinformation")}</h3>
                       <Purchasing purchasing={info.purchasing} contacts={info.contacts} canEdit={editable}
                         onSave={async (data) => { const r = await api.put(`/leads/${id}/purchasing`, data); setInfo(null); await loadInfo(); if (!lead.company_id && r.company_id) load(); }} />
                     </section>
@@ -269,7 +269,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                     <p className="text-sm text-slate-700 whitespace-pre-wrap">{lead.message}</p>
                   </div>
                 )}
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{tr("Tidslinje")}</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">{tr("Tidslinje")}</h3>
                 <Timeline activities={lead.activities} onToggleTask={toggleTask} onDelete={deleteActivity} onOutcome={editable ? setOutcome : null} />
                 </>}
               </div>
@@ -311,12 +311,12 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                   <div className="flex flex-wrap gap-1.5">
                     {lead.tags.map((t) => (
                       <span key={t} className="inline-flex items-center gap-1 rounded-md bg-white border border-slate-200 px-2 py-0.5 text-xs text-slate-700">
-                        {t}{editable && <button onClick={() => patch({ tags: lead.tags.filter((x) => x !== t) })} className="text-slate-400 hover:text-rose-500"><X className="size-3" /></button>}
+                        {t}{editable && <button onClick={() => patch({ tags: lead.tags.filter((x) => x !== t) })} className="text-slate-500 hover:text-rose-500"><X className="size-3" /></button>}
                       </span>
                     ))}
                     {editable && (
                       <form onSubmit={(e) => { e.preventDefault(); if (newTag.trim() && !lead.tags.includes(newTag.trim())) patch({ tags: [...lead.tags, newTag.trim()] }); setNewTag(''); }}>
-                        <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder={tr("+ tagg")} className="w-16 focus:w-24 transition-all bg-transparent text-xs outline-none py-0.5 placeholder:text-slate-400" />
+                        <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder={tr("+ tagg")} className="w-16 focus:w-24 transition-all bg-transparent text-xs outline-none py-0.5 placeholder:text-slate-500" />
                       </form>
                     )}
                   </div>
@@ -324,7 +324,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                 {Object.keys(lead.fields).length > 0 && (
                   <div>
                     <p className="label">{tr("Formulärsvar")}</p>
-                    <dl className="space-y-2">{Object.entries(lead.fields).map(([k, v]) => <div key={k}><dt className="text-[11px] text-slate-400">{k.replace(/_/g, ' ')}</dt><dd className="text-sm text-slate-700 break-words">{v}</dd></div>)}</dl>
+                    <dl className="space-y-2">{Object.entries(lead.fields).map(([k, v]) => <div key={k}><dt className="text-[11px] text-slate-500">{k.replace(/_/g, ' ')}</dt><dd className="text-sm text-slate-700 break-words">{v}</dd></div>)}</dl>
                   </div>
                 )}
                 {lead.deals.length > openDeals.length && (
@@ -333,7 +333,7 @@ export default function LeadDrawer({ id, onClose, onChanged }) {
                     {lead.deals.filter((d) => ['won', 'lost'].includes(d.stage)).map((d) => (
                       <Link key={d.id} to={`/pipeline/${d.id}`} className="card p-3 mb-2 block hover:border-slate-300">
                         <p className="text-sm font-medium text-slate-800 truncate">{d.title}</p>
-                        <p className={`text-xs ${d.stage === 'won' ? 'text-emerald-600' : 'text-rose-600'}`}>{sek(d.value)} · {d.stage === 'won' ? tr("Vunnen") : tr("Förlorad{0}", { 0: d.lost_reason ? ` – ${tr(d.lost_reason)}` : '' })}</p>
+                        <p className={`text-xs ${d.stage === 'won' ? 'text-emerald-700' : 'text-rose-600'}`}>{sek(d.value)} · {d.stage === 'won' ? tr("Vunnen") : tr("Förlorad{0}", { 0: d.lost_reason ? ` – ${tr(d.lost_reason)}` : '' })}</p>
                       </Link>
                     ))}
                   </div>

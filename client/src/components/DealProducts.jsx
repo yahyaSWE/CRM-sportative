@@ -27,7 +27,7 @@ function Cell({ value, onSave, type = 'text', className, disabled, suffix }) {
     <span className="relative block">
       <input disabled={disabled} type={type} value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
         className={cx('w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm hover:border-slate-200 focus:border-brand-500 focus:bg-white focus:outline-none disabled:hover:border-transparent', className)} />
-      {suffix && <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">{suffix}</span>}
+      {suffix && <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">{suffix}</span>}
     </span>
   );
 }
@@ -91,15 +91,15 @@ export default function DealProducts({ deal, editable, onChanged }) {
                     <Cell value={i.description || ''} disabled={!editable} onSave={(v) => update(i, { description: v })} className="!text-xs text-slate-500" />
                   </td>
                   <td className="px-1 py-1.5"><Cell type="number" value={i.quantity} disabled={!editable} onSave={(v) => update(i, { quantity: v })} className="text-right" />
-                    <p className="px-1.5 text-right text-[11px] text-slate-400 truncate">{i.unit}</p></td>
+                    <p className="px-1.5 text-right text-[11px] text-slate-500 truncate">{i.unit}</p></td>
                   <td className="px-1 py-1.5"><Cell type="number" value={i.unit_price} disabled={!editable} onSave={(v) => update(i, { unit_price: v })} className="text-right" />
                     {i.recurring !== 'none' && <p className="px-1.5 text-right text-[11px] text-violet-600">{RECURRING_SV[i.recurring]}</p>}</td>
                   <td className="px-1 py-1.5"><Cell type="number" value={i.discount} disabled={!editable} onSave={(v) => update(i, { discount: v })} className="text-right pr-5" suffix="%" /></td>
                   <td className="px-3 py-2.5 text-right font-medium tabular-nums">{kr(i.total)}</td>
-                  <td className="py-2">{editable && <button onClick={() => remove(i)} className="p-1 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-rose-500"><Trash2 className="size-4" /></button>}</td>
+                  <td className="py-2">{editable && <button onClick={() => remove(i)} className="p-1 text-slate-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-rose-500"><Trash2 className="size-4" /></button>}</td>
                 </tr>
               ))}
-              {!data.items.length && <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-400">{tr("Inga produkter än – lägg till från produktlistan nedan.")}</td></tr>}
+              {!data.items.length && <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">{tr("Inga produkter än – lägg till från produktlistan nedan.")}</td></tr>}
             </tbody>
           </table>
           {editable && (
@@ -119,27 +119,27 @@ export default function DealProducts({ deal, editable, onChanged }) {
             {Object.entries(t.vatByRate).map(([rate, v]) => <div key={rate} className="flex justify-between text-slate-500"><dt>{tr("Moms")} {rate} %</dt><dd className="tabular-nums">{kr(v)} {tr("kr")}</dd></div>)}
             <div className="flex justify-between border-t border-slate-200 pt-1 font-semibold text-slate-900"><dt>{tr("Totalt inkl. moms")}</dt><dd className="tabular-nums">{kr(t.total)} {tr("kr")}</dd></div>
             {recurring.length > 0 && <p className="flex items-center gap-1 pt-1 text-xs text-violet-600"><Repeat className="size-3" />{tr("Löpande:")} {recurring.map((i) => `${i.name} ${kr(i.total)} kr${RECURRING_SV[i.recurring]}`).join(', ')}</p>}
-            <p className="text-[11px] text-slate-400">{tr("Affärens värde följer summan exkl. moms.")}</p>
+            <p className="text-[11px] text-slate-500">{tr("Affärens värde följer summan exkl. moms.")}</p>
           </dl>
         )}
       </section>
 
       <section>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{tr("Offerter")}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{tr("Offerter")}</h3>
           {editable && <Button size="sm" icon={FileText} disabled={!data.items.length} onClick={openCreate}>{tr("Skapa offert")}</Button>}
         </div>
-        {!data.quotes.length ? <p className="text-sm text-slate-400">{data.items.length ? tr("Ingen offert skapad än.") : tr("Lägg till produkter först, sedan kan du skapa en offert.")}</p> : (
+        {!data.quotes.length ? <p className="text-sm text-slate-500">{data.items.length ? tr("Ingen offert skapad än.") : tr("Lägg till produkter först, sedan kan du skapa en offert.")}</p> : (
           <div className="space-y-2">
             {data.quotes.map((q) => {
               const [label, cls] = QUOTE_STATUS[q.status] || QUOTE_STATUS.draft;
               return (
                 <div key={q.id} className="card p-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <FileText className="size-4 text-slate-400" />
+                    <FileText className="size-4 text-slate-500" />
                     <span className="text-sm font-semibold text-slate-800">{q.number}</span>
                     <Badge className={cls}>{label}</Badge>
-                    <span className="ml-auto text-sm font-medium tabular-nums">{sek(q.total)} <span className="text-xs font-normal text-slate-400">{tr("exkl. moms")}</span></span>
+                    <span className="ml-auto text-sm font-medium tabular-nums">{sek(q.total)} <span className="text-xs font-normal text-slate-500">{tr("exkl. moms")}</span></span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {tr("Till")} {q.recipient_name || q.recipient_email || 'kund'} {tr("· giltig t.o.m.")} {formatDate(q.valid_until)}
@@ -151,14 +151,14 @@ export default function DealProducts({ deal, editable, onChanged }) {
                   {q.status === 'expired' && <p className="mt-1 flex items-center gap-1 text-xs text-amber-700"><Clock className="size-3.5" />{tr("Giltighetstiden har gått ut – skapa en ny offert om kunden fortfarande är intresserad.")}</p>}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <Button size="sm" variant="secondary" icon={Eye} onClick={() => window.open(`/q/${q.token}`, '_blank')}>{tr("Visa")}</Button>
-                    <a href={`/api/quotes/${q.id}/pdf`} download><Button size="sm" variant="secondary" icon={Download}>{tr("PDF")}</Button></a>
+                    <Button size="sm" variant="secondary" icon={Download} href={`/api/quotes/${q.id}/pdf`} download>{tr("PDF")}</Button>
                     {!['accepted', 'declined', 'expired'].includes(q.status) && editable && <>
                       <Button size="sm" variant="secondary" icon={Send} onClick={() => sendEmail(q)}>{tr("Mejla kunden")}</Button>
                       <Button size="sm" variant="secondary" icon={Copy} onClick={() => copy(q)}>{tr("Kopiera länk")}</Button>
                       {q.status === 'draft' && <Button size="sm" variant="ghost" icon={Check} onClick={() => markSent(q)}>{tr("Markera som skickad")}</Button>}
                     </>}
                     {q.status === 'accepted' && <Button size="sm" variant="ghost" icon={PenLine} onClick={() => showSignature(q)}>{tr("Signaturbevis")}</Button>}
-                    {q.status !== 'accepted' && editable && <Button size="sm" variant="ghost" icon={Trash2} className="ml-auto !text-slate-400 hover:!text-rose-600" onClick={() => setDel(q)} />}
+                    {q.status !== 'accepted' && editable && <Button size="sm" variant="ghost" icon={Trash2} className="ml-auto !text-slate-500 hover:!text-rose-600" onClick={() => setDel(q)} />}
                   </div>
                 </div>
               );

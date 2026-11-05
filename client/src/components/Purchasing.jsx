@@ -9,22 +9,22 @@ const daysUntil = (d) => Math.round((new Date(`${d}T00:00:00`) - new Date(new Da
 
 // Datum som närmar sig (eller har passerat) markeras, så att man hör av sig i tid.
 function DateValue({ date }) {
-  if (!date) return <span className="text-slate-400">—</span>;
+  if (!date) return <span className="text-slate-500">—</span>;
   const n = daysUntil(date);
-  const cls = n < 0 ? 'text-rose-600' : n <= 60 ? 'text-amber-600' : 'text-slate-800';
+  const cls = n < 0 ? 'text-rose-600' : n <= 60 ? 'text-amber-700' : 'text-slate-800';
   const rel = n < 0 ? tr('för {n} dagar sedan', { n: -n }) : n === 0 ? tr('idag') : tr('om {n} dagar', { n });
   return <span className={cls}>{formatDate(date)} <span className="text-xs">({rel})</span></span>;
 }
 
 function Person({ p }) {
-  if (!p) return <span className="text-slate-400">—</span>;
+  if (!p) return <span className="text-slate-500">—</span>;
   return (
     <span className="min-w-0">
       <span className="text-slate-800">{p.name}</span>{p.title && <span className="text-slate-500">, {p.title}</span>}
       {(p.phone || p.email) && (
         <span className="ml-1.5 inline-flex gap-1 align-middle">
-          {p.phone && <a href={`tel:${p.phone}`} title={p.phone} className="text-slate-400 hover:text-brand-600"><Phone className="size-3.5" /></a>}
-          {p.email && <a href={`mailto:${p.email}`} title={p.email} className="text-slate-400 hover:text-brand-600"><Mail className="size-3.5" /></a>}
+          {p.phone && <a href={`tel:${p.phone}`} title={p.phone} className="text-slate-500 hover:text-brand-600"><Phone className="size-3.5" /></a>}
+          {p.email && <a href={`mailto:${p.email}`} title={p.email} className="text-slate-500 hover:text-brand-600"><Mail className="size-3.5" /></a>}
         </span>
       )}
     </span>
@@ -90,7 +90,7 @@ export default function Purchasing({ purchasing: p, contacts = [], canEdit, onSa
   if (!p) {
     return (
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-slate-300 p-4">
-        <ShoppingCart className="size-5 text-slate-400" />
+        <ShoppingCart className="size-5 text-slate-500" />
         <p className="flex-1 text-sm text-slate-500">{tr('Ingen inköpsinformation än – vem som beslutar, vem som köper in, nuvarande leverantör och när avtalet går ut.')}</p>
         {canEdit && <Button size="sm" variant="secondary" onClick={start}>{tr('Lägg till')}</Button>}
       </div>
@@ -100,7 +100,7 @@ export default function Purchasing({ purchasing: p, contacts = [], canEdit, onSa
   const rows = [
     [tr('Beslutsfattare'), <Person p={p.decision_maker_contact} />],
     [tr('Materialansvarig'), <Person p={p.material_contact} />],
-    [tr('Befintlig leverantör'), p.supplier || <span className="text-slate-400">—</span>],
+    [tr('Befintlig leverantör'), p.supplier || <span className="text-slate-500">—</span>],
     [tr('Avtalsutgång'), <DateValue date={p.contract_end} />],
     [tr('Nästa inköp'), <span><DateValue date={p.next_purchase} />{p.next_purchase_note && <span className="block text-slate-600">{p.next_purchase_note}</span>}</span>],
   ];
@@ -110,7 +110,7 @@ export default function Purchasing({ purchasing: p, contacts = [], canEdit, onSa
         {rows.map(([k, v]) => <div key={k} className="min-w-0"><dt className="text-xs text-slate-500">{k}</dt><dd className={cx('mt-0.5')}>{v}</dd></div>)}
         {p.notes && <div className="sm:col-span-2"><dt className="text-xs text-slate-500">{tr('Anteckning')}</dt><dd className="mt-0.5 whitespace-pre-wrap text-slate-700">{p.notes}</dd></div>}
       </dl>
-      <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-2 text-xs text-slate-400">
+      <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
         {p.updated_by && <span>{tr('Uppdaterad av {name}', { name: p.updated_by })}</span>}
         {canEdit && <Button size="sm" variant="ghost" icon={Pencil} className="ml-auto" onClick={start}>{tr('Redigera')}</Button>}
       </div>

@@ -152,7 +152,7 @@ function ConfigForm({ integ, cfg, setCfg, base }) {
 }
 
 function StatusPill({ integ }) {
-  if (!integ.enabled) return <Badge className="bg-slate-100 text-slate-500 ring-slate-500/20">{tr("Pausad")}</Badge>;
+  if (!integ.enabled) return <Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">{tr("Pausad")}</Badge>;
   if (integ.status === 'syncing') return <Badge className="bg-sky-50 text-sky-700 ring-sky-600/20"><Loader2 className="size-3 animate-spin" />{tr("Hämtar…")}</Badge>;
   if (integ.status === 'error') return <Badge className="bg-rose-50 text-rose-700 ring-rose-600/20"><AlertTriangle className="size-3" />{tr("Fel")}</Badge>;
   if (integ.status === 'ok') return <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20"><span className="size-1.5 rounded-full bg-emerald-500" />{tr("Ansluten")}</Badge>;

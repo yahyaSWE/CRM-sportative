@@ -16,9 +16,9 @@ function BackupCard() {
   if (!data) return null;
   return (
     <Card className="p-6">
-      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><DatabaseBackup className="size-4 text-slate-400" />{tr("Säkerhetskopior")}</h3>
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><DatabaseBackup className="size-4 text-slate-500" />{tr("Säkerhetskopior")}</h3>
       <p className="text-sm text-slate-500 mb-4">{data.auto ? tr("En kopia av databasen sparas automatiskt varje dag (de senaste 14 behålls). Ladda gärna ned en kopia ibland och spara den utanför servern.") : tr("Automatiska kopior körs bara i produktion. Du kan alltid ladda ned en kopia.")}</p>
-      <a href="/api/admin/backup"><Button variant="secondary" icon={Download}>{tr("Ladda ned säkerhetskopia nu")}</Button></a>
+      <Button variant="secondary" icon={Download} href="/api/admin/backup">{tr("Ladda ned säkerhetskopia nu")}</Button>
       {data.items.length > 0 && <p className="mt-3 text-xs text-slate-500">{tr("Senaste automatiska kopior:")} {data.items.slice(0, 3).map((b) => b.name.replace(/^(crm|ws\d+)-/, '').replace('.db', '')).join(', ')}</p>}
     </Card>
   );
@@ -40,7 +40,7 @@ function EmailCard() {
   if (!s) return null;
   return (
     <Card className="p-6">
-      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Mail className="size-4 text-slate-400" />{tr('E-post')}</h3>
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Mail className="size-4 text-slate-500" />{tr('E-post')}</h3>
       <p className="text-sm text-slate-500 mb-4">{tr('Koppla din Gmail för att skicka mejl direkt från ett lead. Mejlen skickas från din egen adress, hamnar i din Skickat-mapp och loggas i tidslinjen. Samma koppling används för Google Kalender.')}</p>
       {!s.configured ? (
         <p className="text-sm text-slate-600">{can('integrations.manage') ? tr('Google är inte uppsatt ännu. Lägg in Google-uppgifterna under Kalender → Google Kalender (kugghjulet).') : tr('En administratör behöver koppla Google först.')}</p>
@@ -52,7 +52,7 @@ function EmailCard() {
       ) : (
         <div className="space-y-2">
           {s.needsReconnect && <p className="text-sm text-slate-600">{tr('Du har kopplat Google ({email}) men inte gett rätt att skicka e-post.', { email: s.email })}</p>}
-          <a href="/api/calendar/google/connect?return=settings"><Button icon={Mail}>{s.needsReconnect ? tr('Ge rätt att skicka e-post') : tr('Koppla Gmail')}</Button></a>
+          <Button icon={Mail} href="/api/calendar/google/connect?return=settings">{s.needsReconnect ? tr('Ge rätt att skicka e-post') : tr('Koppla Gmail')}</Button>
         </div>
       )}
     </Card>
@@ -76,8 +76,8 @@ function AiEnrichCard() {
   };
   return (
     <Card className="p-6">
-      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Sparkles className="size-4 text-slate-400" />{tr('AI-berikning')}
-        <Badge className={cfg.configured ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-slate-100 text-slate-500 ring-slate-400/20'}>{cfg.configured ? tr('Uppsatt') : tr('Ej uppsatt')}</Badge>
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Sparkles className="size-4 text-slate-500" />{tr('AI-berikning')}
+        <Badge className={cfg.configured ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-slate-100 text-slate-600 ring-slate-400/20'}>{cfg.configured ? tr('Uppsatt') : tr('Ej uppsatt')}</Badge>
       </h3>
       <p className="text-sm text-slate-500 mb-4">{tr('Knappen Berika på leads och företag sammanfattar bolaget med AI via OpenRouter. Nyckeln gäller den här arbetsytan; du betalar OpenRouter per användning (med standardmodellen ungefär en hundradels krona per berikning).')}</p>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -130,7 +130,7 @@ function OfferCard() {
   };
   return (
     <Card className="p-6">
-      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Target className="size-4 text-slate-400" />{tr('Vårt erbjudande')}</h3>
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Target className="size-4 text-slate-500" />{tr('Vårt erbjudande')}</h3>
       <p className="text-sm text-slate-500 mb-4">{tr('Beskriv vad {name} säljer. AI:n använder det i säljvinkeln när du berikar ett företag, när den skriver första mejlet och när Claude skriver säljtexter. Gäller den här arbetsytan.', { name: data.company || tr('ert bolag') })}</p>
       {!ro && (
         <div className="mb-5 flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-3">
@@ -167,7 +167,7 @@ function CadenceCard() {
   const total = Number(c.days) * (Number(c.attempts) + 1);
   return (
     <Card className="p-6">
-      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><RotateCcw className="size-4 text-slate-400" />{tr('Uppföljning av kontaktade leads')}</h3>
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><RotateCcw className="size-4 text-slate-500" />{tr('Uppföljning av kontaktade leads')}</h3>
       <p className="text-sm text-slate-500 mb-4">{tr('När ett lead är Kontaktat och inte svarat hamnar det under Leads → Kontakta igen efter valt antal dagar. Varje loggat samtal, mejl eller möte räknas som ett försök. Gäller den här arbetsytan.')}</p>
       <div className="grid gap-4 sm:grid-cols-2 max-w-lg">
         <Field label={tr('Dagar innan nästa försök')}><Input type="number" min={1} max={60} value={c.days} disabled={ro} onChange={(e) => setC({ ...c, days: e.target.value })} /></Field>
@@ -203,7 +203,7 @@ function AiCard() {
   };
   return (
     <Card className="p-6">
-      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Bot className="size-4 text-slate-400" />{tr('Claude och AI-assistenter')}</h3>
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Bot className="size-4 text-slate-500" />{tr('Claude och AI-assistenter')}</h3>
       <p className="text-sm text-slate-500 mb-4">{tr('Låt Claude läsa och uppdatera CRM:et åt dig, med samma behörigheter som du har. I Claude: Inställningar → Connectors → Lägg till anpassad connector, och klistra in adressen nedan.')}</p>
       {can('ai.connect') ? (
         <div className="flex gap-2 max-w-lg">
@@ -241,7 +241,7 @@ function LanguageCard() {
   };
   return (
     <Card className="p-6">
-      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Languages className="size-4 text-slate-400" />{tr('Språk')}</h3>
+      <h3 className="flex items-center gap-2 font-semibold text-slate-900"><Languages className="size-4 text-slate-500" />{tr('Språk')}</h3>
       <p className="text-sm text-slate-500 mb-4">{tr('Gäller för ditt konto på alla enheter.')}</p>
       <div className="grid grid-cols-2 gap-2 max-w-sm">
         {LANGUAGES.map((l) => (
@@ -271,7 +271,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageHeader title={tr("Inställningar")} subtitle={tr("Din profil och säkerhet")} />
+      <PageHeader title={tr("Inställningar")} subtitle={tr("Din profil, säkerhet och inställningar för arbetsytan")} />
       <Card className="p-6 flex items-center gap-4">
         <Avatar name={user.name} color={user.color} size="lg" />
         <div className="flex-1"><p className="font-semibold text-slate-900">{user.name}</p><p className="text-sm text-slate-500">{user.email}</p></div>
@@ -285,9 +285,9 @@ export default function Settings() {
       {can('products.manage') && (
         <Link to="/products?tab=profile" className="block">
           <Card className="flex items-center gap-3 p-6 hover:bg-slate-50">
-            <FileText className="size-4 text-slate-400" />
+            <FileText className="size-4 text-slate-500" />
             <div className="flex-1"><h3 className="font-semibold text-slate-900">{tr('Offerter')}</h3><p className="text-sm text-slate-500">{tr('Företagsuppgifter, logga, färg, sidfot och villkor på offerter och PDF:er.')}</p></div>
-            <ChevronRight className="size-4 text-slate-400" />
+            <ChevronRight className="size-4 text-slate-500" />
           </Card>
         </Link>
       )}
@@ -298,7 +298,7 @@ export default function Settings() {
         <ul className="grid sm:grid-cols-2 gap-2">
           {permissions.map((p) => {
             const on = user.permissions.includes(p.key);
-            return <li key={p.key} className={`flex items-center gap-2 text-sm ${on ? 'text-slate-700' : 'text-slate-400 line-through'}`}><span className={`size-1.5 rounded-full ${on ? 'bg-emerald-500' : 'bg-slate-300'}`} />{tr(p.label)}</li>;
+            return <li key={p.key} className={`flex items-center gap-2 text-sm ${on ? 'text-slate-700' : 'text-slate-500 line-through'}`}><span className={`size-1.5 rounded-full ${on ? 'bg-emerald-500' : 'bg-slate-300'}`} />{tr(p.label)}</li>;
           })}
         </ul>
       </Card>

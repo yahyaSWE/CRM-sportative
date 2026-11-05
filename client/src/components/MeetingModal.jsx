@@ -132,8 +132,8 @@ export default function MeetingModal({ open, onClose, onSaved, preset = {}, meet
           <div className="space-y-2 text-sm">
             {m.owner_name && <p className="flex items-center gap-2 text-slate-700"><Avatar name={m.owner_name} color={m.owner_color} size="xs" />{m.owner_name}</p>}
             {m.video_url && <a href={m.video_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-brand-600 hover:underline"><Video className="size-4" />{tr("Anslut till videomöte")}<ExternalLink className="size-3" /></a>}
-            {m.location && <p className="flex items-center gap-2 text-slate-700"><MapPin className="size-4 text-slate-400" />{m.location}</p>}
-            {m.attendees.length > 0 && <p className="flex items-start gap-2 text-slate-700"><Users className="size-4 text-slate-400 mt-0.5" />{m.attendees.map((a) => a.name || a.email).join(', ')}</p>}
+            {m.location && <p className="flex items-center gap-2 text-slate-700"><MapPin className="size-4 text-slate-500" />{m.location}</p>}
+            {m.attendees.length > 0 && <p className="flex items-start gap-2 text-slate-700"><Users className="size-4 text-slate-500 mt-0.5" />{m.attendees.map((a) => a.name || a.email).join(', ')}</p>}
             {who && m.lead_id && <Link to={`/leads/${m.lead_id}`} onClick={onClose} className="flex items-center gap-2 text-brand-600 hover:underline"><User className="size-4" />{who}{m.company && who !== m.company && ` · ${m.company}`}</Link>}
             {m.deal_id && <Link to={`/pipeline/${m.deal_id}`} onClick={onClose} className="flex items-center gap-2 text-violet-700 hover:underline"><Briefcase className="size-4" />{m.deal_title}{st && <span className="text-xs text-slate-500">· {st.label}</span>}</Link>}
           </div>

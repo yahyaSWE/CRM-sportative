@@ -68,9 +68,9 @@ export default function ContactResults({ data, days }) {
                   </div>
                   <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
                     <span className="inline-flex items-center gap-1"><Send className="size-3" />{num(c.attempts)} {unit} · {num(c.leads)} {tr('leads')}</span>
-                    <span className="inline-flex items-center gap-1"><CheckCircle2 className="size-3 text-emerald-600" />{num(c.answered)} {tr('svarade')}</span>
+                    <span className="inline-flex items-center gap-1"><CheckCircle2 className="size-3 text-emerald-700" />{num(c.answered)} {tr('svarade')}</span>
                     <span className="inline-flex items-center gap-1"><PhoneMissed className="size-3" />{num(c.no_answer)} {tr('inget svar')}</span>
-                    {pending > 0 && <span className="inline-flex items-center gap-1"><Clock className="size-3 text-amber-600" />{num(pending)} {tr('inväntar/ej angivet')}</span>}
+                    {pending > 0 && <span className="inline-flex items-center gap-1"><Clock className="size-3 text-amber-700" />{num(pending)} {tr('inväntar/ej angivet')}</span>}
                   </p>
                 </div>
               );
@@ -83,7 +83,9 @@ export default function ContactResults({ data, days }) {
 
       {/* Per säljare (för den som ser teamets siffror) */}
       {data.perUser.length > 0 && (
-        <div className="mt-6 overflow-x-auto">
+        <details className="mt-5 border-t border-slate-100 pt-3">
+          <summary className="cursor-pointer select-none rounded-md py-1 text-sm font-medium text-brand-700 hover:text-brand-800">{tr('Visa per säljare ({n})', { n: data.perUser.length })}</summary>
+        <div className="mt-2 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 text-left text-xs text-slate-500">
               <tr>
@@ -109,6 +111,7 @@ export default function ContactResults({ data, days }) {
             </tbody>
           </table>
         </div>
+        </details>
       )}
     </Card>
   );

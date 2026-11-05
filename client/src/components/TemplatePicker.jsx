@@ -86,7 +86,7 @@ export default function TemplatePicker({ lead, open, onClose, onLogged, blank, a
     return (
       <li key={key}>
         <button onClick={() => setSel(t)} className={cx('flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm', active ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-50')}>
-          <I className="size-4 shrink-0 text-slate-400" /><span className="truncate">{t.name}</span>
+          <I className="size-4 shrink-0 text-slate-500" /><span className="truncate">{t.name}</span>
         </button>
       </li>
     );
@@ -99,7 +99,7 @@ export default function TemplatePicker({ lead, open, onClose, onLogged, blank, a
         <div className="grid gap-4 md:grid-cols-[220px_1fr]">
           <div className="space-y-2">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
               <input className="input !py-1.5 !pl-8 text-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Sök…')} />
             </div>
             <ul className="max-h-96 space-y-1 overflow-y-auto scroll-thin">

@@ -46,9 +46,9 @@ export default function CompanyInsight({ enrichment: e, companyName, configured,
           )}
           {e.opening_line && (
             <div className="mt-3 flex items-start gap-2 rounded-lg bg-white/80 p-2.5">
-              <MessageSquareQuote className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+              <MessageSquareQuote className="mt-0.5 size-4 shrink-0 text-emerald-700" />
               <p className="flex-1 text-sm italic text-slate-700">"{e.opening_line}"</p>
-              <button title={tr('Kopiera')} onClick={async () => { if (await copyText(e.opening_line)) toast(tr('Texten är kopierad')); }} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Copy className="size-3.5" /></button>
+              <button title={tr('Kopiera')} onClick={async () => { if (await copyText(e.opening_line)) toast(tr('Texten är kopierad')); }} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"><Copy className="size-3.5" /></button>
             </div>
           )}
         </div>
@@ -67,7 +67,7 @@ export default function CompanyInsight({ enrichment: e, companyName, configured,
         {companyLink && <Link to={companyLink} className="text-brand-600 hover:underline">{tr('Visa företaget')}</Link>}
         {configured && canEnrich && <Button size="sm" variant="ghost" icon={RefreshCw} loading={busy} className="ml-auto" onClick={onEnrich}>{tr('Uppdatera')}</Button>}
       </div>
-      <p className="text-[11px] text-slate-400">{tr('Sammanfattat av AI utifrån källorna ovan – kontrollera viktiga uppgifter innan du använder dem.')}</p>
+      <p className="text-[11px] text-slate-500">{tr('Sammanfattat av AI utifrån källorna ovan – kontrollera viktiga uppgifter innan du använder dem.')}</p>
     </div>
   );
 }

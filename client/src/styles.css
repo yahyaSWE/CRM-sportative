@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-brand-50: #eef2ff;
   --color-brand-100: #e0e7ff;
   --color-brand-500: #6366f1;
@@ -11,13 +11,29 @@
 
 html, body, #root { height: 100%; }
 body { @apply bg-slate-50 text-slate-800 antialiased; font-feature-settings: "cv11", "ss01"; }
+::selection { background: var(--color-brand-100); color: var(--color-brand-700); }
+
+/* Tydlig fokusram för tangentbordet överallt. Fält har egen ring via .input. */
+:where(a, button, [role="button"], [tabindex], summary, input[type="checkbox"], input[type="radio"], select):focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Den som valt minskad rörelse i systemet slipper glid, puls och blink. Tillståndet syns ändå. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+  .animate-ping, .animate-pulse-ring { animation: none !important; }
+}
 
 @layer components {
   .card { @apply bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)]; }
-  .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 outline-none transition disabled:bg-slate-50 disabled:text-slate-500; }
+  .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 outline-none transition disabled:bg-slate-50 disabled:text-slate-500; }
   .label { @apply block text-xs font-medium text-slate-600 mb-1; }
 }
 .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 .scroll-thin::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
 
 @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }

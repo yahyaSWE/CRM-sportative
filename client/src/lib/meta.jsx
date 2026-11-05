@@ -21,8 +21,8 @@ export const InstagramIcon = ({ className = 'size-4' }) => (
 export const SOURCES = {
   facebook: { ...label('Facebook'), icon: FacebookIcon, color: '#1877F2', bg: 'bg-blue-50 text-[#1877F2]' },
   instagram: { ...label('Instagram'), icon: InstagramIcon, color: '#E1306C', bg: 'bg-pink-50 text-[#E1306C]' },
-  email: { ...label('E-post'), icon: Mail, color: '#f59e0b', bg: 'bg-amber-50 text-amber-600' },
-  webform: { ...label('Webbformulär'), icon: Globe, color: '#10b981', bg: 'bg-emerald-50 text-emerald-600' },
+  email: { ...label('E-post'), icon: Mail, color: '#f59e0b', bg: 'bg-amber-50 text-amber-700' },
+  webform: { ...label('Webbformulär'), icon: Globe, color: '#10b981', bg: 'bg-emerald-50 text-emerald-700' },
   prospecting: { ...label('Prospektering'), icon: Crosshair, color: '#0891b2', bg: 'bg-cyan-50 text-cyan-700' },
   manual: { ...label('Manuell'), icon: UserPlus, color: '#64748b', bg: 'bg-slate-100 text-slate-600' },
   import: { ...label('Import'), icon: Upload, color: '#8b5cf6', bg: 'bg-violet-50 text-violet-600' },
@@ -73,7 +73,7 @@ export const formatDateTime = (s) => (s ? toDate(s).toLocaleString(locale(), { d
 
 // text = full etikett, short = utan 'försenad'-tillägget (för smala ytor).
 export function dueLabel(s) {
-  if (!s) return { text: tr('Inget datum'), short: tr('Inget datum'), cls: 'text-slate-400' };
+  if (!s) return { text: tr('Inget datum'), short: tr('Inget datum'), cls: 'text-slate-500' };
   const d = toDate(s);
   const days = Math.floor((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 864e5);
   const time = d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
@@ -83,7 +83,7 @@ export function dueLabel(s) {
       ? { text: tr('Idag {0} · försenad', { 0: time }), short: tr('Idag {0}', { 0: time }), cls: 'text-rose-600' }
       : { text: tr('Försenad · {0}', { 0: dayMonth }), short: tr('Försenad · {0}', { 0: dayMonth }), cls: 'text-rose-600' };
   }
-  if (days === 0) return { text: tr('Idag {0}', { 0: time }), short: tr('Idag {0}', { 0: time }), cls: 'text-amber-600' };
+  if (days === 0) return { text: tr('Idag {0}', { 0: time }), short: tr('Idag {0}', { 0: time }), cls: 'text-amber-700' };
   if (days === 1) return { text: tr('Imorgon {0}', { 0: time }), short: tr('Imorgon {0}', { 0: time }), cls: 'text-slate-600' };
   const other = formatDate(s, { weekday: 'short', day: 'numeric', month: 'short' });
   return { text: other, short: other, cls: 'text-slate-500' };

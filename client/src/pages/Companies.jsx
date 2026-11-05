@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Search, Building2, ArrowUpDown, Plus, Star } from 'lucide-react';
 import { api, qs } from '../api.js';
 import { useApp, useLive } from '../lib/app.jsx';
@@ -54,7 +54,7 @@ export default function Companies() {
       <Card className="overflow-hidden">
         <div className="p-3 border-b border-slate-100">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Sök företag, org.nr, ort, bransch eller kontaktperson…")} className="input pl-9" />
           </div>
         </div>
@@ -73,16 +73,16 @@ export default function Companies() {
                       <div className="flex items-center gap-3">
                         <span className={cx('grid place-items-center size-9 rounded-lg text-xs font-semibold shrink-0', co.won_count ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600')}>{co.name.slice(0, 2).toUpperCase()}</span>
                         <div className="min-w-0">
-                          <p className="font-medium text-slate-800 truncate">{co.name}{co.won_count > 0 && <Star className="inline ml-1.5 size-3.5 text-emerald-500" />}</p>
+                          <p className="font-medium text-slate-800 truncate"><Link to={`/companies/${co.id}${window.location.search}`} onClick={(e) => e.stopPropagation()} className="hover:text-brand-700">{co.name}</Link>{co.won_count > 0 && <Star className="inline ml-1.5 size-3.5 text-emerald-700" aria-label={tr("Kund")} />}</p>
                           <p className="text-xs text-slate-500 truncate">{[co.org_nr, co.city, co.industry].filter(Boolean).join(' · ') || '—'}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs"><p className="font-medium text-slate-700">{co.contact_count} {tr("st")}</p><p className="text-slate-500 truncate max-w-56">{co.contact_names}</p></td>
-                    <td className="px-4 py-3 text-right tabular-nums">{co.won_value ? <span className="font-semibold">{sek(co.won_value)}</span> : <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{co.open_count ? <><p className="font-medium text-violet-700">{sek(co.open_value)}</p><p className="text-xs text-slate-400">{co.open_count} {tr("öppna")}</p></> : <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{co.won_value ? <span className="font-semibold">{sek(co.won_value)}</span> : <span className="text-slate-500">—</span>}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{co.open_count ? <><p className="font-medium text-violet-700">{sek(co.open_value)}</p><p className="text-xs text-slate-500">{co.open_count} {tr("öppna")}</p></> : <span className="text-slate-500">—</span>}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">{co.last_contact_at ? timeAgo(co.last_contact_at) : tr("Ingen kontakt loggad")}</td>
-                    <td className="px-4 py-3">{co.owner_name ? <span className="flex items-center gap-2"><Avatar name={co.owner_name} color={co.owner_color} size="xs" /><span className="text-xs text-slate-600">{co.owner_name.split(' ')[0]}</span></span> : <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3">{co.owner_name ? <span className="flex items-center gap-2"><Avatar name={co.owner_name} color={co.owner_color} size="xs" /><span className="text-xs text-slate-600">{co.owner_name.split(' ')[0]}</span></span> : <span className="text-slate-500">—</span>}</td>
                   </tr>
                 ))}
               </tbody>

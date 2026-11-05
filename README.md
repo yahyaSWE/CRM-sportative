@@ -50,7 +50,9 @@ Gemensamt mönster som LeadFlow följer: **alla kanaler matas in i en och samma 
 - **Kontaktresultat** (Översikt): tratten *Kontaktade → Svarade → Kvalificerade* för vald period, svarsfrekvens per kanal (telefon/mejl) och – för chefer – per säljare. Kontaktade är alla med status Kontaktad eller längre under perioden, leads som satts till Kontaktad och senare arkiverats, samt leads med loggat samtal eller mejl. Leads som kvalificerats eller fått en affär räknas som svarade. Saknas loggat samtal eller mejl väljer du kanal med *Svar på telefon* eller *Svar på mejl*.
 - **Ditt arbete** (Översikt): vad du gjort under perioden – samtal (och hur många som svarade), mejl, anteckningar, kontaktade och kvalificerade leads, avbockade uppgifter, bokade och hållna möten, nya leads och vunna affärer. Perioden **Idag** räknas från midnatt och visar dessutom dagens logg. Chefer ser samma siffror per säljare.
 - **Uppföljningsrytm**: när ett lead är *Kontaktat* och inte svarar dyker det upp under *Kontakta igen* efter valt antal dagar (Inställningar → Uppföljning av kontaktade leads, t.ex. 3 dagar och 2 uppföljningar). Varje loggat samtal, mejl eller möte räknas som ett försök och startar om klockan – i leadet finns snabbknapparna *Ringt, inget svar*, *Mejlat igen* och *Ej aktuell*. När uppföljningarna är slut utan svar markeras leadet automatiskt *Ej aktuell* (går att stänga av). Leads med öppen uppgift eller bokat möte har redan ett nästa steg och räknas inte.
-- **Pipeline**: sökruta och listvy (sorterbar, med äldre avslutade affärer). Tavlan visar avslutade affärer från de senaste 30 dagarna.
+- **Pipeline**: sökruta och listvy (sorterbar, med äldre avslutade affärer). Tavlan visar avslutade affärer från de senaste 30 dagarna. Flytta en affär genom att dra kortet, via pilknappen på kortet (fungerar även i mobilen) eller med Alt + vänster/höger när kortet är markerat.
+- **Ångra**: statusbyte och tilldelning för flera leads, *Ta*, avbockade uppgifter och flytt i pipelinen visar en notis med *Ångra*.
+- **Kortkommandon**: Ctrl + K söker, N skapar ett nytt lead, Esc stänger paneler och dialoger. Hela appen går att använda med tangentbordet.
 
 ## Mallar
 
